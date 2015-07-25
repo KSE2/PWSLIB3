@@ -1,0 +1,15 @@
+PWSLIB2 Changelog since 2-3-0
+
+- PwsFile.setPersistentFile(ContextFile) now allows for the null parameter 
+  which is equivalent to PwsFile.setFilePath(null).
+
+- new exception  LoginFailureException has been created to replace 
+  sun.net.ftp.FtpLoginException. 
+  
+  - security update for the encryption/decryption process. With thorough memory testing
+  some spreading of decrypted content garbage onto the VM (temporary!) data heap have 
+  been removed. JPasswords VM memory should be now clean from decrypted database content
+  from reading or writing databases, except for Title and User-Name.
+  
+- CryptoRandom cryptographical random generator now runs on SHA512 instead of SHA1.   
+  

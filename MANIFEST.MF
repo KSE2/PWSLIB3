@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Main-Class: org.jpws.pwslib.global.Global
+Class-Path: 
+Created-By: Wolfgang Keller
+

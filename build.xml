@@ -1,0 +1,119 @@
+<project name="PWSLIB2" basedir="." default="help">
+
+<!--   DIRECTORIES                                                    -->
+	<property name="src" value="${basedir}/src" />
+	<property name="dist" value="${basedir}/bin" />
+	<property name="doc" value="${basedir}/doc" />
+	<property name="apidoc" value="${basedir}/doc/api" />
+	<property name="build" value="${basedir}/build" />
+        <property name="sftrans" value="G:/Eclipse/sfnet/PWSLIB2" />
+
+<!--   FILES                                                          -->
+        <property name="junit" value="/usr/lib/eclipse/dropins/jdt/plugins/org.junit_3.8.2.v3_8_2_v20100427-1100/junit.jar"/>
+
+        <property name="docfileset" value="License.txt Readme.txt Changelog.txt Format-V3-12.txt" />
+        <property name="rootfileset" value="build.xml MANIFEST.MF makejar.bat jartest.bat makeapi.bat makedist.bat .svnignore" />
+
+<!--   TEXT                                                           -->
+	<property name="ver" value="2-3-1" />
+        <property name="apidoc wintitle" value="PasswordSafe V3 Library - PWSLIB API"/>
+        <property name="release date" value="20 Feb 2013"/>
+        <property name="release year" value="2013"/>
+        <property name="system format" value="3.10"/>
+
+
+<target name="init">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <mkdir dir="${dist}"/>
+    <mkdir dir="${build}"/>
+</target>
+
+<target name="clear-c" description="remove class files from build area">
+<delete>
+   <fileset dir="${build}" includes="**/*.class"/>
+</delete>
+</target>
+
+<target name="comp" depends="init,clear-c" description="compile PWSLIB library">
+   <javac srcdir="${src}"  destdir="${build}"  
+       classpath="${junit}" />
+</target>
+
+<target name="api" depends="init" description="create Javadoc API for PWSLIB library">
+<javadoc packagenames="org.jpws.pwslib.*"
+           sourcepath="${src}"
+           excludepackagenames="org.jpws.pwslib.test" 
+           defaultexcludes="yes"
+           destdir="${apidoc}"
+           classpath="${junit}"
+           author="true"
+           version="true"
+           windowtitle="${apidoc wintitle}">
+<bottom><![CDATA[<i>Copyright &#169; ${release year} Wolfgang Keller (KSE). All Rights Reserved. Contact kse@sourceforge.net</i>]]></bottom>
+<Header><![CDATA[<b>KSE PWSLIB ${ver}</b>]]></Header>
+<Doctitle><![CDATA[PasswordSafe V${system format} Library<br>(Project JPasswords)<p>KSE PWSLIB ${ver}
+          <p>Release Date: ${release date}</p>]]></Doctitle>
+</javadoc>
+</target>
+
+<target name="jar" depends="comp" description="create PWSLIB executable library">
+<delete file="${dist}/pws-engine-kse.jar"/>
+<jar destfile="${dist}/pws-engine-kse.jar" 
+     basedir="${build}"
+     manifest="MANIFEST.MF"
+     includes="org/jpws/pwslib/**"
+     excludes="**/Test*">
+</jar>
+</target>
+
+<target name="dist" depends="jar,api" description="create PWSLIB distribution packages">
+<copy file="${dist}/pws-engine-kse.jar" tofile="${dist}/pws-engine-kse-${ver}.jar"/>
+
+<zip destfile="${dist}/pws-engine-kse-${ver}.zip">
+    <zipfileset dir="${doc}" includes="${docfileset}" prefix="jpws/pwslib/doc" />
+    <zipfileset dir="${apidoc}" prefix="jpws/pwslib/doc/api"/>
+    <zipfileset dir="${dist}" includes="pws-engine-kse.jar pws-engine-kse.jar.sig pws-engine-kse-${ver}.jar" prefix="jpws/pwslib/bin"/>
+  </zip>
+<checksum file="${dist}/pws-engine-kse-${ver}.zip"/>
+
+<zip destfile="${dist}/pws-engine-source-${ver}.zip">
+    <zipfileset dir="." includes="${rootfileset}" prefix="jpws/pwslib" />
+    <zipfileset dir="${doc}" includes="${docfileset}" prefix="jpws/pwslib/doc" />
+    <zipfileset dir="${src}/org/jpws/pwslib" prefix="jpws/pwslib/src/org/jpws/pwslib"/>
+  </zip>
+<checksum file="${dist}/pws-engine-source-${ver}.zip"/>
+
+<copy file="${dist}/pws-engine-kse-${ver}.zip" 
+      tofile="${dist}/pws-engine-kse.zip" overwrite="yes"/>
+<copy file="${dist}/pws-engine-source-${ver}.zip" 
+      tofile="${dist}/pws-engine-kse-src.zip" overwrite="yes"/>
+</target>
+
+<target name="trans" description="transfers public project files to another place">
+<copy todir="${sftrans}/src">
+    <fileset dir="${src}" includes="**/*.java"/>
+</copy>
+<delete verbose="true">
+    <fileset dir="${sftrans}/src" includes="**/*.java">
+       <present present="srconly" targetdir="${src}"/>
+    </fileset>
+</delete>
+<copy todir="${sftrans}">
+    <fileset dir="${basedir}" includes="${rootfileset}" />
+</copy>
+<copy todir="${sftrans}/doc">
+    <fileset dir="${doc}" includes="${docfileset}" />
+</copy>
+</target>
+
+<target name="help">
+	<echo>Targets:
+--------
+jar      - create JPWS backend executable library
+api      - create Javadoc API for backend library
+dist     - create JPWS backend distribution package
+clear-c  - remove class files from build area
+	</echo>
+</target>
+</project>

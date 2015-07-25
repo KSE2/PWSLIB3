@@ -1,0 +1,213 @@
+KSE PWSLIB 2-3-1
+
+== KSE Password Safe Library (reads/writes PWS Formats 1, 2 and 3) ==
+== Supported file format: PWS V3.10 ==
+
+This package is a part of the JPasswords project (JPWS 0-6-0 M7) 
+but may be used independently
+
+CHANGELOG
+Text Date: 20. Feb. 2013
+
+Actual Release 2-3-1, Date: 20 Feb. 2013
+----------------------------------------
+
+- PwsFile.setPersistentFile(ContextFile) now allows for the null parameter 
+  which is equivalent to PwsFile.setFilePath(null).
+- new exception  LoginFailureException has been created to replace 
+  sun.net.ftp.FtpLoginException outwardly. 
+- security update for the encryption/decryption process. With thorough memory testing
+  some spreading of decrypted content garbage onto the VM (temporary!) data heap have 
+  been removed. VM memory should now be clean from decrypted database content
+  after reading or writing, except for Title and User-Name.
+- CryptoRandom cryptographical random generator now runs on SHA512 instead of SHA1.   
+
+
+Release 2-3-0, Date: 15 Nov. 2012
+---------------------------------
+
+- compatibility to PWS file format 3.10; this format interpretation relies on the format 
+  definition of PasswordSafe program version 3.29
+- interface supported new record fields:
+     . autotype String, character sequence for autotype command
+     . passPolicyName String, name of listed password policy used in record
+     . expiryInterval integer, number of days for a password validity period
+     . protectedEntry boolean, whether record is write-protected
+- unused definition elements of V3.10 (not available in interface):
+     . runCommand String
+     . dclickAction String
+     . shiftDclickAction String
+- Password Policy is stored in a new format definition; we use an extended version which in rare cases 
+  currently is not recognised by the PasswordSafe program!!
+- slight modification of the file-event dispatch behaviour (in favour of single record modifications)
+
+
+Release 2-2-1, Date: 03 May 2012
+--------------------------------
+
+- compatibility to PWS format 3.6
+- support of new record fields EMAIL and EXPIRY INTERVAL
+- PwsRecord: test for semantical identity of records (extension to "equals")  
+- minor additions and bugfixes to comply with programmatic demands
+  
+
+Release 2-1-0, Date: 01 Sep. 2007
+---------------------------------
+This is a release with minor enhancements and upgrading to file format
+PWS 3.2.
+
+Corrected Bugs:
+- removed a malfunctioning in FTP/HTTP-adapter which caused occasional incomplete
+  file downloads
+- removed a bug which allowed for corrupted databases when saving to a medium
+  with insufficient storage space
+- PwsFile: data signature value now also reflects file header fields
+- improved compatibility with PWS V3 definition by storing time fields as 4-byte
+  unsigned integers (8 bytes before)
+- the quality of the list signature value (PwsRecordList) is improved and now based 
+  on a defined order of records
+
+Enhancements
+- support of latest PasswordSafe file format version 3.2
+- new header fields (PWS canon): logical database name, database description (free text), 
+  last save time, last save application name
+- new class "ContextFile" combines application adapter and filepath into a single
+  file reference, which eases handling and some file related operations
+- some new designs to load() and saveFile() methods in PwsFileFactory (parameter lists)
+  (you might have to check your application!)
+- Global: possibility to set application name (value stored in PWS file header)
+- PwsRecordList: create shallow and deep clones
+- PwsRecordList: move a set of records (assign group value)
+- PwsRecordList: new merge conflict option "MERGE_INCLUDE" (includes conflicting records)
+- PwsRecordList: new method to create cut set record lists
+- ApplicationAdapter: new file handling functions (list paths, get file length)
+- PwsFile: create shallow and deep clones
+- PwsFile: setting and retrieving of encryption security loops
+- PwsFile: modifications to header field list now cause file update events
+- file sockets: get and set encryption security loops
+- introduced class "ContextFile" as means to abstract file handling from different 
+  application contexts
+- ANT build.xml supplied
+
+
+Release 2-0-0, Date: 14 Nov. 2006
+---------------------------------
+This is a major step release. PWSLIB now supports all historical PWS file
+formats. Package interface is largely enhanced.
+
+Enhancements:
+- support of latest PasswordSafe file format version 3.0 (fully realised)
+- support of all historical file formats in reading and writing
+- introduction of Twofish cipher and SHA256 utility
+- introduction of devices (classes) to easily read and write PWS files
+  in a block-stream fashion
+- introduction of devices to easily read and write PWS files
+  in a field-stream fashion
+- automatic detection of file format versions and abstraction
+  from version differences at user interfaces
+- enhancements to functions of file and record classes
+- removed useless (experimental) classes "NamingComponent" that were
+  part of the ApplicationAdapter interface
+- modified PwsRecordList (PwsFile) iterator so that it now is possible
+  to modify list content concurrently
+- numerous additions to utilities and other classes which are not listed
+  here
+
+
+Release 0-4-1, Date: 28 Mar. 2006
+---------------------------------
+This is a maintenance release.
+
+Corrected Bugs:
+- package could not open original Password Safe files (since PWS 2.14)
+  and reported "UnsupportedFileVersionException"
+
+Enhancements:
+- new file event type "CONTENT_ALTERED" issued when file option string has changed
+  (intended for all data changes not covered by other event types)
+
+
+Release 0-4-0, Date: 26 Feb. 2006
+---------------------------------
+
+Corrected Bugs:
+- corrected an incompatibility to the real-existing "Password Safe" format
+  which resulted in sometimes mixed Group/Title values
+- corrected a bug that kept some temporary output files from being closed
+  after error condition
+- corrected a bug in the PwsRecordList.GroupFileIterator
+- corrected a bug in PwsFile.saveCopy()
+
+
+Enhancements:
+- support of non-canonical data fields, both from external or user applications.
+  Introduction of "unknown field" list per record allows PWS files to
+  preserve field values of unknown field types for saved persistent states
+- new methods in class PwsRecord: "void setExtraField (int id, byte[] value)"
+  and "byte[] getExtraField (int id)" to allow access to non-canonical
+  data fields
+- new and improved methods for identifying and renaming GROUPs and 
+  removing groups of records
+- new method to obtain an ordered list of all used GROUP values
+- integrated automated normalization of GROUP values in "PwsRecord.setGroup(String group)"
+- new PwsFileEvent "LIST_SAVED" 
+- changed charset interpretation of file option string from "US-ASCII" to "ISO-8859-1"
+- interface improvements through additional methods
+
+
+Release 0-3-1, Date: 26 Oct. 2005
+---------------------------------
+
+Corrected Bugs:
+- AbstactFTPAdapter now returns more likely a meaningful value for getModifiedTime()
+  (returned 0 before)
+- corrected a bug in PwsRecordList.merge() that produced irrelevant error messages
+
+Enhancements:
+- improved speed of loading and record list manipulation
+
+
+Release 0-3-0, Date: 29 Sep. 2005
+---------------------------------
+
+- New class org.jpws.pwslib.crypto.CryptoRandom is a cryptologically optimized random 
+  value generator. This is regularly used for the generation of random passwords.
+- publically available random generator instance under Util.cryptoRand
+- new static utility class org.jpws.pwslib.global.PassphraseUtils to generate 
+  cryptographically high quality random passwords
+- method: merge a record list into a record list under various conflict solving policies
+- method: count expired records in a record list
+- new property "Import Status" of a PwsRecord. This can adopt values 0 (not imported), 
+  IMPORTED or IMPORTED_CONFLICT
+- new calculation "will expire on given date" for a PwsRecord
+- new exception InputInterruptedException
+- profoundly remodelled interface of org.jpws.pwslib.global.Global in respect to 
+  application adapters. The list of adapters was removed; instead a single standard adapter 
+  can be defined more easily
+- "fingerPrint(byte[])" method in org.jpws.pwslib.global.Util returning a SHA-1 of a given array
+- new package org.jpws.pwslib.order containing 4 classes designed for ordered representation 
+  of PwsRecordLists
+- new class org.jpws.pwslib.order.DefaultRecordWrapper allows to represent a single PwsRecord in 
+  a way that allows quick reference for sorting and other display purposes;
+  also allows searching for text in a record.
+- new class org.jpws.pwslib.order.OrderedRecordList which represents a PwsRecordList in a sorted 
+  form with indexed access methods. This allows table and other sorted display models.
+- new abstract class org.jpws.pwslib.order.FilterRecordList represents a filtered subset of an 
+  OrderedRecordList. The filter function is to be implemented by subclasses. 
+- OrderedListEvents issued by OrderedRecordList (and FilterRecordList)
+- new class org.jpws.pwslib.persist.DefaultUrlAdapter is an IO-context for all net/internet 
+  protocols available through the java.net package, but for reading files only
+- new abstract class org.jpws.pwslib.persist.AbstractFTPAdapter is the basic implementation for
+  a read/write FTP IO-context
+
+Summary:
+
+The most prominent innovation is the transfer of the record ordering utilities from JPasswords 
+to PWSLIB. Thus other applications can profit more easily from these useful implementations. 
+Second prominent is the introduction of a cryptologically relevant random generator and the 
+availability of a random password generator (following PwsPassphrasePolicy). Third, some new 
+ApplicationAdapter classes increase availability of IO-contexts for URL notations.
+
+
+First Release 0-1-0, Date: 08 Aug. 2005
+---------------------------------------

@@ -1,0 +1,530 @@
+[passwordsafe/pwsafe.git] / pwsafe / pwsafe / docs / formatV3.txt
+
+
+   1 PasswordSafe database format description version 3.29
+   2 -----------------------------------------------------
+   3 
+   4 Copyright (c) 2003-2012 Rony Shapiro <ronys@users.sourceforge.net>.
+   5 All rights reserved. Use of the code is allowed under the Artistic
+   6 License terms, as specified in the LICENSE file distributed with this
+   7 code, or available from
+   8 http://www.opensource.org/licenses/artistic-license-2.0.php 
+   9 
+  10 
+  11 1. Introduction: This document defines a file format for the secure
+  12 storage of passwords and related data. The format is designed
+  13 according to current cryptographic best practices, and is believed to
+  14 be secure, in the sense that without knowledge of the master
+  15 passphrase, only a brute-force attack or a flaw in the underlying
+  16 cryptographic algorithm will result in unauthorized access to the
+  17 data.
+  18 
+  19 1.1 Design Goals: The PasswordSafe database format is designed to be
+  20 secure, extensible and platform-independent.
+  21 
+  22 1.2 History: This specification is an evolution of previous
+  23 formats. The main differences between version 3 of the format and
+  24 previous versions are:
+  25 1.2.1. This version addresses a minor design flaw in previous versions
+  26 of the PasswordSafe database format.
+  27 1.2.3. This version replaces the underlying cryptographic functions
+  28 with more advanced versions.
+  29 1.2.4. This version allows the detection of a truncated or
+  30 corrupted/tampered database.
+  31 
+  32 Meeting these goals is impossible without breaking compatibility: This
+  33 format is NOT compatible with previous (major) versions. Note,
+  34 however, that since the data stored in previous versions is a proper
+  35 subset of the data described here, implementers may read a database
+  36 written in an older version and store the result in the format
+  37 described here.
+  38 
+  39 2. Format: A V3 format PasswordSafe is structured as follows:
+  40 
+  41     TAG|SALT|ITER|H(P')|B1|B2|B3|B4|IV|HDR|R1|R2|...|Rn|EOF|HMAC
+  42 
+  43 Where:
+  44 
+  45 2.1 TAG is the sequence of 4 ASCII characters "PWS3". This is to serve as a
+  46 quick way for the application to identify the database as a PasswordSafe
+  47 version 3 file. This tag has no cryptographic value.
+  48 
+  49 2.1 SALT is a 256 bit random value, generated at file creation time.
+  50 
+  51 2.3 P' is the "stretched key" generated from the user's passphrase and
+  52 the SALT, as defined in by the hash-function-based key stretching
+  53 algorithm in [KEYSTRETCH] (Section 4.1), with SHA-256 [SHA256] as the
+  54 hash function, and ITER iterations (at least 2048, i.e., t = 11).
+  55 
+  56 2.4 ITER is the number of iterations on the hash function to calculate P',
+  57 stored as a 32 bit little-endian value. This value is stored here in order
+  58 to future-proof the file format against increases in processing power.
+  59 
+  60 2.5 H(P') is SHA-256(P'), and is used to verify that the user has the
+  61 correct passphrase.
+  62 
+  63 2.6 B1 and B2 are two 128-bit blocks encrypted with Twofish [TWOFISH]
+  64 using P' as the key, in ECB mode. These blocks contain the 256 bit
+  65 random key K that is used to encrypt the actual records. (This has the
+  66 property that there is no known or guessable information on the
+  67 plaintext encrypted with the passphrase-derived key that allows an
+  68 attacker to mount an attack that bypasses the key stretching
+  69 algorithm.)
+  70 
+  71 2.7 B3 and B4 are two 128-bit blocks encrypted with Twofish using P' as the
+  72 key, in ECB mode. These blocks contain the 256 bit random key L that is
+  73 used to calculate the HMAC (keyed-hash message authentication code) of the
+  74 encrypted data. See description of EOF field below for more details.
+  75 Implementation Note: K and L must NOT be related.
+  76 
+  77 2.8 IV is the 128-bit random Initial Value for CBC mode.
+  78 
+  79 2.9 All following records are encrypted using Twofish in CBC mode, with K
+  80 as the encryption key.
+  81 
+  82 2.9.1 HDR: The database header. The header consists of one or more typed
+  83 fields (as defined in section 3.2), terminated by the 'END' type field. The
+  84 version number field is mandatory. Aside from the 'END' field, no
+  85 order is assumed on the field types.
+  86 
+  87 2.9.2 R1..Rn: The actual database records. Each record consists of one or
+  88 more typed fields (as defined in Section 3.2), terminated by the 'END' type
+  89 field. The UUID, Title, and Password fields are mandatory. All non-
+  90 mandatory fields may either be absent or have zero length. When a field is
+  91 absent or zero-length, its default value shall be used. Aside from the
+  92 'END' field, no order is assumed on the field types.
+  93 
+  94 2.10 EOF: The ASCII characters "PWS3-EOFPWS3-EOF" (note that this is
+  95 exactly one block long), unencrypted. This is an implementation convenience
+  96 to inform the application that the following bytes are to be processed
+  97 differently.
+  98 
+  99 2.11 HMAC: The 256-bit keyed-hash MAC, as described in RFC2104, with SHA-
+ 100 256 as the underlying hash function. The value is calculated over all of
+ 101 the plaintext fields, that is, over all the data stored in all fields
+ 102 (starting from the version number in the header, ending with the last field
+ 103 of the last record). The key L, as stored in B3 and B4, is used as the hash
+ 104 key value.
+ 105 
+ 106 3. Fields: Data in PasswordSafe is stored in typed fields. Each field
+ 107 consists of one or more blocks. The blocks are the blocks of the underlying
+ 108 encryption algorithm - 16 bytes long for Twofish. The first block contains
+ 109 the field length in the first 4 bytes (little-endian), followed by a one-
+ 110 byte type identifier. The rest of the block contains up to 11 bytes of
+ 111 record data. If the record has less than 11 bytes of data, the extra bytes
+ 112 are filled with random values. The type of a field also defines the data
+ 113 representation.
+ 114 
+ 115 3.1 Data representations
+ 116 3.1.1 UUID
+ 117  The UUID data type is 16 bytes long, as defined in RFC4122. Microsoft
+ 118  Windows has functions for this, and the RFC has a sample
+ 119  implementation.
+ 120 
+ 121 3.1.2 Text
+ 122  Text is represented in UTF-8 encoding (as defined in RFC3629), with
+ 123  no byte order marker (BOM) and no end-of-string mark (e.g., null
+ 124  byte). Note that the latter isn't neccessary since the length of the
+ 125  field is provided explicitly. Note that ALL fields described as
+ 126  "text" are UTF-8 encoded unless explicitly stated otherwise.
+ 127 
+ 128 3.1.3 Time
+ 129  Timestamps are stored as 32 bit, little endian, unsigned integers,
+ 130  representing the number of seconds since Midnight, January 1, 1970, GMT.
+ 131  (This is equivalent to the time_t type on Windows and POSIX. On the
+ 132  Macintosh, the value needs to be adjusted by the constant value 2082844800
+ 133  to account for the different epoch of its time_t type.)
+ 134  Note that future versions of this format may allow time to be
+ 135  specifed in 64 bits as well.
+ 136 
+ 137 3.2 Field types for the PasswordSafe database header:
+ 138                                                  Currently
+ 139 Name                        Value        Type    Implemented      Comments
+ 140 --------------------------------------------------------------------------
+ 141 Version                     0x00        2 bytes       Y              [1]
+ 142 UUID                        0x01        UUID          Y              [2]
+ 143 Non-default preferences     0x02        Text          Y              [3]
+ 144 Tree Display Status         0x03        Text          Y              [4]
+ 145 Timestamp of last save      0x04        time_t        Y              [5]
+ 146 Who performed last save     0x05        Text          Y   [DEPRECATED 6]
+ 147 What performed last save    0x06        Text          Y              [7]
+ 148 Last saved by user          0x07        Text          Y              [8]
+ 149 Last saved on host          0x08        Text          Y              [9]
+ 150 Database Name               0x09        Text          Y              [10]
+ 151 Database Description        0x0a        Text          Y              [11]
+ 152 Database Filters            0x0b        Text          Y              [12]
+ 153 Reserved                    0x0c        -                            [13]
+ 154 Reserved                    0x0d        -                            [13]
+ 155 Reserved                    0x0e        -                            [13]
+ 156 Recently Used Entries       0x0f        Text                         [14]
+ 157 Named Password Policies     0x10        Text                         [15]
+ 158 Empty Groups                0x11        Text                         [16]
+ 159 End of Entry                0xff        [empty]       Y              [17]
+ 160 
+ 161 [1] The version number of the database format. For this version, the value
+ 162 is 0x0310 (stored in little-endian format, that is, 0x10, 0x03).
+ 163 PasswordSafe V3.01 introduced Format 0x0300
+ 164 PasswordSafe V3.03 introduced Format 0x0301
+ 165 PasswordSafe V3.09 introduced Format 0x0302
+ 166 PasswordSafe V3.12 introduced Format 0x0303
+ 167 PasswordSafe V3.13 introduced Format 0x0304
+ 168 PasswordSafe V3.14 introduced Format 0x0305
+ 169 PasswordSafe V3.19 introduced Format 0x0306
+ 170 PasswordSafe V3.22 introduced Format 0x0307
+ 171 PasswordSafe V3.25 introduced Format 0x0308
+ 172 PasswordSafe V3.26 introduced Format 0x0309
+ 173 PasswordSafe V3.28 introduced Format 0x030A
+ 174 PasswordSafe V3.29 introduced Format 0x030B
+ 175 
+ 176 [2] A universally unique identifier is needed in order to synchronize
+ 177 databases, e.g., between a handheld pocketPC device and a
+ 178 PC. Representation is as described in Section 3.1.1.
+ 179 
+ 180 [3] Non-default preferences are encoded in a string as follows: The string
+ 181 is of the form "X nn vv X nn vv..." Where X=[BIS] for binary, integer and
+ 182 string respectively, nn is the numeric value of the enum, and vv is the
+ 183 value, {1 or 0} for bool, unsigned integer for int, and a delimited string
+ 184 for String. Only non-default values are stored. See PWSprefs.cpp for more
+ 185 details.  Note: normally strings are delimited by the doublequote character.
+ 186 However, if this character is in the string value, an arbitrary character
+ 187 will be chosen to delimit the string. Version 0x0309 added database wide
+ 188 special symbols to the Non-default preferences (0x02).
+ 189 
+ 190 [4] If requested to be saved, this is a string of 1s and 0s indicating the
+ 191 expanded state of the tree display when the database was saved. This can
+ 192 be applied at database open time, if the user wishes, so that the tree is
+ 193 displayed as it was. Alternatively, it can be ignored and the tree
+ 194 displayed completely expanded or collapsed. Note that the mapping of
+ 195 the string to the display state is implementation-specific. Introduced
+ 196 in format 0x0301.
+ 197 
+ 198 [5] Representation is as described in Section 3.1.3. Note that prior
+ 199 to PasswordSafe 3.09, this field was mistakenly represented as an
+ 200 eight-byte hexadecimal ASCII string. Implementations SHOULD attempt to
+ 201 parse 8-byte long timestamps as a hexadecimal ASCII string
+ 202 representation of the timestamp value.
+ 203 
+ 204 [6] Text saved in the format: nnnnu..uh..h, where: 
+ 205     nnnn = 4 hexadecimal digits giving length of following user name field
+ 206     u..u = user name
+ 207     h..h = host computer name
+ 208     Note: As of format 0x0302, this field is deprecated, and should be
+ 209     replaced by fields 0x07 and 0x08. In databases prior to format
+ 210     0x0302, this field should be maintained. 0x0302 and later may
+ 211     either maintain this field in addition to fields 0x07 and 0x08,
+ 212     for backwards compatability, or not write this field. If both this
+ 213     field and 0x07, 0x08 exist, they MUST represent the same values.
+ 214 
+ 215 [7] Free form text giving the application that saved the database.
+ 216 For example, the Windows PasswordSafe application will use the text
+ 217 "Password Safe Vnn.mm", where nn and mm are the major and minor
+ 218 version numbers. The major version will contain only the significant
+ 219 digits whereas the minor version will be padded to the left with
+ 220 zeroes e.g. "Password Safe V3.02".
+ 221 
+ 222 [8] Text containing the username (e.g., login, userid, etc.) of the
+ 223 user who last saved the database, as determined by the appropriate
+ 224 operating-system dependent function. This field was introduced in
+ 225 format version 0x0302, as a replacement for field 0x05. See Comment
+ 226 [6].
+ 227 
+ 228 [9] Text containing the hostname (e.g., machine name, hostid, etc.) of the
+ 229 machine on which the database was last saved, as determined by the
+ 230 appropriate operating-system dependent function. This field was
+ 231 introduced in format version 0x0302, as a replacement for field
+ 232 0x05. See Comment [6].
+ 233 
+ 234 [10] Database name. A logical name for a database which can be used by
+ 235 applications in place of the possibly lengthy filepath notion. Note
+ 236 that this field SHOULD be limited to what can be displayed in a single
+ 237 line. This field was introduced in format version 0x0302.
+ 238 
+ 239 [11] Database Description. A purely informative description concerning
+ 240 the purpose or other practical use of the database. This field was
+ 241 introduced in format version 0x0302.
+ 242 
+ 243 [12] Specfic filters for this database.  This is the text equivalent to
+ 244 the XML export of the filters as defined by the filter schema. The text 
+ 245 'image' has no 'print formatting' e.g. tabs and carraige return/line feeds,
+ 246 since XML processing does not require this. This field was introduced in 
+ 247 format version 0x0305.
+ 248 
+ 249 [13] Values marked 'Reserved' are know to have been used by customized
+ 250 versions of PasswordSafe. To ensure compatability beweeen versions,
+ 251 use of these values should be avoided.
+ 252 
+ 253 [14] A list of the UUIDs (32 hex character representation of the 16 byte field)
+ 254 of the recently used entries, prefixed by a 2 hex character representation
+ 255 of the number of these entries (right justified and left filled with zeroes).
+ 256 The size of the number of entries field gives a maximum number of entries of 255,
+ 257 however the GUI may impose further restrictions e.g. Windows MFC UI limits this
+ 258 to 25. The first entry is the most recent entry accessed. This field was
+ 259 introduced in format version 0x0307.
+ 260 
+ 261 [15] This field allows a multiple Password Policies per database.  The format is:
+ 262     "NN{LLxxx...xxxffffnnnllluuudddsssMMSSS...SSS}"
+ 263 where:
+ 264      NN = 2 hexadecimal digits giving number of password policies in
+ 265     field (max. 255).
+ 266      
+ 267    Each entry is of the form:
+ 268      LL = 2 hexadecimal digits giving length of the policy name in bytes
+ 269      xxx...xxx = The policy name (maximum 255 bytes)
+ 270      ffff = 4 hexadecimal digits representing the following flags
+ 271         UseLowercase        0x8000
+ 272         UseUppercase        0x4000
+ 273         UseDigits           0x2000
+ 274         UseSymbols          0x1000
+ 275         UseHexDigits        0x0800 (if set, then no other flags can be set)
+ 276         UseEasyVision       0x0400
+ 277         MakePronounceable   0x0200
+ 278         Unused              0x01ff
+ 279     nnn  = 3 hexadecimal digits password total length
+ 280     lll  = 3 hexadecimal digits password minimum number of lowercase characters
+ 281     uuu  = 3 hexadecimal digits password minimum number of uppercase characters
+ 282     ddd  = 3 hexadecimal digits password minimum number of digit characters
+ 283     sss  = 3 hexadecimal digits password minimum number of symbol characters
+ 284     MM = 2 hexadecimal digits giving the length in bytes of allowed special
+ 285          symbols, or zero to specify the database default special symbol
+ 286          set.
+ 287     SSS...SSS = List of allowed symbols in this policy (maximum 255 bytes)
+ 288     
+ 289 This field was introduced in format version 0x030A.
+ 290 
+ 291 [16] This fields contains the name of an empty group that cannot be constructed
+ 292 from entries within the database. Unlike other header fields, this field can appear
+ 293 multiple times.
+ 294 
+ 295 This field was introduced in format version 0x030B.
+ 296 
+ 297 [17] An explicit end of entry field is useful for supporting new fields
+ 298 without breaking backwards compatability.
+ 299 
+ 300 3.3 Field types for database Records:
+ 301                                                  Currently
+ 302 Name                        Value        Type    Implemented      Comments
+ 303 --------------------------------------------------------------------------
+ 304 UUID                        0x01        UUID          Y              [1]
+ 305 Group                       0x02        Text          Y              [2]
+ 306 Title                       0x03        Text          Y
+ 307 Username                    0x04        Text          Y
+ 308 Notes                       0x05        Text          Y
+ 309 Password                    0x06        Text          Y              [3,4]
+ 310 Creation Time               0x07        time_t        Y              [5]
+ 311 Password Modification Time  0x08        time_t        Y              [5]
+ 312 Last Access Time            0x09        time_t        Y              [5,6]
+ 313 Password Expiry Time        0x0a        time_t        Y              [5,7]
+ 314 *RESERVED*                  0x0b        4 bytes       -              [8]
+ 315 Last Modification Time      0x0c        time_t        Y              [5,9]
+ 316 URL                         0x0d        Text          Y              [10]
+ 317 Autotype                    0x0e        Text          Y              [11]
+ 318 Password History            0x0f        Text          Y              [12]
+ 319 Password Policy             0x10        Text          Y              [13]
+ 320 Password Expiry Interval    0x11        2 bytes       Y              [14]
+ 321 Run Command                 0x12        Text          Y
+ 322 Double-Click Action         0x13        2 bytes       Y              [15]
+ 323 EMail address               0x14        Text          Y              [16]
+ 324 Protected Entry             0x15        1 byte        Y              [17]
+ 325 Own symbols for password    0x16        Text          Y              [18]
+ 326 Shift Double-Click Action   0x17        2 bytes       Y              [15]
+ 327 Password Policy Name        0x18        Text          Y              [19]
+ 328 End of Entry                0xff        [empty]       Y              [20]
+ 329 
+ 330 [1] Per-record UUID to assist in sync, merge, etc. Representation is
+ 331 as described in Section 3.1.1.
+ 332 
+ 333 [2] The "Group" supports displaying the entries in a tree-like manner.
+ 334 Groups can be hierarchical, with elements separated by a period, supporting
+ 335 groups such as "Finance.credit cards.Visa", "Finance.credit
+ 336 cards.Mastercard", Finance.bank.web access", etc. Dots entered by the user
+ 337 should be "escaped" by the application.
+ 338 
+ 339 [3] If the entry is an alias, the password will be saved in a special form 
+ 340 of "[[uuidstr]]", where "uuidstr" is a 32-character representation of the 
+ 341 alias' associated base entry's UUID (field type 0x01).  This representation
+ 342 is the same as the standard 36-character string representation as defined in 
+ 343 RFC4122 but with the four hyphens removed. If an entry with this UUID is not
+ 344 in the database, this is treated just as an 'unusual' password.  The alias
+ 345 will only use its base's password entry when copying it to the clipboard or
+ 346 during Autotype.
+ 347 
+ 348 [4] If the entry is a shortcut, the password will be saved in a special form 
+ 349 of "[~uuidstr~]", where "uuidstr" is a 32-character representation of the 
+ 350 shortcut's associated base entry's UUID (field type 0x01).  This representation
+ 351 is the same as the standard 36-character string representation as defined in 
+ 352 RFC4122 but with the four hyphens removed. If an entry with this UUID is not
+ 353 in the database, this is treated just as an 'unusual' password. The shortcut
+ 354 will use all its base's data when used in any action.  It has no fields of
+ 355 its own.
+ 356 
+ 357 [5] Representation is as described in Section 3.1.3.
+ 358 
+ 359 [6] This will be updated whenever any part of this entry is accessed
+ 360 i.e., to copy its username, password or notes to the clipboard; to
+ 361 perform autotype or to browse to url.
+ 362 
+ 363 [7] This will allow the user to enter an expiry date for an entry. The
+ 364 application can then prompt the user about passwords that need to be
+ 365 changed. A value of zero means "forever".
+ 366 
+ 367 [8] Although earmarked for Password Policy, the coding in versions prior
+ 368 to V3.12 does not correctly handle the presence of this field.  For this
+ 369 reason, this value cannot be used for any future V3 field without causing
+ 370 a potential issue when a user opens a V3.12 or later database with program
+ 371 version V3.11 or earlier.  See note [14].
+ 372 
+ 373 [9] This is the time that any field of the record was modified, useful for
+ 374 merging databases.
+ 375 
+ 376 [10] The URL will be passed to the shell when the user chooses the "Browse
+ 377 to" action for this entry. In version 2 of the format, this was extracted
+ 378 from the Notes field. By placing it in a separate field, we are no longer
+ 379 restricted to a URL - any action that may be executed by the shell may be
+ 380 specified here.
+ 381 
+ 382 [11] The text to be 'typed' by PasswordSafe upon the "Perform Autotype"
+ 383 action maybe specified here. If unspecified, the default value of
+ 384 'username, tab, password, tab, enter' is used. In version 2 of the format,
+ 385 this was extracted from the Notes field. Several codes are recognized here,
+ 386 e.g, '%p' is replaced by the record's password. See the user documentation
+ 387 for the complete list of codes. The replacement is done by the application
+ 388 at runtime, and is not stored in the database.
+ 389 
+ 390 [12] Password History is an optional record. If it exists, it stores the
+ 391 creation times and values of the last few passwords used in the current
+ 392 entry, in the following format:
+ 393     "fmmnnTLPTLP...TLP"
+ 394 where:
+ 395     f  = {0,1} if password history is on/off
+ 396     mm = 2 hexadecimal digits max size of history list (i.e. max = 255)
+ 397     nn = 2 hexadecimal digits current size of history list
+ 398     T  = Time password was set (time_t written out in %08x)
+ 399     L  = 4 hexadecimal digit password length (in TCHAR)
+ 400     P  = Password
+ 401 No history being kept for a record can be represented either by the lack of
+ 402 the PWH field (preferred), or by a header of _T("00000"):
+ 403     flag = 0, max = 00, num = 00
+ 404 Note that 0aabb, where bb <= aa, is possible if password history was enabled
+ 405 in the past and has then been disabled but the history hasn't been cleared.
+ 406 
+ 407 [13] This field allows a specific Password Policy per entry.  This field
+ 408 is mutually exclusive with the policy name field [0x18]. The format is:
+ 409     "ffffnnnllluuudddsss"
+ 410 where:
+ 411      ffff = 4 hexadecimal digits representing the following flags
+ 412         UseLowercase        0x8000 
+ 413         UseUppercase        0x4000 
+ 414         UseDigits           0x2000 
+ 415         UseSymbols          0x1000 
+ 416         UseHexDigits        0x0800 (if set, then no other flags can be set)
+ 417         UseEasyVision       0x0400
+ 418         MakePronounceable   0x0200
+ 419         Unused              0x01ff
+ 420     nnn  = 3 hexadecimal digits password total length
+ 421     lll  = 3 hexadecimal digits password minimum number of lowercase characters
+ 422     uuu  = 3 hexadecimal digits password minimum number of uppercase characters
+ 423     ddd  = 3 hexadecimal digits password minimum number of digit characters
+ 424     sss  = 3 hexadecimal digits password minimum number of symbol characters
+ 425 
+ 426 [14] Password Expiry Interval, in days, before this password expires. Once set,
+ 427 this value is used when the password is first generated and thereafter whenever
+ 428 the password is changed, until this value is unset.  Valid values are 1-3650
+ 429 corresponding to up to approximately 10 years.  A value of zero is equivalent to
+ 430 this field not being set.
+ 431 
+ 432 [15] A two byte field contain the value of the Double-Click Action and Shift
+ 433 Double-Click Action'preference value' (0xff means use the current
+ 434 Application default):
+ 435 Current 'preference values' are:
+ 436     CopyPassword           0
+ 437     ViewEdit               1
+ 438     AutoType               2
+ 439     Browse                 3
+ 440     CopyNotes              4
+ 441     CopyUsername           5
+ 442     CopyPasswordMinimize   6
+ 443     BrowsePlus             7
+ 444     Run Command            8
+ 445     Send email             9
+ 446 
+ 447 [16] Separate Email address field as per RFC 2368 (without the 'mailto:'
+ 448 prefix. This field was introduced in version 0x0306 (PasswordSafe V3.19).
+ 449 
+ 450 [17] Entry is protected, i.e., the entry cannot be changed or deleted
+ 451 while this field is set. This field was introduced in version 0x0308
+ 452 (PasswordSafe V3.25).  This a single byte. An absent field or a zero
+ 453 valued field means that the entry is not protected. Any non-zero value
+ 454 means that the entry is protected.
+ 455 
+ 456 [18] Each entry can now specify its own set of allowed special symbols for
+ 457 password generation.  This overrides the default set and any database specific
+ 458 set. This field is mutually exclusive with the policy name field
+ 459 [0x18].  This was introduced in version 0x0309 (PasswordSafe V3.26).
+ 460 
+ 461 [19] Each entry can now specify the name of a Password Policy saved in
+ 462 the database header for password generation. This field is mutually
+ 463 exclusive with the specific policy field [0x10] and with the Own
+ 464 symbols for password field [0x16]. This was introduced in version
+ 465 0x0311 (PasswordSafe V3.28).
+ 466 
+ 467 [20] An explicit end of entry field is useful for supporting new fields
+ 468 without breaking backwards compatability.
+ 469 
+ 470 4. Extensibility
+ 471 
+ 472 4.1 Forward compatability: Implementations of this format SHOULD NOT
+ 473 discard or report an error when encountering a field of an unknown
+ 474 type. Rather, the field(s) type and data should be read, and perserved
+ 475 when the database is saved.
+ 476 
+ 477 4.2 Field type identifiers: This document specifies the field type
+ 478 identifiers for the current version of the format. Compliant
+ 479 implementations MUST support the mandatory fields, and SHOULD support
+ 480 the other fields described herein. Future versions of the format may
+ 481 specify other type identifiers.
+ 482 
+ 483 4.2.1 Application-unique type identifiers: The type identifiers
+ 484 0xc0-0xdf are available for application developers on a first-come
+ 485 first-serve basis. Application developers interested in reserving a
+ 486 type identifier for their application should contact the maintainer of
+ 487 this document (Currently the PasswordSafe project administrator at
+ 488 SourceForge).
+ 489 
+ 490 4.2.2 Application-specific type identifiers: The type identifiers
+ 491 0xe0-0xfe are reserved for implementation-specific purposes, and will
+ 492 NOT be specified in this or future versions of the format
+ 493 description.
+ 494 
+ 495 4.2.3 All unassigned identifiers except as listed in the previous two
+ 496 subsections are reserved, and should not be used by other
+ 497 implementations of this format specification in the interest of
+ 498 interoperablity.
+ 499 
+ 500 5. References:
+ 501 [TWOFISH] http://www.schneier.com/paper-twofish-paper.html
+ 502 [SHA256]
+ 503 http://csrc.nist.gov/publications/fips/fips180-2/fips180-2withchangenotice.pdf
+ 504 [KEYSTRETCH] http://www.schneier.com/paper-low-entropy.pdf
+ 505 
+ 506 End of Format description.
+
+Unnamed repository; edit this file 'description' to name the repository.
+RSS
+Atom
+
+
+ 
+    
+       
+          ©Copyright 1999-2010 -
+          Geeknet, Inc., All Rights Reserved
+       
+       
+          SourceForge Help
+          Terms of Use
+       
+    
+ 
+
+
+
