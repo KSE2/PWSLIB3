@@ -82,8 +82,8 @@ public void update ( byte[] data )
 public void update(byte[] data, int offset, int length) {
    if ( data != null )
    {
-      Log.debug(8, "(PwsChecksum.update) updating (" +
-          length + "): " + Util.bytesToHex(data, offset, length));
+//      Log.debug(8, "(PwsChecksum.update) updating (" +
+//          length + "): " + Util.bytesToHex(data, offset, length));
       sha.update( data, offset, length );
    }
 }

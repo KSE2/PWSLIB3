@@ -50,7 +50,7 @@ public class Log
    private static boolean debug = true;
    private static boolean logging = true;
    
-   private static ArrayList excludeList = new ArrayList(); 
+   private static ArrayList<String> excludeList = new ArrayList<String>(); 
 
    static {
       excludeList.add( "(PwsRecord." );
@@ -60,101 +60,85 @@ public class Log
       excludeList.add( "(PwsRecList" );
 //      excludeList.add( "(MenuHandler" );
       excludeList.add( "(DisplayManager" );
+      excludeList.add( "(ButtonBarDialog" );
+      excludeList.add( "(DialogButtonBar" );
       excludeList.add( "(PwsFile." );
       excludeList.add( "(PwsFile)" );
    }
 /**
  * 
  */
-private Log ()
-{
+private Log () {
 }
 
-private static String getThreadName ()
-{
+private static String getThreadName () {
    String thdName = SwingUtilities.isEventDispatchThread() ? "[EDT] " : "[THD] "; 
    return thdName;
 }
 
-public static void debug ( int level, Object obj )
-{
+public static void debug ( int level, Object obj ) {
    if ( debug && level <= debugLevel && !excluded(obj.toString() ) )
       out.println( logName + " DEB " + getThreadName() + String.valueOf(obj) );
 }
 
-public static void debug ( int level, String str )
-{
+public static void debug ( int level, String str ) {
    debug( level, (Object)str );
 }
 
-public static void setDebug ( boolean v )
-{
+public static void setDebug ( boolean v ) {
    debug = v;
 }
 
-public static void setDebugLevel ( int v )
-{
+public static void setDebugLevel ( int v ) {
    debugLevel = v;
 }
 
-public static void setModuleName ( String name )
-{
+public static void setModuleName ( String name ) {
    logName = name;
 }
 
-public static void log ( int level, String str )
-{
+public static void log ( int level, String str ) {
    if ( logging && level <= logLevel && !excluded(str) )
       out.println( logName + " log " + getThreadName() + str );
 }
 
-public static void setLogging ( boolean v )
-{
+public static void setLogging ( boolean v ) {
    logging = v;
 }
 
-public static void setLogLevel ( int v )
-{
+public static void setLogLevel ( int v ) {
    logLevel = v;
 }
 
 /** The current logging report level.
  *  @since 0-3-0
  */
-public static int getLogLevel ()
-{
+public static int getLogLevel () {
    return logLevel;
 }
 
 /** The current debugging report level.
  *  @since 0-3-0
  */
-public static int getDebugLevel ()
-{
+public static int getDebugLevel () {
    return debugLevel;
 }
 
-public static void error ( int level, Object obj )
-{
+public static void error ( int level, Object obj ) {
    if ( debug && level <= debugLevel )
       err.println( logName + " ERR: " + getThreadName() + " *** " + String.valueOf(obj) );
 }
 
-public static void error ( int level, String str )
-{
+public static void error ( int level, String str ) {
    error( level, (Object)str );
 }
 
 
-private static boolean excluded ( String msg )
-{
-   String s;
-   int i;
-   
-   for ( i = 0; i < excludeList.size(); i++  )
-      if ( msg.indexOf( ((String)excludeList.get( i )) ) > -1 )
+private static boolean excluded ( String msg ) {
+   for ( String token : excludeList ) {
+      if ( msg.indexOf(token) > -1 )
          return true;
-   
+   }
    return false;
 }
 

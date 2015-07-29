@@ -26,8 +26,14 @@
 
 package org.jpws.pwslib.persist;
 
-import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
+import it.sauronsoftware.ftp4j.FTPAbortedException;
+import it.sauronsoftware.ftp4j.FTPClient;
+import it.sauronsoftware.ftp4j.FTPDataTransferException;
+import it.sauronsoftware.ftp4j.FTPException;
+import it.sauronsoftware.ftp4j.FTPFile;
+import it.sauronsoftware.ftp4j.FTPIllegalReplyException;
+import it.sauronsoftware.ftp4j.FTPListParseException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -36,17 +42,13 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import java.util.GregorianCalendar;
-import java.util.HashMap;
+import java.util.Hashtable;
 
 import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.exception.InputInterruptedException;
 import org.jpws.pwslib.exception.LoginFailureException;
 import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.Util;
 
-import sun.net.TelnetInputStream;
-import sun.net.ftp.FtpClient;
 
 /**
  * Implements a straight forward <code>ApplicationAdapter</code> for addressing
@@ -58,26 +60,23 @@ import sun.net.ftp.FtpClient;
 public abstract class AbstractFTPAdapter implements ApplicationAdapter
 {
    protected static int classID = 33;
-   protected static HashMap logins = new HashMap(); 
+   protected static Hashtable<String, PwsPassphrase> logins = new Hashtable<String, PwsPassphrase>();
+   protected static Hashtable<URL, FtpSession> sessions = new Hashtable<URL, FtpSession>(); 
    
 
 /**
  * Constructs an instance.
  */
-public AbstractFTPAdapter ()
-{
+public AbstractFTPAdapter () {
 }
 
 /** Puts a login entry of the form "user:password" into the internal library
  *  by key of the domain notation. */
-protected synchronized static void putLoginEntry ( String domain, String login )
-{
-   PwsPassphrase pass;
-   
+protected static void putLoginEntry ( String domain, String login ) {
    if ( domain == null | login == null )
       throw new NullPointerException();
    
-   pass = new PwsPassphrase( login );
+   PwsPassphrase pass = new PwsPassphrase( login );
    logins.put( domain, pass );
 }
 
@@ -86,20 +85,69 @@ protected synchronized static void putLoginEntry ( String domain, String login )
  * 
  *  @return login entry of the form "user:password" or <b>null</b> if unknown
  */
-protected synchronized static String getLoginEntry ( String domain )
-{
-   PwsPassphrase pass; 
-   
+protected static String getLoginEntry ( String domain ) {
    if ( domain == null )
       throw new NullPointerException();
 
-   pass = (PwsPassphrase) logins.get( domain );
+   PwsPassphrase pass = (PwsPassphrase) logins.get( domain );
    return pass == null ? null : pass.getString();
 }
 
+/** Probes the given FTP-Session and returns whether it is alive.
+ *   
+ * @param ses <code>FtpSession</code>
+ * @return boolean true == alive, false == dead
+ */
+private boolean sessionAlive (FtpSession ses) {
+	try {
+		ses.testConnection();
+//		Log.debug(8, "(FTP-Adapter.sessionAlive) test session OK! :"+ ses.getUrl());
+		return true;
+	} catch (Exception e) {
+		e.printStackTrace();
+		Log.debug(8, "(FTP-Adapter.sessionAlive) found test session not alive! :"+ ses.getUrl());
+		return false;
+	}
+}
+
+/** Retrieves or creates a FTP-session for the given URL. The returned session
+ * may be in an unconnected state.
+ * 
+ * @param url URL - url with FTP protocol
+ * @return <code>FtpSession</code>
+ * @throws MalformedURLException
+ */
+protected FtpSession getFtpSession (URL url) throws MalformedURLException {
+	FtpSession ses1 = new FtpSession(url);
+	URL url1 = ses1.getUrl();
+	
+	// look for existing FTP session
+	FtpSession ses = sessions.get(url1);
+	if (ses == null || !sessionAlive(ses)) {
+		// create new FTP session in map
+		ses = ses1;
+		sessions.put(url1, ses);
+	}
+	return ses;
+}
+
+/** Retrieves or creates a FTP-session for the given URL and returns it 
+ * connected. If the session cannot connect to the host, an exception is thrown.
+ * 
+ * @param url URL - url with FTP protocol
+ * @return <code>FtpSession</code>
+ * @throws IOException 
+ */
+protected FtpSession getConnectedSession (URL url) throws IOException {
+	FtpSession ses = getFtpSession(url);
+	ses.connect();
+	return ses;
+}
+
 /** Removes a login entry from the internal library by key of the domain 
- *  notation.*/
-protected synchronized static void removeLoginEntry ( String domain )
+ *  notation.
+ */
+protected static void removeLoginEntry ( String domain )
 {
    if ( domain == null )
       throw new NullPointerException();
@@ -107,43 +155,40 @@ protected synchronized static void removeLoginEntry ( String domain )
    logins.remove( domain );
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getInputStream(java.lang.String)
- */
+@Override
 public InputStream getInputStream ( String path ) throws IOException
 {
-   return getConnected( path ).getInputStream();
+	return getConnected(path).getInputStream();
 }
 
 private URLConnection getConnected ( String path ) throws IOException
 {
    URLConnection urlCon;
    URL url;
-   String login, domain, hstr;
-   int attempt;
+   String login, domain, prot, hstr;
+   int attempt, port;
 
    url = new URL( path );
    domain = url.getHost();
+   prot = url.getProtocol();
+   port = url.getPort();
    login = getLoginEntry( domain );
    attempt = login == null ? 0 : 1;
    
    while ( true )
    {
-      switch ( attempt )
-      {
+      switch ( attempt )  {
+      
       case 0 :
          // first attempt plain connection (without login)
          try {
             urlCon = url.openConnection();
             urlCon.setAllowUserInteraction( true );
-      if ( Log.getDebugLevel() > 4 )      
-      System.out.println( "--- (FTP) Connecting to domain: " + url.toString() );      
-            //in = urlCon.getInputStream();
+            Log.debug(5, "--- (FTP-Adapter) Connecting to domain (no-login): " + url.toString() );      
             urlCon.connect();
             return urlCon;
-         }
-         catch ( sun.net.ftp.FtpLoginException e )
-         {
+            
+         } catch ( Exception e ) {
             attempt++;
          }
          break;
@@ -151,9 +196,9 @@ private URLConnection getConnected ( String path ) throws IOException
       case 1 :
          // second attempt with user login
          // get domain login from subclass (e.g. user input)
-         if ( login == null )
-         {   
-            if ( (login = getUserLogin( domain )) == null )
+         if ( login == null ) {
+        	login = getUserLogin( domain );
+            if ( login == null )
                throw new InputInterruptedException();
             if ( login.equals("") )
                throw new ConnectException( "login not supplied" );
@@ -162,22 +207,21 @@ private URLConnection getConnected ( String path ) throws IOException
          }
 
          try {
-            hstr = "ftp://" + login + "@" + domain + ":21/" + url.getFile();
+        	String po = port == -1 ? "" : ":" + port; 
+            hstr = prot + "://" + login + "@" + domain + po + "/" + url.getFile();
+//            hstr = "ftp://" + login + "@" + domain + ":21/" + url.getFile();
             url = new URL( hstr );
-   if ( Log.getDebugLevel() > 4 )      
-   System.out.println( "--- (FTP) Connecting to domain: " + url.toString() );   
+            Log.debug(5, "--- (FTP) Connecting to domain (login): " + url.toString() );   
             urlCon = url.openConnection();
             urlCon.setAllowUserInteraction( true );
             urlCon.connect();
             return urlCon;
-         }
-         catch ( sun.net.ftp.FtpLoginException e2 )
-         {
+            
+         } catch ( ConnectException e2 ) {
             removeLoginEntry( domain );
             throw new LoginFailureException( "FTP login failure: ".concat(domain) );
-         }
-         catch ( IOException e3 )
-         {
+
+         } catch ( IOException e3 ) {
             removeLoginEntry( domain );
             throw e3;
          }
@@ -197,110 +241,85 @@ private URLConnection getConnected ( String path ) throws IOException
 public abstract String getUserLogin ( String domain );
 
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getOutputStream(java.lang.String)
- */
+@Override
 public OutputStream getOutputStream ( String path ) throws IOException
 {
    return getConnected( path ).getOutputStream();
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getName()
- */
+@Override
 public String getName ()
 {
    return "FTP File Locations";
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getType()
- */
+@Override
 public int getType ()
 {
    return INTERNET;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#deleteFile(java.lang.String)
- */
+@Override
 public boolean deleteFile ( String path ) throws IOException
 {
-   OurFtpClient ftp;
-   String domain, login;
-   URL url;
-   int i;
+   URL url = new URL(path);
+   FtpSession ftp = getConnectedSession(url);
+   ftp.deleteFile( url.getPath() );
    
-   url = new URL( path );
-   domain = url.getHost();
-   if ( (login = getLoginEntry( domain )) == null )
-      return false;
-   
-   ftp = new OurFtpClient( domain );
-   i = login.indexOf( ':' );
-   ftp.login( login.substring( 0, i ), login.substring( i+1 ) );
-   ftp.delete( url.getFile() );
-   ftp.closeServer();
-   if ( Log.getDebugLevel() > 4 )      
-      System.out.println( "--- (FTP) Deleted file: " + url.toString() );      
-   
+   Log.debug( 5, "--- (FTP-Adapter) Removed file [" + url.toString() + "]" );      
    return true;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#existsFile(java.lang.String)
- */
+@Override
 public boolean existsFile ( String path ) throws IOException
 {
-   InputStream in;   
-   boolean check;
-   
-   try {
-      in = getConnected( path ).getInputStream();
-      check = in != null;
-      in.close();
-      return check;
-   }
-   catch ( FileNotFoundException e )
-   {
-      return false;
-   }
+	   URL url = new URL(path);
+	   FtpSession ftp = getConnectedSession(url);
+	   boolean exists = ftp.exists( url.getPath() );
+	   
+	   Log.debug( 5, "--- (FTP-Adapter) Exists file [" + url.toString() + "] = " + exists );      
+	   return exists;
+
+//   try {
+//	   InputStream in = getInputStream(path);
+//	   boolean check = in != null;
+//	   if ( check ) {
+//		   in.close();
+//	   }
+//	   return check;
+//      
+//   } catch (FileNotFoundException e) {
+//      return false;
+//   }
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#renameFile(java.lang.String,java.lang.String)
- */
+@Override
 public boolean renameFile ( String path, String newPath ) throws IOException
 {
-   OurFtpClient ftp;
    String domain, login;
-   URL url, url2;
-   int i;
    
-   url = new URL( path );
-   url2 = new URL( newPath );
+   URL url = new URL( path );
+   URL url2 = new URL( newPath );
    domain = url.getHost();
-   if ( (login = getLoginEntry( domain )) == null )
-      return false;
+   if (!domain.equals(url2.getHost()))
+	   throw new IOException("host references ambiguous");
+
+   FtpSession ftp = getConnectedSession(url);
+   ftp.rename( url.getPath(), url2.getPath() );
    
-   ftp = new OurFtpClient( domain );
-   i = login.indexOf( ':' );
-   ftp.login( login.substring( 0, i ), login.substring( i+1 ) );
-   ftp.rename( url.getFile(), url2.getFile() );
-   ftp.closeServer();
-   if ( Log.getDebugLevel() > 4 )      
-      System.out.println( "--- (FTP) Renamed file [" + url.toString() + 
+   Log.debug( 5, "--- (FTP-Adapter) Renamed file [" + url.toString() + 
             "] to [" + url2.toString() + "]" );      
-   
    return true;
 }
 
+@Override
 public void lockFileAccess ( String path ) throws IOException
 {
    // TODO Auto-generated method stub
    
 }
 
+@Override
 public void unlockFileAccess ( String path ) throws IOException
 {
    // TODO Auto-generated method stub
@@ -308,120 +327,106 @@ public void unlockFileAccess ( String path ) throws IOException
 }
 
 
-
+@Override
 public String[] list ( String trunk, String trail, boolean recurse ) throws IOException
 {
-   OurFtpClient ftp;
-   TelnetInputStream in;
-   ByteArrayOutputStream out;
+   FtpSession ftp;
    URL url;
-   ArrayList list;
-   String domain, path, base, login, hstr, sarr[];
-   int i;
+   String domain, path, prot;
    
    // cannot perform recurse into subdirs
-   if ( recurse )
-      return null;
+//   if ( recurse )
+//      return null;
 
    // assemble
    url = new URL( trunk );
    domain = url.getHost();
    path = url.getPath();
-   base = trunk.substring( 0, trunk.indexOf( domain ) + domain.length() );
-   if ( (login = getLoginEntry( domain )) == null )
-      return null;
+   prot = trunk.substring( 0, trunk.indexOf( domain ) );
+//   base = trunk.substring( 0, trunk.indexOf( domain ) + domain.length() );
    
    // connect to host
-   ftp = new OurFtpClient( domain );
-   i = login.indexOf( ':' );
-   ftp.login( login.substring( 0, i ), login.substring( i+1 ) );
+   ftp = getConnectedSession(url);
 
-   // download file name list 
-   in = ftp.nameList( path.concat( "*" ) );
-   out = new ByteArrayOutputStream();
-   Util.transferData( in, out, 2048 );
-   in.close();
-   hstr = out.toString( "utf-8" );
-   sarr = hstr.split( "\n" );
+   // download file name list
+   String[] names = ftp.fileList(path, recurse);
 
-   // filter list for parameter ending
-   list = new ArrayList();
-   for ( i = 0; i < sarr.length; i++ )
-   {
-      hstr = sarr[ i ];
-      if ( trail == null || hstr.endsWith( trail ) )
-         list.add( base.concat( hstr ) );
+   // adjust file name list
+   if (names != null && names.length > 0) {
+	   // filter list for parameter ending, if opted
+	   if ( trail != null ) {
+		   ArrayList<String>list = new ArrayList<String>();
+		   for ( String na : names ) {
+		      if ( na.endsWith(trail) )
+		         list.add( na );
+		   }
+		   names = list.toArray( new String[list.size()] );
+	   }
+	   
+	   // prepend file names with domain url path
+	   String prefix = ftp.getUrl().toString();
+	   int i = 0;
+	   for ( String na : names ) {
+	      names[i++] = prefix.concat( na );
+	   }
    }
-
-   sarr = (String[])list.toArray( new String[ list.size() ] );
-   return sarr;
+   
+//   ftp.echoStr(names);
+   return names;
 }
 
 
+@Override
 public String separator ()
 {
    return "/";
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canWrite()
- */
+@Override
 public boolean canWrite ( String path )
 {
    return true;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canRead()
- */
+@Override
 public boolean canRead ( String path ) throws IOException
 {
    return existsFile( path );
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canWrite()
- */
+@Override
 public boolean canDelete ( String path )
 {
    return true;
 }
 
-public long getFileLength ( String path )
-{
-   return -1;
+@Override
+public long getFileLength ( String path ) throws IOException {
+   URL url = new URL(path);
+   FtpSession ftp = getConnectedSession(url);
+	   
+   long time = ftp.getFileSize( url.getPath() ); 
+   return time;
 }
 
+@Override
 public long getModifiedTime ( String path ) throws IOException
 {
-   OurFtpClient ftp;
-   String domain, login;
-   URL url;
    long time = 0;
-   int i;
-   
-   
-   url = new URL( path );
-   domain = url.getHost();
-   if ( (login = getLoginEntry( domain )) == null )
-      return 0;
+   URL url = new URL(path);
 
-   // create FTP-client and connect to domain  
-   ftp = new OurFtpClient( domain );
-   i = login.indexOf( ':' );
-   ftp.login( login.substring( 0, i ), login.substring( i+1 ) );
+   FtpSession ftp = getConnectedSession(url);
    
-   // fetch LIST value for path
-   try { time = ftp.getFileTime( url.getPath() ); }
-   catch ( IOException e )
-   { return 0; }
-   finally 
-   { ftp.closeServer(); }
+   try { 
+	   time = ftp.getFileTime( url.getPath() ); 
+   } catch ( IOException e ) {
+   }
 
    return time;
 }
 
 
+@Override
 public URL getUrl ( String filepath ) throws IOException
 {
    URL url;
@@ -437,11 +442,13 @@ public URL getUrl ( String filepath ) throws IOException
 /** An object equals this adapter if it is an instance of <code>AbstractFTPAdapter
  *  </code>.
  */
+@Override
 public boolean equals ( Object obj )
 {
    return obj != null && obj instanceof AbstractFTPAdapter;
 }
 
+@Override
 public int hashCode ()
 {
    return classID;
@@ -449,94 +456,339 @@ public int hashCode ()
 
 // *************** INNER CLASSES *********************
 
-public class OurFtpClient extends FtpClient {
+protected class FtpSession {
+	FTPClient client = new FTPClient();
+	URL url;
+	String host;
+	String username;
+	String prot;
+	PwsPassphrase password;
+	
+	/** Creates a new FTP-session for the given URL notation.
+	 * 
+	 * @param url String url to host
+	 * @throws MalformedURLException if host name is malformed
+	 * @throws IllegalArgumentException if host name is empty
+	 * @throws NullPointerException
+	 */
+	public FtpSession (String url) throws MalformedURLException {
+		this(new URL(url));
+	}
+	
+	/** Creates a new FTP-session from the given URL.
+	 *  
+	 * @param url URL - url with FTP, FTPS, FTPES protocol
+	 * @throws IllegalArgumentException if wrong protocol or no domain supplied
+	 * @throws NullPointerException
+	 */
+	public FtpSession (URL url) {
+		prot = url.getProtocol();
+		host = url.getHost();
+		if (host == null || host == "")
+			throw new IllegalArgumentException("empty host domain");
+		
+		try {
+			this.url = new URL(prot, host, "");
+		} catch (MalformedURLException e) {
+		}
 
-   /** New FtpClient connected to host <i>host</i>. */
-   public OurFtpClient(String host) throws IOException 
-   {
-     super(host);
-   }
+		if (prot.equals("ftp")) {
+		} else if (prot.equals("ftps")) {
+			client.setSecurity(FTPClient.SECURITY_FTPS);
+		} else if (prot.equals("ftpes")) {
+			client.setSecurity(FTPClient.SECURITY_FTPES);
+		} else
+			throw new IllegalArgumentException("illegal protocol: ".concat(prot));
+		
+		Log.log(10, "(FTP-Session) create new instance: " + this.url);
+	}
 
-   /** New FullFtpClient connected to host <i>host</i>, port <i>port</i>. */
-   public OurFtpClient(String host, int port) throws IOException 
-   {
-     super(host, port);
-   }
+	/** Tests whether this session is alive and throws an exception if not.
+	 * 
+	 * @throws IllegalStateException
+	 * @throws IOException
+	 * @throws FTPIllegalReplyException
+	 * @throws FTPException
+	 */
+	public void testConnection() throws IllegalStateException, IOException,
+		FTPIllegalReplyException, FTPException {
+		client.noop();
+	}
 
-   /** Create an uninitialized FullFTP client. */
-   public OurFtpClient() 
-   {
-   }
+	/** Returns the URL of the host domain.
+	 * 
+	 * @return URL
+	 */
+	public URL getUrl () {
+		return url;
+	}
+	
+	public String getHost () {
+		return host;
+	}
+	
+	private void echoStr (String[] arr) {
+		if (Log.getDebugLevel() > 4) {
+			for (String s : arr) {
+				Log.debug(5, "(FTP-Session.echo) ".concat(s));
+			}
+		}
+	}
+	
+	public void connect () throws IOException {
+		if (isConnected()) return;
+		String input = null;
 
-   /** Delete the file <code>path</code> from the ftp file system */
-   public void delete (String path) throws IOException 
-   {
-     issueCommandCheck("DELE " + path);
-   }
-   
-   public long getFileTime ( String path ) throws IOException
-   {
-      String ans = "";
-      GregorianCalendar cal;
-      int y, m, d, h, min, s;  
-      
-      try {
-         issueCommandCheck("MDTM " + path);
-         ans = super.getResponseString();
-         if ( ans.equals( "" ) | ans.charAt( 0 ) != '2' )
-            return 0;
-      
-         // evaluate answer
-         cal = new GregorianCalendar();
-         y = Integer.parseInt( ans.substring( 4, 8 ) );
-         m = Integer.parseInt( ans.substring( 8, 10 ) ) -1;
-         d = Integer.parseInt( ans.substring( 10, 12 ) );
-         h = Integer.parseInt( ans.substring( 12, 14 ) );
-         min = Integer.parseInt( ans.substring( 14, 16 ) );
-         s = Integer.parseInt( ans.substring( 16, 18 ) );
-         cal.set( y, m, d, h, min, s );
-      }
-      catch ( NumberFormatException e )
-      {
-         return 0;
-      }
-      catch ( IndexOutOfBoundsException e )
-      {
-         return 0;
-      }
-      
-      return cal.getTimeInMillis();
-   }
+		try {
+			// connect to target host
+			if (!client.isConnected()) {
+				try {
+					Log.log(8, "(FTP-Session.connect) trying to CONNECT to ".concat(host));
+					String[] echo = client.connect(host);
+					echoStr(echo);
+				} catch (IllegalStateException e) {
+					// already connected
+				}
+			}
+			
+			// login to target host
+			if (username == null) {
+				// obtain a user login value
+				input = getLoginEntry(host);
+				if (input == null) {
+					input = getUserLogin(host);
+				}
+				if (input == null)
+					throw new IOException("user operation cancel");
+				int i = input.indexOf(':');
+				if (i == -1)
+					throw new IOException("invalid login data (formal)");
+				
+				putLoginEntry(host, input);
+				username = input.substring(0, i);
+				password = new PwsPassphrase(input.substring(i+1, input.length()));
+				Log.debug(5, "(FTP-Session.connect) user login data supplied: u=" + username +
+						", p=" + password.getString());
+			}
+			Log.log(8, "(FTP-Session.connect) trying to LOGIN to ".concat(host));
+			client.login(username, password.getString());
+			
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// TODO Auto-generated catch block
+			username = null;
+			password = null;
+			removeLoginEntry(host);
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
+	
+	public boolean isConnected () {
+		return client.isConnected() && client.isAuthenticated();
+	}
+	
+	public long getFileTime (String path) throws IOException {
+		try {
+			long time = client.modifiedDate(path).getTime();
+			Log.debug(10, "(FTP-Session) get file time [" + path + "] == " + time);
+			return time;
+			
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
 
-   /** Move up one directory in the ftp file system 
-   public void cdup() throws IOException 
-   {
-     issueCommandCheck("CDUP");
-   }
-*/
-   /** Create a new directory named s in the ftp file system 
-   public void mkdir(String s) throws IOException 
-   {
-     issueCommandCheck("MKDIR " + s);
-   }
-*/
-   /** Delete the specified directory from the ftp file system 
-   public void rmdir(String s) throws IOException 
-   {
-     issueCommandCheck("RMD " + s);
-   }
-*/
-   /** Get the name of the present working directory on the ftp file system 
-   public String pwd() throws IOException {
-     issueCommandCheck("PWD");
-     StringBuffer result = new StringBuffer();
-     for (Enumeration e = serverResponse.elements(); e.hasMoreElements();) {
-       result.append((String) e.nextElement());
-     }
-     return result.toString();
-     
-   }
-*/
- }
+	/** Returns the size of the given file or -1 if the file does not exist.
+	 *   
+	 * @param path String file path
+	 * @return long file size or -1
+	 * @throws IOException
+	 */
+	public long getFileSize (String path) throws IOException {
+		try {
+			long size = client.fileSize(path);
+			Log.debug(10, "(FTP-Session) get file size [" + path + "] == " + size);
+			return size;
+			
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
+
+	public void rename (String path1, String path2)  throws IOException {
+		try {
+			client.rename(path1, path2);
+			Log.debug(10, "(FTP-Session) renamed files [" + path1 + "] ==> " + path2);
+
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
+	
+	public void deleteFile (String path) throws IOException {
+		try {
+			client.deleteFile(path);
+			Log.debug(10, "(FTP-Session) removed file [" + path + "]");
+	
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
+
+	public boolean exists (String path)  throws IOException {
+		boolean exist = false;
+		
+		try {
+			FTPFile[] farr = client.list(path);
+			exist = farr != null && farr.length > 0;
+			
+//			for (FTPFile file : farr) {
+//				Log.debug(10, "(FTP-Session.exists) FILE-VALUE : [" + file.getName() + "] "
+//						+ (file.getType() == FTPFile.TYPE_DIRECTORY ? 'D' : 'F'));
+//			}
+			
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// if other than file-not-found then throw exception
+			if (e.getCode() != 450) {
+				e.printStackTrace();
+				throw new IOException(e);
+			}
+		} catch (FTPDataTransferException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPAbortedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPListParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+
+		Log.debug(10, "(FTP-Session) file exists [" + path + "] == " + exist);
+		return exist;
+	}
+
+	/** Returns the list of all full domain paths of files which start with the 
+	 * given text. This does not include directories!
+	 * 
+	 * @param path String starting value of file list (may be a directory name
+	 *             or a trunk of a file name).
+	 * @param recurse boolean whether results should include sub-directories
+	 * @return array of String, each giving a full file path
+	 */
+	public String[] fileList (String path, boolean recurse) throws IOException {
+		Log.log(10, "(FTP-Session) file list for search string == [" + path + "]");
+	
+		try {
+			FTPFile[] files = new FTPFile[0];
+			boolean isDirectory = false;
+			try {
+				files = client.list(path);
+				isDirectory = files.length > 1;
+			} catch (FTPException e) {
+			}
+			
+			if (!isDirectory) {
+				files = client.list(path.concat("*"));
+				
+			} else if (recurse ) {
+				// TODO recurse into subdirs
+			}
+
+			// filter out dirs
+			ArrayList<String> flist = new ArrayList<String>();
+			for (FTPFile f : files) {
+				if (f.getType() == FTPFile.TYPE_FILE) {
+					flist.add(f.getName());
+				}
+			}
+			
+			String[] result = flist.toArray(new String[flist.size()]);
+			echoStr(result);
+			return result;
+			
+		} catch (IllegalStateException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPIllegalReplyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPDataTransferException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPAbortedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		} catch (FTPListParseException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			throw new IOException(e);
+		}
+	}
+
+}
 
 }

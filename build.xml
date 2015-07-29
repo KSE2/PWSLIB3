@@ -1,24 +1,25 @@
-<project name="PWSLIB2" basedir="." default="help">
+<project name="PWSLIB3" basedir="." default="help">
 
 <!--   DIRECTORIES                                                    -->
 	<property name="src" value="${basedir}/src" />
 	<property name="dist" value="${basedir}/bin" />
 	<property name="doc" value="${basedir}/doc" />
+   <property name="lib" value="${basedir}/lib" />
 	<property name="apidoc" value="${basedir}/doc/api" />
 	<property name="build" value="${basedir}/build" />
-        <property name="sftrans" value="G:/Eclipse/sfnet/PWSLIB2" />
 
 <!--   FILES                                                          -->
         <property name="junit" value="/usr/lib/eclipse/dropins/jdt/plugins/org.junit_3.8.2.v3_8_2_v20100427-1100/junit.jar"/>
+        <property name="ftp4j.lib" value="${lib}ftp4j-1.7.2.jar" />
 
         <property name="docfileset" value="License.txt Readme.txt Changelog.txt Format-V3-12.txt" />
         <property name="rootfileset" value="build.xml MANIFEST.MF makejar.bat jartest.bat makeapi.bat makedist.bat .svnignore" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-3-1" />
+	<property name="ver" value="3-0-0" />
         <property name="apidoc wintitle" value="PasswordSafe V3 Library - PWSLIB API"/>
-        <property name="release date" value="20 Feb 2013"/>
-        <property name="release year" value="2013"/>
+        <property name="release date" value="?????? 2015"/>
+        <property name="release year" value="2015"/>
         <property name="system format" value="3.10"/>
 
 
@@ -64,6 +65,7 @@
      manifest="MANIFEST.MF"
      includes="org/jpws/pwslib/**"
      excludes="**/Test*">
+   <zipfileset src="${ftp4j.lib}"/>
 </jar>
 </target>
 
@@ -88,23 +90,6 @@
       tofile="${dist}/pws-engine-kse.zip" overwrite="yes"/>
 <copy file="${dist}/pws-engine-source-${ver}.zip" 
       tofile="${dist}/pws-engine-kse-src.zip" overwrite="yes"/>
-</target>
-
-<target name="trans" description="transfers public project files to another place">
-<copy todir="${sftrans}/src">
-    <fileset dir="${src}" includes="**/*.java"/>
-</copy>
-<delete verbose="true">
-    <fileset dir="${sftrans}/src" includes="**/*.java">
-       <present present="srconly" targetdir="${src}"/>
-    </fileset>
-</delete>
-<copy todir="${sftrans}">
-    <fileset dir="${basedir}" includes="${rootfileset}" />
-</copy>
-<copy todir="${sftrans}/doc">
-    <fileset dir="${doc}" includes="${docfileset}" />
-</copy>
 </target>
 
 <target name="help">
