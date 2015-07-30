@@ -9,8 +9,8 @@
 	<property name="build" value="${basedir}/build" />
 
 <!--   FILES                                                          -->
-        <property name="junit" value="/usr/lib/eclipse/dropins/jdt/plugins/org.junit_3.8.2.v3_8_2_v20100427-1100/junit.jar"/>
-        <property name="ftp4j.lib" value="${lib}ftp4j-1.7.2.jar" />
+        <property name="junit" value="../Library/junit-4.jar"/>
+        <property name="ftp4j" value="${lib}/ftp4j-1.7.2.jar" />
 
         <property name="docfileset" value="License.txt Readme.txt Changelog.txt Format-V3-12.txt" />
         <property name="rootfileset" value="build.xml MANIFEST.MF makejar.bat jartest.bat makeapi.bat makedist.bat .svnignore" />
@@ -21,6 +21,7 @@
         <property name="release date" value="?????? 2015"/>
         <property name="release year" value="2015"/>
         <property name="system format" value="3.10"/>
+	     <property name="classpath" value="${junit};${ftp4j}"/>
 
 
 <target name="init">
@@ -37,17 +38,17 @@
 </target>
 
 <target name="comp" depends="init,clear-c" description="compile PWSLIB library">
-   <javac srcdir="${src}"  destdir="${build}"  
-       classpath="${junit}" />
+   <javac srcdir="${src}"  destdir="${build}" includeantruntime="false"  
+       classpath="${classpath}" encoding="iso-8859-1"/>
 </target>
 
 <target name="api" depends="init" description="create Javadoc API for PWSLIB library">
-<javadoc packagenames="org.jpws.pwslib.*"
+<javadoc packagenames="org.jpws.pwslib.*" encoding="iso-8859-1"
            sourcepath="${src}"
-           excludepackagenames="org.jpws.pwslib.test" 
+           excludepackagenames="org.jpws.pwslib.test it.sauronsoftware" 
            defaultexcludes="yes"
            destdir="${apidoc}"
-           classpath="${junit}"
+           classpath="${classpath}"
            author="true"
            version="true"
            windowtitle="${apidoc wintitle}">
@@ -65,7 +66,7 @@
      manifest="MANIFEST.MF"
      includes="org/jpws/pwslib/**"
      excludes="**/Test*">
-   <zipfileset src="${ftp4j.lib}"/>
+   <zipfileset src="${ftp4j}"/>
 </jar>
 </target>
 
