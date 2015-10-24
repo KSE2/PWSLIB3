@@ -151,11 +151,8 @@ public final class UUID implements Cloneable, Comparable, Serializable
    //  * @since 2-1-0
 	public int compareTo ( Object o )
    {
-       UUID obj;
-       int i;
-       
-       obj = (UUID)o;
-       i = 0;
+       UUID obj = (UUID)o;
+       int i = 0;
        while ( i < uidValue.length && uidValue[ i ] == obj.uidValue[ i ] )
           i++;
        if ( i == uidValue.length )

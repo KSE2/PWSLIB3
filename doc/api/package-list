@@ -4,3 +4,4 @@ org.jpws.pwslib.exception
 org.jpws.pwslib.global
 org.jpws.pwslib.order
 org.jpws.pwslib.persist
+org.jpws.pwslib.test

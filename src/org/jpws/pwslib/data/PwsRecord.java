@@ -32,8 +32,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.IllegalCharsetNameException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.zip.CRC32;
+
+import javax.swing.KeyStroke;
 
 import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.exception.InvalidPassphrasePolicy;
@@ -43,65 +46,80 @@ import org.jpws.pwslib.global.UUID;
 import org.jpws.pwslib.global.Util;
 
 /**
- * This class is a container for all data fields belonging to a <i>PasswordSafe</i>
- * record. Not all fields have to be assigned a value, and the Record-ID - a
- * {@link org.jpws.pwslib.global.UUID} object that holds an immutable universal 
- * ID value - is by design always existent on a <code>PwsRecord</code>.
- * A minimum set of non-empty fields must be assigned to a record
- * in order to become "valid" (e.g. a requisite to get saved on a persistent file).
- * These fields are: <b>TITLE</b> and <b>PASSWORD</b>.
+ * This class is a container for data fields belonging to a <i>Password Safe</i>
+ * database entry. The set refers to a canon of field definitions given by the 
+ * <i>Password Safe</i> persistent file description. The file format 
+ * version this class implements is 3.13 (decimal). The following fields of 
+ * the description are NOT available in this interface (although they are 
+ * preserved when loaded from other applications): Double-Click-Action, 
+ * Shift-Double-Click-Action, Run-Command, Keyboard-Shortcut. 
  * 
- * <p>Valid instances of this class can be added to and updated at a 
- * {@link PwsRecordList} object. Any iterator over instances of 
- * <code>PwsRecord</code> may be directly used to create a <i>PasswordSafe</i> file
- * (persistent state) by using the <code>PwsFileFactory.save()</code> methods.
- * There is no guarantee, however, that instances obtained from a <code>PwsFile</code>
- * will be valid (files are allowed to load invalid records).  
+ * <p>A record-ID - a {@link org.jpws.pwslib.global.UUID} object - holds 
+ * an immutable universal value and is by design always existent on a 
+ * <code>PwsRecord</code>.
+ * A minimum set of fields must be assigned non-empty for a record
+ * in order to qualify for property "VALID" (e.g. could be made required for a
+ * record list). These fields are: <b>TITLE</b> and <b>PASSWORD</b>.
+ * 
+ * <p>Instances of this class can be added to and updated at  
+ * {@link PwsRecordList} or {@link PwsFile} objects. Any iterator over 
+ * type <code>PwsRecord</code> can be used to create a persistent 
+ * <i>Password Safe</i> file, e.g. on external media, by calling the save 
+ * methods of <code>PwsFileFactory</code>.
+ * 
+ * <p><u>Non-Canonical Fields</u> 
+ * <p>Field types outside of the canon are supported in various ways. 
+ * <br>A) Non-canonical fields coming from other applications via persistent 
+ * state are tolerated and stored back to file when a record is saved. 
+ * <br>B) An application may utilise <b>Extra Fields</b> (one field value per 
+ * type) by use of methods <code>setExtraField()</code> and 
+ * <code>getExtraField()</code>. These fields also become part of the persistent
+ * state in a well-defined way and should be conserved in other applications
+ * unless they share conflicting type values. It is recommended private
+ * applications do not claim field type numbers below 128.
  * 
  * <p><u>Transient Properties</u>
- * <p>The record property <b>"ImportStatus"</b> may be set by user or automatically
- * through <code>PwsRecordList.merge()</code>. It is purely informational, but it 
- * is not reflected to the persistent state of a <code>PwsFile</code>. 
- * 
- * <p><u>Non-Canonical Fields</u> (since 0-4-0)
- * <p>Field types outside of the canon defined for the PWS file formats are supported
- * in various ways. A) Non-canonical fields coming from other applications are tolerated
- * and stored back to a persistent state when this record is saved. B) An application may
- * utilize <b>Extra Fields</b> (one field value per type) by use of methods
- * <code>setExtraField()</code> and <code>getExtraField()</code>. These fields also
- * are part of the persistent state and the non-canonical field list. 
+ * <p>The record property <b>"IMPORT-STATUS"</b> can be set by the user or 
+ * is automatically set through <code>PwsRecordList.merge()</code>. It is purely 
+ * informative about which records have been merged and not reflected into the
+ * persistent state. 
  * 
  * <p><u>Conventions:</u>
- * <p><b>Normalized Group Names</b>. Group names, as values of the record field GROUP, 
- * may contain any sequence of valid group names separated by a "." character. 
- * No "." character is permitted at the beginning or end of the value. No empty 
- * elementary name is permitted ("..").  The "." character always has the meaning 
- * of separating grouping levels and must not be used for elementary name expressions.
+ * <p><b>Normalised Group Names</b>. Group names, as values of the record field 
+ * GROUP, may contain any sequence of valid elementary names (text) separated by 
+ * a "." character. No "." character is permitted at the beginning or end of the
+ * value. No empty elementary name is permitted ("..").  The "." character 
+ * always has the meaning of separating group hierarchy levels and can not be a 
+ * part of an elementary name. 
  * 
  * @see PwsFileFactory
  *
  */
 public class PwsRecord implements Cloneable
 {
-   /** Import status indicating that this record was added by the <code>merge()</code>
-    *  method of <code>PwsRecordList</code>.
-    *  @since 0-3-0
+   /** Import status value indicating that this record was added by the 
+    * <code>merge()</code> method of a <code>PwsRecordList</code>.
     */
    public static final int IMPORTED = 1;
    
-   /** Import status indicating that this record was added by the <code>merge()</code>
-    *  method of <code>PwsRecordList</code> by overwriting an existing record.
-    *  @since 0-3-0
+   /** Import status value indicating that this record was added by the 
+    * <code>merge()</code> method of a <code>PwsRecordList</code> by overwriting
+    * an existing record.
     */
    public static final int IMPORTED_CONFLICT = 2;
 
-   /** Stores field values whose identity is unknown to this library 
-    * (non-canonical fields). This includes fields that may be imported
-    * from other applications or fields set by the "setExtraField()" method.
-    * @since 2-0-0 modified type
+   /** General purpose constant for an empty iterator of raw-fields.
+    */
+   private static final Iterator<PwsRawField> emptyFieldIterator 
+    						= new ArrayList<PwsRawField>().iterator();
+   
+   /** Stores fields whose identity is non-canonical (as known to this library). 
+    * This includes fields that may have been generated 
+    * by other applications or fields added through the "setExtraField()" method.
     */
    private RawFieldList     otherValues;
    
+   // basic fields
    private UUID             recordID;
    private String           group;
    private String           title;
@@ -114,56 +132,60 @@ public class PwsRecord implements Cloneable
    private PwsPassphrase    history;
    private PwsPassphrase    url;
    private PwsPassphrase    email;
+   private KeyStroke        keyboardShortcut;
    private String           autotype;
    private String           passPolicyName;
    private int              expiryInterval;
    private boolean          protectedEntry;
    
-   // unused V3.10 fields
+   // unused V3 fields
    PwsRawField              runCommand;
    PwsRawField              dclickAction;
    PwsRawField              shiftDclickAction;
    
-   // the following time values are stored in "epoch" milliseconds
+   // time fields, values stored in "epoch" milliseconds
    private long             createTime;
    private long             passLifeTime;
    private long             passModTime;
    private long             accessTime;
    private long             modifyTime;
    
+   // operational
    private int              importStatus;
    private boolean          initializing;
 
   
    
 /**
- *  Creates a new PWS record with a new Record-ID (UUID). The ID is automatically
- *  generated.  
+ *  Creates a new PWS record with a new Record-ID (UUID). The ID is 
+ *  automatically generated.  
  */
 public PwsRecord ()
 {
    recordID = new UUID();
-   createTime = System.currentTimeMillis();
+   createTime = normalisedTime(System.currentTimeMillis());
    modifyTime = createTime;
-   Log.log( 4, "(PwsRecord) new PwsRecord: " + this.toString() );
+   Log.log( 4, "(PwsRecord) new PwsRecord: ".concat(toString()) );
 }
 
 /**
  *  Creates a new PWS record with a new Record-ID (UUID) and the specified
  *  CREATETIME.   
+ *  
+ *  @param time long epoch time value (milliseconds)
  */
 public PwsRecord ( long time )
 {
    recordID = new UUID();
-   createTime = time;
-   modifyTime = time;
-   Log.log( 4, "(PwsRecord) new PwsRecord: time == " + time +", " + this.toString() );
+   createTime = normalisedTime(time);
+   modifyTime = createTime;
+   Log.log( 4, "(PwsRecord) new PwsRecord: time == " + time +", " + toString() );
 }
 
 /**
- *  Creates a new PWS record with a Record-ID as specified by the parameter
- *  UUID.
- *  
+ *  Creates a new PWS record with the given Record-ID.
+ *
+ *  @param recID <code>UUID</code>
  *  @throws NullPointerException if the parameter is <b>null</b>  
  */
 public PwsRecord ( UUID recID )
@@ -172,49 +194,46 @@ public PwsRecord ( UUID recID )
       throw new NullPointerException();
    
    recordID = recID;
-   createTime = System.currentTimeMillis();
+   createTime = normalisedTime(System.currentTimeMillis());
    modifyTime = createTime;
-   Log.log( 4, "(PwsRecord) new PwsRecord (param): " + this.toString() );
+   Log.log( 4, "(PwsRecord) new PwsRecord (param ID): ".concat(toString()) );
 }
 
-/** Makes a deep clone of this record. 
+private long normalisedTime (long time) {
+	return time / 1000 * 1000;
+}
+
+/** Makes a deep clone of this record; preserves UUID value. 
+ * 
+ * @return Object record clone (<code>PwsRecord</code>)
  */
+   @Override
    public Object clone () 
    {
-      PwsRecord rec;
-      Iterator it;
-      PwsRawField fld;
-      
       try { 
-         rec = (PwsRecord)super.clone();
+    	 PwsRecord rec = (PwsRecord)super.clone();
 
-         rec.password = getPassword();
-         rec.passPolicy = getPassPolicy();
-         rec.username = getUsernamePws();
-         rec.email = getEmailPws();
-         rec.notes = getNotesPws();
-         rec.url = getUrlPws();
-         rec.history = getHistoryPws();
-         
          // deep clone of unknown fields
-         rec.otherValues = null;
-         for ( it = getUnknownFields(); it != null && it.hasNext(); )
-         {
-            fld = (PwsRawField)it.next();
-            rec.addUnknownField( fld.type, fld.getData() );
-         }
+    	 if ( otherValues != null ) {
+	         rec.otherValues = null;
+	         for (Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
+	        	PwsRawField fld = it.next();
+	            rec.addUnknownField(fld.type, fld.getData());
+	         }
+    	 }
          
+    	 if (Log.getDebugLevel() > 9)
          Log.log( 10, "(PwsRecord) record cloned : " + rec.toString() );
          return rec;  
-         }
-      catch ( CloneNotSupportedException e )
-      {
+
+      } catch ( CloneNotSupportedException e ) {
          return null;
       }
    }
 
    /**
     * Returns an exact copy of this record, but bearing a new UUID.  
+    * 
     * @return <code>PwsRecord</code>
     */
    public PwsRecord copy ()
@@ -240,28 +259,38 @@ public PwsRecord ( UUID recID )
       setAutotype( null );
       setHistory( (PwsPassphrase)null );
       setUrl( (PwsPassphrase)null );
+      setPassPolicyName(null);
+      setKeyboardShortcut(null);
+      setProtectedEntry(false);
       otherValues = null;
       
       passLifeTime = 0;
       passModTime = 0;
       accessTime = 0;
+      expiryInterval = 0;
 
+      runCommand = null;
+      dclickAction = null;
+      shiftDclickAction = null;
+      keyboardShortcut = null;
+      
       modified();
    }
 
    /**
     * Sets the modified time of this record to the current time.
     */
-   private void modified ()
+   protected void modified ()
    {
-      if ( !initializing )
-         modifyTime = System.currentTimeMillis();
+      if ( !initializing ) {
+         modifyTime = normalisedTime(System.currentTimeMillis());
+      }
    }
    
 /** Whether this record is valid, i.e. qualifies for storage in a file.
  * 
- * @return <b>true</b> if and only if this record has a valid ID, a password and
- *         a title
+ * @return boolean <b>true</b> if and only if this record has a valid ID, 
+ *         a password and a title
  */    
    public boolean isValid ()
    {
@@ -270,14 +299,14 @@ public PwsRecord ( UUID recID )
              getTitle() != null;
    }
    
-   /** Whether this record is identical to the parameter record. (Added to the
-    * "equals" criterion this extends to complete content equality.)
+   /** Whether this record is identical to the parameter record. Added to the
+    * "equals" criterion this extends to complete content equality.
     * 
-    * @param rec PwsRecord to investigate (may be <b>null</b>)
-    * @return <b>true</b> if and only if the parameter is not <b>null</b> and
-    *         this record and the parameter record have identical data signatures 
-    *         (<code>getSignature()</code>; includes identity of record-ID)
-    * @since 0-6-0
+    * @param rec <code>PwsRecord</code> to investigate (may be <b>null</b>)
+    * @return boolean <b>true</b> if and only if the parameter is not 
+    *         <b>null</b> and this record and the parameter record have 
+    *         identical data signatures (<code>getSignature()</code>; includes 
+    *         identity of record-ID)
     */    
    public boolean isIdentical ( PwsRecord rec )
    {
@@ -286,7 +315,8 @@ public PwsRecord ( UUID recID )
 
    /** Returns a textual error hint in case this record is invalid.
     *  Returns empty string otherwise.
-    *  @since 0-4-0
+    *  
+    *  @return String
     */
    public String getInvalidText ()
    {
@@ -299,39 +329,41 @@ public PwsRecord ( UUID recID )
       return "";
    }
    
-   /** Whether this record's expiry time is exceeded. 
+   /** Whether this record's expire time is exceeded. 
     * 
     *  @return <b>true</b> if and only if there is a PASSLIFETIME defined and
     *          the current time is equal/higher than the PASSLIFETIME
-    *  @since 0-3-0
     */ 
    public boolean hasExpired ()
    {
       return willExpire( System.currentTimeMillis() );  
    }
    
-   /** Whether this record's life time will be exired until the date
+   /** Whether this record's life time will expire until the date
     *  given. Returns <b>false</b> if parameter is zero. 
     * 
-    *  @param date compare time
-    *  @return <b>true</b> if and only if there is a PASSLIFETIME defined and
-    *          the compare time is equal/higher than the PASSLIFETIME
-    *  @since 0-3-0
+    *  @param date long compare time
+    *  @return boolean <b>true</b> if and only if there is a PASSLIFETIME 
+    *          defined and the compare time is higher than the PASSLIFETIME
     */ 
    public boolean willExpire ( long date )
    {
-      long t;
-      return (t=getPassLifeTime()) > 0 && date >= t;  
+      long t = getPassLifeTime();
+      return t > 0 && date > t;  
    }
    
-   /** Returns the value of record field ACCESSTIME in epoch timemillis. */
+   /** Returns the value of record field ACCESSTIME in epoch time. 
+    *
+    * @param long date in milliseconds
+    */
    public long getAccessTime ()
    {
       return accessTime;
    }
    
    /** Sets the value of record field ACCESSTIME.
-    * @param value  time value in epoch milliseconds
+    * 
+    * @param value long date value in milliseconds
     */
    public void setAccessTime ( long value )
    {
@@ -342,46 +374,59 @@ public PwsRecord ( UUID recID )
             + ", " + this );
    }
    
-   /** Returns the value of record field CREATETIME in epoch timemillis. */
+   /** Returns the value of record field CREATETIME in epoch milliseconds.
+    * 
+    * @return long date value in milliseconds
+    */
    public long getCreateTime ()
    {
       return createTime;
    }
    
-   /** Returns the value of record field MODIFYTIME in epoch timemillis. */
+   /** Returns the value of record field MODIFYTIME in epoch milliseconds.
+    * The precision is in seconds.
+    * 
+    *  @return long date value in milliseconds
+    */
    public long getModifiedTime ()
    {
       return modifyTime;
    }
 
    /** Sets the value of record field CREATETIME.
-    *  @param time  time value in epoch milliseconds
+    * 
+    *  @param time long time value in epoch milliseconds
     */
    public void setCreateTime ( long time )
    {
-      time = time / 1000 * 1000;
+      time = normalisedTime(time);
       controlValue( createTime, time, "CREATETIME" );
       createTime = time;
    }
    
    /** Sets the value of record field MODIFYTIME.
-    *  @param time  time value in epoch milliseconds
+    * 
+    *  @param time long time value in epoch milliseconds
     */
    public void setModifyTime ( long time )
    {
-      time = time / 1000 * 1000;
+      time = normalisedTime(time);
       controlValue( modifyTime, time, "MODIFYTIME" );
       modifyTime = time;
    }
    
-   /** Returns the value of record field PASSLIFETIME in epoch timemillis. */
+   /** Returns the value of record field PASSLIFETIME in epoch milliseconds.
+    * 
+    *  @return long date value in milliseconds
+    */
    public long getPassLifeTime ()
    {
       return passLifeTime;
    }
    
    /** Sets the value of record field PASSLIFETIME.
-    * @param value  time value in epoch milliseconds
+    * 
+    * @param value long time value in epoch milliseconds
     */
    public void setPassLifeTime ( long value )
    {
@@ -391,7 +436,8 @@ public PwsRecord ( UUID recID )
    }
    
    /** Sets the value of record field EXPIRY_INTERVAL.
-    * @param value  time value in days of the period (0..3650)
+    * 
+    * @param value int time value in days of the period (0..3650)
     */
    public void setExpiryInterval ( int value )
    {
@@ -400,20 +446,27 @@ public PwsRecord ( UUID recID )
       expiryInterval = value;
    }
    
-   /** Returns the value of record field EXPIRY_INTERVAL (days of period). */
+   /** Returns the value of record field EXPIRY_INTERVAL (days of period).
+    * 
+    *  @return int days of expire period
+    */
    public int getExpiryInterval ()
    {
       return expiryInterval;
    }
    
-   /** Returns the value of record field PASSMODTIME in epoch timemillis. */
+   /** Returns the value of record field PASSMODTIME in epoch milliseconds.
+    * 
+    *  @return long date value in milliseconds
+    */
    public long getPassModTime ()
    {
       return passModTime;
    }
    
    /** Sets the value of record field PASSMODTIME.
-    * @param value  time value in epoch milliseconds
+    * 
+    * @param value long time value in epoch milliseconds
     */
    public void setPassModTime ( long value )
    {
@@ -423,7 +476,10 @@ public PwsRecord ( UUID recID )
    }
    
    /** Returns the value of the password policy field of this record
-    *  or <b>null</b> if this value is undefined. */
+    *  or <b>null</b> if this value is undefined. 
+    *
+    *  @return <code>PwsPassphrasePolicy</code> or null
+    */
    public PwsPassphrasePolicy getPassPolicy ()
    {
       return passPolicy == null ? null : (PwsPassphrasePolicy)passPolicy.clone();
@@ -432,7 +488,7 @@ public PwsRecord ( UUID recID )
    /** Sets the password policy reserved for this record. 
     *  Use <b>null</b> to clear the field.
     * 
-    *  @param value a valid <code>PwsPassphrasePolicy</code> or <b>null</b>
+    *  @param value <code>PwsPassphrasePolicy</code> valid policy or <b>null</b>
     *  @throws InvalidPassphrasePolicy if the parameter policy is not valid
     * */
    public void setPassPolicy ( PwsPassphrasePolicy value )
@@ -445,8 +501,10 @@ public PwsRecord ( UUID recID )
       passPolicy = value == null ? null : (PwsPassphrasePolicy)value.clone();
    }
 
-   /** Returns the GROUP field of this record as a String.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the GROUP field of this record as a String or <b>null</b> if 
+    * this value is undefined.
+    * 
+    * @return String or null
     */
    public String getGroup ()
    {
@@ -454,31 +512,28 @@ public PwsRecord ( UUID recID )
    }
 
    /**
-    * Normalisation of a GROUP name.
+    * Returns a normalised GROUP name. Returns <b>null</b> if the parameter
+    * was <b>null</b>.
+    * <p><small>This method corrects errors in the '.' separator settings
+    * within the value by removing misplaced occurences. The result can be 
+    * smaller but not larger than the parameter value.</small>
     *  
     * @param group String GROUP name or <b>null</b>
     * @return normalised GROUP name or <b>null</b>
-    * @since 0-6-0
     */
    public static String groupNormalized ( String group )
    {
-      boolean ok;
-
-      if ( group != null )
-      {
+      if ( group != null ) {
          group = Util.substituteText( group, "..", "." );
-         ok = false;
-         while ( !(group.equals("") | ok) )
-         {
+         boolean ok = false;
+         while ( !(group.isEmpty() | ok) ) {
             ok = true;
             group = group.trim();
-            if ( group.startsWith( "." ) )
-            {
+            if ( group.startsWith( "." ) ) {
                group = group.substring( 1 );
                ok = false;
             }
-            if ( group.endsWith( "." ) )
-            {
+            if ( group.endsWith( "." ) ) {
                group = group.substring( 0, group.length()-1 );
                ok = false;
             }
@@ -487,32 +542,34 @@ public PwsRecord ( UUID recID )
       return group;
    }
    
-   /** Sets the GROUP field of this record to the parameter String value.
-    *  The stored value receives normalization and correction as necessary
+   /** Sets the GROUP field of this record to the parameter string value.
+    *  The stored value is normalised by corrections as necessary
     *  (see class description).
     *  An empty string is treated equivalent to <b>null</b>. 
-    *  Use <b>null</b> to clear the field.
+    *  
+    *  @param group String or <b>null</b> to clear
     */
    public void setGroup ( String group )
    {
-      String old;
-
-      // special normailzation of GROUP value (no double or leading or trailing '.') 
+      // special normalisation of GROUP value (no double or leading or trailing '.') 
       group = groupNormalized( group );
       
-      old = this.group;
-      this.group = transformedStringParam( group );
+      String old = this.group;
+      this.group = normalisedStringParam( group );
       controlValue( old, this.group, "GROUP" );
    }
 
-   /** Checks whether two objects (values for element type <code>name</code>) are equal. 
-    *  If they are not equal, the record's modified marker is set and a trace log 
-    *  is written for the new value.
+   /** Checks whether two objects (values for element type <code>name</code>) 
+    * are equal. If they are not equal, the record's modified marker is set and 
+    * a trace log is written for the new value.
+    * 
+    * @param old Object old field value
+    * @param value Object new field value
+    * @param name String field type name
     */
-   private void controlValue ( Object old, Object value, String name )
+   protected void controlValue ( Object old, Object value, String name )
    {
-      if ( !equalVal( old, value ) )
-      {
+      if ( !equalVal( old, value ) ) {
          modified();
          if ( Log.getDebugLevel() > 4 )
          Log.debug( 5, "(PwsRecord) set " + name + " value = \"" + value 
@@ -520,14 +577,17 @@ public PwsRecord ( UUID recID )
       }
    }
    
-   /** Checks whether two long integer values for element <code>name</code>) are equal. 
-    *  If they are not equal, the record's modified marker is set and a trace log 
-    *  is written for the new value.
+   /** Checks whether two long integer values for element <code>name</code>) 
+    * are equal. If they are not equal, the record's modified marker is set and
+    * a trace log is written for the new value.
+    * 
+    * @param old long old field value
+    * @param value long new field value
+    * @param name String field type name
     */
-   private void controlValue ( long old, long value, String name )
+   protected void controlValue ( long old, long value, String name )
    {
-      if ( old != value )
-      {
+      if ( old != value ) {
          modified();
          if ( Log.getDebugLevel() > 4 )
          Log.debug( 5, "(PwsRecord) set " + name + " value = " + value 
@@ -536,24 +596,33 @@ public PwsRecord ( UUID recID )
    }
    
    /**
-    * Detects equality of two objects, allowing for void assignments (<b>null</b>). 
+    * Detects equality of two objects, allowing for void assignments 
+    * (<b>null</b>) to be compared. 
+    * 
+    * @param o1 Object
+    * @param o2 Object
+    * @return boolean true == parameters/objects are equal
     */
-   private boolean equalVal ( Object o1, Object o2 )
+   protected static boolean equalVal ( Object o1, Object o2 )
    {
-      return (o1 == null & o2 == null ) ||
+      return (o1 == null && o2 == null ) ||
              (o1 != null && o2 != null && o1.equals( o2 )); 
    }
    
-   /** Returns the value of the NOTES field of this record as a String.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the value of the NOTES field of this record as a String
+    *  or <b>null</b> if the field is undefined.
+    *  
+    *  @return String field value or null
     */
    public String getNotes ()
    {
       return notes == null ? null : notes.getString();
    }
 
-   /** Returns the value of the NOTES field of this record as a <code>PwsPassphrase</code>.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the value of the NOTES field of this record as a 
+    * <code>PwsPassphrase</code> or <b>null</b> if this field is undefined.
+    * 
+    * @return <code>PwsPassphrase</code> or <b>null</b>
     */
    public PwsPassphrase getNotesPws ()
    {
@@ -561,29 +630,39 @@ public PwsRecord ( UUID recID )
    }
 
    /** Sets the NOTES field of this record to the parameter String value.
-    *  An empty string will render equivalent to <b>null</b>. 
+    *  An empty string will render as <b>null</b>. 
     *  Use <b>null</b> to clear the field.
+    *  
+    *  @param value String, may be null
     */
    public void setNotes ( String value )
    {
-      value = transformedStringParam( value );
+      value = normalisedStringParam( value );
       setNotes( value == null ? null : new PwsPassphrase( value ) );
    }
 
    /** Sets the NOTES field of this record to the value represented by the
-    *  parameter <code>PwsPassphrase</code>. This allows the direct incorporation
-    *  of an encrypted value. A passphrase of length zero is equivalent to <b>null</b>.
-    *  Use <b>null</b> to clear the field.
+    *  parameter <code>PwsPassphrase</code>. This allows the direct assignment
+    *  of an encrypted value. A passphrase of length zero is equivalent to 
+    *  <b>null</b>. Use <b>null</b> to clear the field.
+    *  
+    *  @param <code>PwsPassphrase</code> or <b>null</b>
     */
    public void setNotes ( PwsPassphrase value )
    {
-      if ( voidPassphrase( value ) )
+      if ( isVoidPassphrase( value ) ) {
          value = null;
+      }
       controlValue( notes, value, "NOTES" );
       notes = value == null ? null : (PwsPassphrase)value.clone();
    }
 
-   private boolean voidPassphrase ( PwsPassphrase pass )
+   /** Whether the given passphrase is either null or of length zero.
+    * 
+    * @param pass <code>PwsPassphrase</code> or <b>null</b>
+    * @return boolean true == parameter is void
+    */
+   protected static boolean isVoidPassphrase ( PwsPassphrase pass )
    {
       return pass == null || pass.isEmpty();
    }
@@ -591,6 +670,8 @@ public PwsRecord ( UUID recID )
    /** Returns the actual PASSWORD field value of this record as a protected
     *  <code>PwsPassphrase</code> object. Returns <b>null</b> if the password
     *  is undefined.
+    *  
+    *  @return <code>PwsPassphrase</code> or <b>null</b>
     */
    public PwsPassphrase getPassword ()
    {
@@ -598,22 +679,25 @@ public PwsRecord ( UUID recID )
    }
 
    /** Sets the PASSWORD field of this record to the parameter value.
-    *  There are not controls on the password value. A passphrase of length
-    *  zero is equivalent to <b>null</b>.
+    *  A passphrase of length zero is equivalent to <b>null</b>. Use <b>null</b>
+    *  to clear the field.
+    *  <p>There are no semantic controls on the password value. 
     * 
-    * @param value <code>PwsPassphrase</code>, the new password value;
-    *        use <b>null</b> to clear the field.
+    * @param value <code>PwsPassphrase</code> or <b>null</b>
     */
    public void setPassword ( PwsPassphrase value )
    {
-      if ( voidPassphrase( value ) )
+      if ( isVoidPassphrase( value ) ) {
          value = null;
+      }
       controlValue( password, value, "PASSWORD" );
       password = value == null ? null : (PwsPassphrase)value.clone();
    }
 
    /** Returns the TITLE field of this record as a String.
     *  Returns <b>null</b> if the field is undefined.
+    *  
+    *  @return String or <b>null</b>
     */
    public String getTitle ()
    {
@@ -621,26 +705,32 @@ public PwsRecord ( UUID recID )
    }
 
    /** Sets the TITLE field of this record to the parameter String value.
-    *  An empty string will render equivalent to <b>null</b>. 
+    *  An empty string is equivalent to <b>null</b>. 
     *  Use <b>null</b> to clear the field.
+    *  
+    *  @param title String, may be null
     */
    public void setTitle ( String title )
    {
       String old = this.title;
-      this.title = transformedStringParam( title );
+      this.title = normalisedStringParam( title );
       controlValue( old, this.title, "TITLE" );
    }
 
-   /** Returns the EMAIL field of this record as a <code>PwsPassphrase</code>.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the EMAIL field of this record as a <code>PwsPassphrase</code>
+    *  or <b>null</b> if this field is undefined.
+    *  
+    *  @return <code>PwsPassphrase</code> or <b>null</b>
     */
    public PwsPassphrase getEmailPws ()
    {
       return email == null ? null : (PwsPassphrase)email.clone();
    }
 
-   /** Returns the EMAIL field of this record as a <code>String</code>.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the EMAIL field of this record as a <code>String</code>
+    *  or <b>null</b> if this field is undefined.
+    *  
+    *  @return String or <b>null</b>
     */
    public String getEmail ()
    {
@@ -648,12 +738,14 @@ public PwsRecord ( UUID recID )
    }
 
    /** Sets the EMAIL field of this record to the parameter String value.
-    *  An empty string will render equivalent to <b>null</b>. 
+    *  An empty string is equivalent to <b>null</b>. 
     *  Use <b>null</b> to clear the field.
+    *  
+    *  @param value String or <b>null</b>
     */
    public void setEmail ( String value )
    {
-      value = transformedStringParam( value );
+      value = normalisedStringParam( value );
       setEmail( value == null ? null : new PwsPassphrase( value ) );
    }
 
@@ -661,25 +753,32 @@ public PwsRecord ( UUID recID )
     *  represented by the parameter <code>PwsPassphrase</code>.
     *  A passphrase of length zero is equivalent to <b>null</b>.
     *  Use <b>null</b> to clear the field.
+    * 
+    * @param value <code>PwsPassphrase</code> or <b>null</b>
     */
    public void setEmail ( PwsPassphrase value )
    {
-      if ( voidPassphrase( value ) )
+      if ( isVoidPassphrase( value ) ) {
          value = null;
+      }
       controlValue( email, value, "EMAIL" );
       email = value == null ? null : (PwsPassphrase)value.clone();
    }
 
-   /** Returns the value of the USERNAME field of this record as a String.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the value of the USERNAME field of this record as a String
+    *  or <b>null</b> if this field is undefined.
+    *  
+    *  @return String or <b>null</b>
     */
    public String getUsername ()
    {
       return username == null ? null : username.getString();
    }
 
-   /** Returns the value of the USERNAME field of this record as a <code>PwsPassphrase</code>.
-    *  Returns <b>null</b> if the field is undefined.
+   /** Returns the value of the USERNAME field of this record as a 
+    * <code>PwsPassphrase</code> or <b>null</b> if this field is undefined.
+    *  
+    *  @return <code>PwsPassphrase</code> or <b>null</b>
     */
    public PwsPassphrase getUsernamePws ()
    {
@@ -687,32 +786,38 @@ public PwsRecord ( UUID recID )
    }
 
    /** Sets the value of the USERNAME field of this record to the parameter 
-    *  <code>String</code> value. An empty string will render equivalent to 
+    *  <code>String</code> value. An empty string is equivalent to 
     *  <b>null</b>. Use <b>null</b> to clear the field.
+    *  
+    *  @param value String or <b>null</b>
     */
    public void setUsername ( String value )
    {
-      value = transformedStringParam( value );
-      setUsername( value == null ? null : new PwsPassphrase( value ) );
+      value = normalisedStringParam( value );
+      setUsername( value == null ? null : new PwsPassphrase(value) );
    }
 
    /** Sets the value of the USERNAME field of this record to the value 
     *  represented by the parameter <code>PwsPassphrase</code>.
     *  A passphrase of length zero is equivalent to <b>null</b>.
     *  Use <b>null</b> to clear the field.
+    * 
+    * @param value <code>PwsPassphrase</code> or <b>null</b>
     */
    public void setUsername ( PwsPassphrase value )
    {
-      if ( voidPassphrase( value ) )
+      if ( isVoidPassphrase( value ) ) {
          value = null;
+      }
       controlValue( username, value, "USERNAME" );
       username = value == null ? null : (PwsPassphrase)value.clone();
    }
 
-   /** This will set PASSMODTIME and ACCESSTIME to the actual time and should 
-    *  be called after a password value was modified. 
-    *  (For reasons of flexibility this is not automatically called when 
-    *  modifying a password through <code>setPassword()</code>.)
+   /** This sets PASSMODTIME and ACCESSTIME to the current system time and 
+    * should be called after a password value was modified. 
+    *  <p>For reasons of flexibility this is not automatically called when 
+    *  modifying a password through <code>setPassword()</code>. Time values
+    *  can be set independent from existence of the PASSWORD value.
     */ 
    public void passwordUpdated ()
    {
@@ -721,80 +826,78 @@ public PwsRecord ( UUID recID )
       setAccessTime( time );
    }
    
-   /** Adds an unknown field value for this record for the purpose of conservation.
-    *  In contrast to <code>setExtraField()</code> no validation is performed on the
-    *  ID value. Does nothing if <code>value</code> is <b>null</b>.
-    *  (This value is stored internally in cleartext during program session.)
+   /** Adds an unknown field value to this record for the purpose of conservation.
+    *  In contrast to <code>setExtraField()</code> no validation is performed on
+    *  the type value. Does nothing if <code>value</code> is <b>null</b>.
+    *  <p>Note that this value is stored internally in cleartext during 
+    *  program session.
     * 
-    * @param id field ID number (0..255)
-    * @param value field value (exact length)
-    * @since 0-4-0
+    * @param type int, field type number (0..255)
+    * @param value byte array, field value (exact length)
     */
-   protected void addUnknownField ( int id, byte[] value )
+   protected void addUnknownField ( int type, byte[] value )
    {
-      if ( value == null )
-         return;
+      if ( value == null ) return;
       
-      if ( otherValues == null )
+      if ( otherValues == null ) {
          otherValues = new RawFieldList();
-      
-      otherValues.setField( new PwsRawField( id, value ) );
+      }
+      otherValues.setField( new PwsRawField( type, value ) );
    }
    
-   /** Inserts or sets a data field in this record which forms a non-canonical field identified by
-    *  its integer type code. Only non-canonical field types may be entered; use the 
-    *  <b>null</b> value to clear the field from the list.
-    *  <small>Notes: This value is stored internally in cleartext during 
-    *  program execution. This method replaces any occurrence of a previously defined field
-    *  with type <code>id<code> in the unknown field list. Whether a field value is 
-    *  canonical can be tested by <code>PwsFileFactory.isCanonicalField()</code>.</small>
+   /** Puts a data field into this record which forms a non-canonical field 
+    * identified by its integer type code. Only non-canonical field types
+    * may be entered; use the <b>null</b> value to clear the field from the list
+    * of unknown fields.
+    * <small>Notes: This value is stored internally in cleartext during 
+    * program session. This method replaces a previous occurrence of same type
+    * in the unknown field list. Whether a field value is canonical can be 
+    * tested by <code>PwsFileFactory.isCanonicalField()</code>.</small>
     * 
-    * @param id non-canonical field ID number within 0..255
+    * @param type int, non-canonical field type number within 0..255
     * @param value field value, or <b>null</b> to remove the field
     * @param format the referenced file format version or 0 for default
-    * @since 0-4-0
-    * @since 2-0-0 extended
     */
-   public void setExtraField ( int id, byte[] value, int format )
+   public void setExtraField ( int type, byte[] value, int format )
    {
       // control field type
-      if ( PwsFileFactory.isCanonicalField( id, format ) )
+      if ( PwsFileFactory.isCanonicalField( type, format ) )
          throw new IllegalArgumentException( "canonical field type" );
 
       // ensure list instance
-      if ( otherValues == null )
+      if ( otherValues == null ) {
          otherValues = new RawFieldList();
-
-      // add / replace new value
-      if ( value == null )
-      {
-         if ( otherValues.removeField( id ) != null )
-            modified();
       }
-      else
-      {
-         otherValues.setField( new PwsRawField( id, value ) );
+      
+      if ( value == null ) {
+          // erase field from list
+         if ( otherValues.removeField( type ) != null ) {
+            modified();
+         }
+      } else {
+          // add / replace new value
+         otherValues.setField( new PwsRawField( type, value ) );
          modified();
       }
    }  // setExtraField
    
-   /** Gets an iterator over all unknown fields stored for this record.
+   /** Returns an iterator over all unknown fields stored for this record.
     *  
     * @return <code>Iterator</code> of element type <code>PwsRawField</code>
-    *         or <b>null</b> if no fields are listed
-    * @since 0-4-0 protected
-    * @since 2-0-0 public
     */
-   public Iterator getUnknownFields ()
+   public Iterator<PwsRawField> getUnknownFields ()
    {
-      return otherValues == null || otherValues.size() == 0 ? null : otherValues.iterator();
+	  if ( otherValues == null || otherValues.size() == 0 ) {
+		  return emptyFieldIterator;
+	  }
+      return otherValues.iterator();
    }
    
    /**
-    * Returns the number of datafields which are not canonical in this record.
+    * Returns the number of data fields which are not canonical in this record.
     * (This includes fields added by <code>setExtraField()</code> method.)
-    * @return int
-    * @since 2-0-0 
+    * 
+    * @return int size of unknown field list
     */
    public int getUnknownFieldCount ()
    {
@@ -806,40 +909,49 @@ public PwsRecord ( UUID recID )
     * this record on a persistent state. (This takes into account the general 
     * file formating rules of a PWS file.) 
     * 
-    * @param format the file format version of the persistent state
+    * @param format int, the file format version of the persistent state
+    * @param charset String, name of charset used to encode text
     * @return int required (blocked) data space
-    * @throws IllegalCharsetNameException if charset is unknown to the executing VM
-    * @since 2-0-0
+    * @throws IllegalCharsetNameException if charset is unknown to the executing
+    *         VM
     */
    public long getBlockedDataSize ( int format, String charset )
    {
-      long sum;
-
-      sum = 0;
+      long sum = 0;
       
       // constant size consisting of fields:
-      switch ( format )
-      {
+      switch ( format )  {
+      
       case Global.FILEVERSION_3:
          sum = fieldBlockSizeUpdate( sum, url, format, charset );
          sum = fieldBlockSizeUpdate( sum, autotype, format, charset );
          sum = fieldBlockSizeUpdate( sum, history, format, charset );
          sum = fieldBlockSizeUpdate( sum, email, format, charset );
-         sum = fieldBlockSizeUpdate( sum, autotype, format, charset );
          sum = fieldBlockSizeUpdate( sum, passPolicyName, format, charset );
+         sum = fieldBlockSizeUpdate( sum, keyboardShortcut, format, charset );
          sum = fieldBlockSizeUpdate( sum, runCommand, format, charset );
          sum = fieldBlockSizeUpdate( sum, dclickAction, format, charset );
          sum = fieldBlockSizeUpdate( sum, shiftDclickAction, format, charset );
-         if ( passPolicy != null ) 
-         {
-            sum = fieldBlockSizeUpdate( sum, passPolicy.getModernForm(), format, charset );
-            if ( passPolicy.hasOwnSymbols() )
-               sum = fieldBlockSizeUpdate( sum, new String( passPolicy.getOwnSymbols() ), format, charset );
+         
+         if ( passPolicy != null ) {
+            sum = fieldBlockSizeUpdate( sum, passPolicy.getModernForm(), format,
+            	  charset );
+            if ( passPolicy.hasOwnSymbols() ) {
+               sum = fieldBlockSizeUpdate( sum, new String( 
+            		   passPolicy.getOwnSymbols() ), format, charset );
+            }
          }
       
+         if ( expiryInterval != 0 ) 
+        	 sum += PwsRawField.pwsFieldBlockSize( 4, format );
+         if ( protectedEntry ) 
+        	 sum += PwsRawField.pwsFieldBlockSize( 1, format );
+         
+         
       case Global.FILEVERSION_2:
          sum = fieldBlockSizeUpdate( sum, group, format, charset );
          sum += PwsRawField.pwsFieldBlockSize( 16, format );  // UUID
+         
          if ( format <= Global.FILEVERSION_2 && passPolicy != null )
             sum += PwsRawField.pwsFieldBlockSize( 4, format );  // PassPolicy old format
          if ( accessTime != 0 )
@@ -862,8 +974,9 @@ public PwsRecord ( UUID recID )
       }
       
       // size of extra fields (unknown fields) if present
-      if ( otherValues != null )
-         sum += otherValues.blockedDataSize( format );
+      if ( otherValues != null ) {
+         sum += otherValues.dataSize( format );
+      }
       
       // add space for EOR marker (formats V2 and V3) 
       sum += format == Global.FILEVERSION_1 ? 0 : 16;
@@ -872,40 +985,48 @@ public PwsRecord ( UUID recID )
    
    /**
     * Helper to calculate <code>getBlockedDataSize()</code>; adds the
-    * storable size of a text field, which may be <code>String</code> or 
-    * <code>PwsPassphrase</code>. 
+    * store size of a text field, which may be a <code>String</code> or 
+    * a <code>PwsPassphrase</code>. 
     * 
-    * @param sum sum so far
-    * @param field <code>String</code> or <code>PwsPassphrase</code>
-    * @param format format of the persistent state
-    * @param charset encoding used on the field's text 
+    * @param sum long, sum so far
+    * @param field <code>String</code> or <code>PwsPassphrase</code>, 
+    *        may be null
+    * @param format int, format version of the persistent state
+    * @param charset String, charset name used for encoding text 
     * 
     * @return sum + size of store data block of the parameter record field
-    * @throws IllegalCharsetNameException if charset is unknown to the executing VM
-    * @since 2-0-0   
+    * @throws IllegalCharsetNameException if charset is unknown to the executing
+    *         VM
     */
-   private long fieldBlockSizeUpdate ( long sum, Object field, int format, String charset )
+   private static long fieldBlockSizeUpdate ( long sum, Object field, 
+		                                      int format, String charset )
    {
       byte[] data ;
       
-      if ( field != null )
-      {
-         if ( field instanceof String )
-            try { data = ((String)field).getBytes( charset ); }
-            catch ( UnsupportedEncodingException e )
-            { throw new IllegalCharsetNameException( charset ); }
-         else if ( field instanceof PwsPassphrase )
+      if ( field != null ) {
+         if ( field instanceof String ) {
+            try { 
+            	data = ((String)field).getBytes( charset );
+            } catch ( UnsupportedEncodingException e ) { 
+               throw new IllegalCharsetNameException( charset ); 
+            }
+         } else if ( field instanceof PwsPassphrase ) {
             data = ((PwsPassphrase)field).getBytes( charset );
-         else if ( field instanceof PwsRawField )
+         } else if ( field instanceof PwsRawField ) {
             data = ((PwsRawField)field).getData();
-         else throw new IllegalStateException( "illegal parameter type FIELD" ); 
+         } else if ( field instanceof KeyStroke ) {
+             data = new byte[4];
+         } else { 
+        	throw new IllegalStateException( "illegal FIELD parameter type" );
+         }
 
          sum += PwsRawField.pwsFieldBlockSize( data.length, format );
          Util.destroyBytes( data );
-      }
-      else if ( format < Global.FILEVERSION_3 )
-         sum += 16;
 
+      // for null fields
+      } else if ( format < Global.FILEVERSION_3 ) {
+         sum += 16;
+      }
       return sum;
    }
    
@@ -913,9 +1034,10 @@ public PwsRecord ( UUID recID )
    /**
     * Returns the total data size of all unknown fields in this record.
     * (This refers to blocked data size according to the specified file format.)
-    * @param format the format version of the persistent state to be considered
-    * @return long unknown data size
-    * @since 2-0-0 
+    * 
+    * @param format int, the format version of the persistent state to be 
+    *        considered
+    * @return long, data size of "unknown" fields
     */
    public long getUnknownFieldSize ( int format )
    {
@@ -927,38 +1049,40 @@ public PwsRecord ( UUID recID )
     */
    public void clearExtraFields ()
    {
-      if ( otherValues != null )
+      if ( otherValues != null ) {
          otherValues.clear();
+      }
    }
    
-   /** Returns a copy of a field value from the "unknown" field list of this record 
-    *  that matches the given field identity code.
+   /** Returns a copy of a field value from the "unknown" field list of this 
+    * record that matches the given field type code.
     *  
-    * @param id identity of field type (0..255)
-    * @return byte[] cleartext field value or <b>null</b> if field is not available
-    * @since 0-4-0
+    * @param type int, field type number (0..255)
+    * @return byte[], cleartext field value or <b>null</b> if field is not 
+    *         available
     */
-   public byte[] getExtraField ( int id )
+   public byte[] getExtraField ( int type )
    {
       PwsRawField fld;
       
-      if ( otherValues != null && (fld = otherValues.getField( id )) != null )
+      if ( otherValues != null && (fld = otherValues.getField( type )) != null )
          return fld.getData();
-      
       return null ; 
    }
    
    /** Returns a normalised version of the parameter String value.
     *  For a value not <b>null</b>: trims the value, and if the result equals
     *  the empty string, the value is transformed into a <b>null</b> value. 
+    *  
+    *  @return String normalised value or <b>null</b>
     */ 
-   private String transformedStringParam ( String param )
+   protected static String normalisedStringParam ( String param )
    {
-      if ( param != null )
-      {
+      if ( param != null ) {
          param = param.trim();
-         if ( param.equals("") )
+         if ( param.length() == 0 ) {
             param = null;
+         }
       }
       return param;
    }
@@ -967,7 +1091,7 @@ public PwsRecord ( UUID recID )
     *  any field setup will not cause the record modify time (MODIFYTIME) to 
     *  get updated.
     * 
-    *  @param b <b>true</b> == init phase active
+    *  @param b boolean, <b>true</b> == init phase active
     */ 
    public void setInitialize ( boolean b )
    {
@@ -975,36 +1099,36 @@ public PwsRecord ( UUID recID )
    }
    
    /** Returns the RECORD-ID field of this record as a <code>UUID</code> object.
+    * 
+    * @return <code>UUID</code>
     */
    public UUID getRecordID ()
    {
       return recordID;
    }
 
-   /** Sets the RECORD-ID field of this record from the parameter <code>UUID</code>
-    *  value. Should be used with great care! (This does not update any time fields.)
+   /** Sets the RECORD-ID field of this record from the parameter <code>UUID
+    *  </code> value. Should be used with great care! (This does not update any
+    *  time fields.)
     *  
-    * @param uuid the new Record-ID for this record; must not be <b>null</b>
-    * @throws NullPointerException if <code>uuid</code> is <b>null</b>
+    * @param uuid <code>UUID</code>, the new Record-ID value
+    * @throws NullPointerException if parameter is <b>null</b>
     */
    public void setRecordID ( UUID uuid )
    {
-      UUID old;
-      
       if ( uuid == null )
          throw new NullPointerException();
       
-      old = recordID; 
+      UUID old = recordID; 
       recordID = uuid;
       Log.log( 4, "(PwsRecord) set record-ID to: " + recordID + ", " + old );
    }
    
    /** Returns the import status. If this record was imported by the 
     *  <code>PwsRecordList.merge()</code> method, it will carry one 
-    *  of the status values IMPORTED or IMPORTED_CONFLICT.
+    *  of the status flags IMPORTED or IMPORTED_CONFLICT.
     * 
-    *  @return record's import status (0 for not imported)
-    *  @since 0-3-0
+    *  @return int, record's import status (0 for no flag)
     */ 
    public int getImportStatus ()
    {
@@ -1012,28 +1136,36 @@ public PwsRecord ( UUID recID )
    }
    
    /** Sets the import status of this record.
-    *  @since 0-3-0
-    *  */
+    * 
+    * @param v int, the import status flag to be set
+    */
    public void setImportStatus ( int v )
    {
       importStatus = v;
    }
    
 /**
- * Whether this record equals to the parameter record object.
+ * Whether this record equals the parameter object.
  * 
- * @param obj object of type <code>PwsRecord</code> (may be <b>null</b>)
- * @return <b>true</b> if and only if the parameter compare object is not <b>null</b>
- *         and the RECORD-ID fields of both records are equal 
+ * @param obj <code>Object</code>, compare object, may be <b>null</b>
+ * @return <b>true</b> if and only if the parameter compare object is a
+ * 			<code>PwsRecord</code> with RECORD-ID same as this record's ID 
  */
-   public boolean equals ( Object obj )
+   @Override
+public boolean equals ( Object obj )
    {
-      return obj != null && ((PwsRecord)obj).recordID.equals( recordID );
+	   if ( obj == null || !(obj instanceof PwsRecord)) {
+		   return false;
+	   }
+      return recordID.equals( ((PwsRecord)obj).recordID );
    }
 
 /** A hashcode value coherent with the <code>equals</code> function.
+ * 
+ * @return int
  */   
-   public int hashCode ()
+   @Override
+public int hashCode ()
    {
       return recordID.hashCode();
    }
@@ -1041,40 +1173,40 @@ public PwsRecord ( UUID recID )
    /**
     * A String representation of this record. Renders the Record-ID.
     * <br>Example/format: "{01234567-89ab-cdef-0123-456789abcdef}" 
+    * 
+    * @return String
     */
-   public String toString ()
+   @Override
+public String toString ()
    {
       return recordID.toString();
    }
    
    /**
-    * Returns a CRC checkvalue for the contents of this record.
-    * (It may not be assumed that this value is identical over different
-    * releases of this software package. It may be assumed that it is identical
-    * over different program sessions with the same software package.)
+    * Returns a CRC checksum value for the contents of this record. The sum 
+    * includes the record-ID value.
+    * <p><small>It may not be assumed that this value is identical over 
+    * different releases of this software package. It may be assumed that it is
+    * identical over different program sessions with the same software package.
+    * </small>
     * 
-    * @return CRC32 integer incorporating all variable record elements 
+    * @return int, CRC32 value incorporating all variable record elements 
     */
    public int getCRC ()
    {
-      ByteArrayOutputStream output;
-      DataOutputStream out;
-      PwsRawField ufld;
-      Iterator it;
       CRC32 crc = new CRC32();
    
-      output = new ByteArrayOutputStream();
-      out = new DataOutputStream( output );
+      ByteArrayOutputStream output = new ByteArrayOutputStream();
+      DataOutputStream out = new DataOutputStream( output );
       
       try {
          out.write( recordID.getBytes() );
    
-         if ( password != null )
+         if ( password != null ) {
             // secure integration of a password value crc
             out.writeInt( password.hashCode() );
-   
-         if ( passPolicy != null )
-         {
+         }
+         if ( passPolicy != null ) {
             out.writeInt( passPolicy.getIntForm() );
             out.writeChars( new String( passPolicy.getActiveSymbols() ));
          }
@@ -1084,7 +1216,9 @@ public PwsRecord ( UUID recID )
          out.writeLong( modifyTime );
          out.writeLong( passLifeTime );
          out.writeLong( passModTime );
-   
+         out.writeInt( expiryInterval );
+         out.writeBoolean( protectedEntry );
+
          if ( title != null )
             out.writeChars( title );
          if ( email != null )
@@ -1101,18 +1235,20 @@ public PwsRecord ( UUID recID )
             out.writeInt( url.hashCode() );
          if ( autotype != null )
             out.writeChars( autotype );
+         if ( passPolicyName != null )
+             out.writeChars( passPolicyName );
+         if ( keyboardShortcut != null )
+             out.writeInt( keyboardShortcut.hashCode() );
 
-         if ( (it = getUnknownFields()) != null )
-            while ( it.hasNext() )
-            {
-               ufld = (PwsRawField)it.next();
-               out.write( ufld.type );
-               out.write( ufld.data );
-            }
+         // unknown fields
+         for ( Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
+        	PwsRawField ufld = it.next();
+            out.write( ufld.type );
+            out.write( ufld.data );
+         }
          out.close();
-      }
-      catch ( IOException e )
-      {
+         
+      } catch ( IOException e ) {
          System.out.println( "*** ERROR in PwsRecord CRC : " + e );
          return -1;
       }
@@ -1123,27 +1259,20 @@ public PwsRecord ( UUID recID )
 
    /**
     * Renders a unique signature value of this record and its actual data state.
-    * Returns a SHA-256 checksum over all data content of this record. (Note that
-    * UUID is included in the integration, hence each record is guaranteed an 
-    * individual value, regardless of its data content.  
-    * It may be assumed - although there is no guarantee - that this value is identical 
-    * over different releases of this software package and different sessions of a
-    * program running this package.)
+    * Returns a SHA-256 checksum over all data content of this record, including
+    * its UUID value. (Each record is guaranteed an individual value, 
+    * regardless of its data content.)  
+    * <p>There is no guarantee that this value is identical over different 
+    * releases of this software, however, it may be assumed that it is
+    * identical over different program sessions running the same package.
     * 
     * @return byte[] 32 byte signature value (SHA-256 digest) 
-    * @since 2-0-0
     */
    public byte[] getSignature ()
    {
-      ByteArrayOutputStream output;
-      DataOutputStream out;
-      PwsRawField ufld;
-      Iterator it;
-      SHA256 sha;
-
-      output = new ByteArrayOutputStream();
-      out = new DataOutputStream( output );
-      sha = new SHA256();
+      ByteArrayOutputStream output = new ByteArrayOutputStream();
+      DataOutputStream out = new DataOutputStream( output );
+      SHA256 sha = new SHA256();
       
       try {
          out.write( recordID.getBytes() );
@@ -1152,8 +1281,10 @@ public PwsRecord ( UUID recID )
             // secure integration of a password value crc
             out.writeInt( password.hashCode() );
 
-         if ( passPolicy != null )
+         if ( passPolicy != null ) {
             out.writeInt( passPolicy.getIntForm() );
+            out.writeChars( new String( passPolicy.getActiveSymbols() ));
+         }
 
          out.writeLong( accessTime );
          out.writeLong( createTime );
@@ -1161,6 +1292,7 @@ public PwsRecord ( UUID recID )
          out.writeLong( passLifeTime );
          out.writeLong( passModTime );
          out.writeInt( expiryInterval );
+         out.writeBoolean( protectedEntry );
 
          if ( title != null )
             out.writeChars( title );
@@ -1172,17 +1304,27 @@ public PwsRecord ( UUID recID )
             out.writeInt( username.hashCode() );
          if ( notes != null )
             out.writeInt( notes.hashCode() );
-         if ( (it = getUnknownFields()) != null )
-            while ( it.hasNext() )
-            {
-               ufld = (PwsRawField)it.next();
-               out.write( ufld.type );
-               out.write( ufld.data );
-            }
+         if ( history != null )
+             out.writeInt( history.hashCode() );
+         if ( url != null )
+             out.writeInt( url.hashCode() );
+         if ( autotype != null )
+             out.writeChars( autotype );
+         if ( passPolicyName != null )
+             out.writeChars( passPolicyName );
+         if ( keyboardShortcut != null )
+             out.writeChars( keyboardShortcut.toString() );
+         
+         
+         // unknown fields
+         for ( Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
+        	PwsRawField ufld = it.next();
+            out.write( ufld.type );
+            out.write( ufld.data );
+         }
          out.close();
-      }
-      catch ( IOException e )
-      {
+
+      } catch ( IOException e ) {
          System.out.println( "*** ERROR in creating PwsRecord Signature : " + e );
          return null;
       }
@@ -1196,7 +1338,6 @@ public PwsRecord ( UUID recID )
  * Returns the AUTOTYPE text string of this record or <b>null</b> if undefined.
  * 
  * @return String value or <b>null</b>
- * @since 2-0-0
  */
 public String getAutotype ()
 {
@@ -1205,24 +1346,22 @@ public String getAutotype ()
 
 /**
  * Set the AUTOTYPE text field of this record to the parameter value.
- * <b>null</b> or empty string will clear the field.
+ * Use <b>null</b> or empty string to clear the field.
  * 
  * @param value String 
- * @since 2-0-0
  */
 public void setAutotype ( String value )
 {
    String old = autotype;
-   autotype = transformedStringParam( value );
+   autotype = normalisedStringParam( value );
    controlValue( old, autotype, "AUTOTYPE" );
 }
 
 /**
  *  Content of the password HISTORY textfield as a passphrase.
- *  Returns <b>null</b> if the field is undefined.
+ *  Returns <b>null</b> if this field is undefined.
  *  
- *  @return <code>PwsPassphrase</code>
- *  @since 2-0-0
+ *  @return <code>PwsPassphrase</code> or <b>null</b>
  */
 public PwsPassphrase getHistoryPws ()
 {
@@ -1230,53 +1369,52 @@ public PwsPassphrase getHistoryPws ()
 }
 
 /**
- *  Content of the password HISTORY textfield as a text string.
- *  Returns <b>null</b> if the field is undefined.
+ *  Content of the password HISTORY text field as a string or
+ *  <b>null</b> if this field is undefined.
+ *  <p>(See PWS format document for details of the content.) 
  * 
- * @return String history value (PW3)
- * @since 2-0-0
+ * @return String history value or <b>null</b>
  */
 public String getHistory ()
 {
    return history == null ? null : history.getString();
 }
 
-/** Sets the value of the HISTORY field (PW3) of this record to the parameter 
- *  <code>String</code> value. An empty string will render equivalent to 
+/** Sets the value of the HISTORY field of this record to the parameter 
+ *  <code>String</code> value. An empty string is equivalent to 
  *  <b>null</b>. Use <b>null</b> to clear the field.
+ *  <p>(See PWS format document for details of the content.) 
  *  
- *  @param value String history value (PW3)
- *  @since 2-0-0
+ *  @param value String history value or null
  */
 public void setHistory ( String value )
 {
-   value = transformedStringParam( value );
+   value = normalisedStringParam( value );
    setHistory( value == null ? null : new PwsPassphrase( value ) );
 }
 
 /**
- * Sets the value of the HISTORY field  (PW3) of this record to the value 
+ * Sets the value of the HISTORY field  of this record to the value 
  *  represented by the parameter <code>PwsPassphrase</code>.
  *  A passphrase of length zero is equivalent to <b>null</b>.
  *  Use <b>null</b> to clear the field.
+ *  <p>(See PWS format document for details of the content.) 
  *  
- * @param value <code>PwsPassphrase</code>
- * @since 2-0-0
+ * @param value <code>PwsPassphrase</code> or null
  */
 public void setHistory ( PwsPassphrase value )
 {
-   if ( voidPassphrase( value ) )
+   if ( isVoidPassphrase( value ) )
       value = null;
    controlValue( history, value, "HISTORY" );
    history = value == null ? null : (PwsPassphrase)value.clone();
 }
 
 /**
- *  Content of the URL textfield as a passphrase.
+ *  Content of the URL text field as a passphrase.
  *  Returns <b>null</b> if the field is undefined.
  *  
- *  @return <code>PwsPassphrase</code>
- *  @since 2-0-0
+ *  @return <code>PwsPassphrase</code> or <b>null</b>
 */
 public PwsPassphrase getUrlPws ()
 {
@@ -1284,12 +1422,11 @@ public PwsPassphrase getUrlPws ()
 }
 
 /**
- *  Content of the URLFIELD textfield as a text string.
- *  Returns <b>null</b> if the field is undefined.
+ *  Content of the URLFIELD text field as a text string or
+ *  <b>null</b> if this field is undefined.
  * 
  * @return String or <b>null</b>
-  * @since 2-0-0
-*/
+ */
 public String getUrl ()
 {
    return url == null ? null : url.getString();
@@ -1301,7 +1438,7 @@ public String getUrl ()
  */
 public void setUrl ( String value )
 {
-   value = transformedStringParam( value );
+   value = normalisedStringParam( value );
    setUrl( value == null ? null : new PwsPassphrase( value ) );
 }
 
@@ -1311,13 +1448,13 @@ public void setUrl ( String value )
  *  A passphrase of length zero is equivalent to <b>null</b>.
  *  Use <b>null</b> to clear the field.
  *  
- * @param value <code>PwsPassphrase</code> containing URL string
- * @since 2-0-0
+ * @param value <code>PwsPassphrase</code> or <b>null</b>
  */
 public void setUrl ( PwsPassphrase value )
 {
-   if ( voidPassphrase( value ) )
+   if ( isVoidPassphrase( value ) ) {
       value = null;
+   }
    controlValue( this.url, value, "URLFIELD" );
    this.url = value == null ? null : (PwsPassphrase)value.clone();
 }
@@ -1326,17 +1463,17 @@ public void setUrl ( PwsPassphrase value )
  * Returns the string expression of the parent group to the
  * given group name or <b>null</b>. 
  * 
- * @param group String correct group name, including empty string,
+ * @param group String correct group name (including empty string)
  *        or <b>null</b>
- * @return group name or <b>null</b> if no parent exists
+ * @return String, group name or <b>null</b> if no parent exists
  */
 public static String groupParent ( String group )
 {
-   if ( group != null && group.length() != 0 )
-   {
+   if ( group != null && group.length() != 0 ) {
       int i = group.lastIndexOf('.');
-      if ( i > 0 )
+      if ( i > 0 ) {
          return group.substring(0, i);
+      }
    }
    return null;   
 }
@@ -1344,27 +1481,26 @@ public static String groupParent ( String group )
 /** Whether this record bears a protection marker, like e.g.
  * for a read-only interpretation.
  * 
- * @return boolean
+ * @return boolean true == protected flag set
  */
-public boolean isProtectedEntry ()
+public boolean getProtectedEntry ()
 {
    return protectedEntry;
 }
 
 /** Set the "Protected Entry" marker for this record.
  * 
- * @param protectedEntry boolean <b>true</b> == protected entry
+ * @param protectedEntry boolean <b>true</b> == protected
  */
 public void setProtectedEntry ( boolean protectedEntry )
 {
    boolean oldValue = this.protectedEntry;
-   
    this.protectedEntry = protectedEntry;
    controlValue( new Boolean(oldValue), new Boolean(protectedEntry), "PROTECTED_ENTRY" );
 }
 
-/** If the password policy for this record was set by a policy name
- * (in contrast to the policy directly) then the name is returned here,
+/** If the password policy for this record is defined by a policy name
+ * (rather than an individual policy) then the name is returned here,
  * <b>null</b> otherwise.
  * 
  * @return String Policy Name or <b>null</b> if undefined
@@ -1377,15 +1513,38 @@ public String getPassPolicyName ()
 /** Sets a Password Policy Name for this record. This attempts to define
  * the password policy via a template name, ranking over a directly supplied
  * policy. (The template is to be defined in a file header value! 
- * The name here, however, can be supplied freely.)
+ * The name here, however, can be supplied without control.)
  *  
- * @param policyName String policy name
+ * @param policyName String policy name or <b>null</b> to clear
  */
 public void setPassPolicyName ( String policyName )
 {
+   if (policyName != null && policyName.isEmpty()) {
+	   policyName = null;
+   }
    String oldValue = this.passPolicyName;
    this.passPolicyName = policyName;
    controlValue( oldValue, policyName, "PASSPOLICY_NAME" );
+}
+
+/** Sets the keyboard shortcut value for this record as a <code>KeyStroke</code>
+ * value. 
+ * 
+ * @param shortcut <code>KeyStroke</code> shortcut key or <b>null</b>
+ */
+public KeyStroke getKeyboardShortcut () 
+{
+	return keyboardShortcut == null ? null : keyboardShortcut;
+}
+
+/** Sets the keyboard shortcut value for this record. Use <b>null</b> to clear.
+ * 
+ * @param shortcut <code>KeyStroke</code> or <b>null</b>
+ */
+public void setKeyboardShortcut ( KeyStroke shortcut ) {
+	KeyStroke oldValue = keyboardShortcut;
+	keyboardShortcut = shortcut == null ? null : shortcut;
+    controlValue( oldValue, keyboardShortcut, "KEYBOARD_SHORTCUT" );
 }
 
 }

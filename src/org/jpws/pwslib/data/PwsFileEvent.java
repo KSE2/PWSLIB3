@@ -44,6 +44,7 @@ import java.util.EventObject;
  */
 public class PwsFileEvent extends EventObject
 {
+   // standard event types for the PWSLIB package
    public static final int RECORD_ADDED = 1;
    public static final int RECORD_REMOVED = 2;
    public static final int RECORD_UPDATED = 3;
@@ -69,22 +70,24 @@ public PwsFileEvent ( Object source, int type, PwsRecord ref )
 {
    super( source );
 
-   if ( type < 1 | type > 9 )
-      throw new IllegalArgumentException("illegal event type");
-   
    eventType = type;
    record = ref;
 }  // constructor
 
 /** The record involved in the event or <b>null</b> if unavailable. 
- *  By convention the returned record is a clone of the corresponding
- *  record in the list. */ 
+ *  The returned record is a clone of the corresponding record in the list.
+ *  
+ *  @return <code>PwsRecord</code> or null
+ */ 
 public PwsRecord getRecord ()
 {
    return record;
 }
 
-/** The event type. */ 
+/** Returns the event type.
+ * 
+ * @return int event type 
+ */ 
 public int getType ()
 {
    return eventType;

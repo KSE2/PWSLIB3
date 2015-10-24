@@ -44,7 +44,7 @@ public class Log
    public static PrintStream err = System.err;
    
    
-   private static String logName = "jpws-b";
+   private static String logName = "";
    private static int debugLevel = DEFAULT_DEBUGLEVEL;
    private static int logLevel = DEFAULT_LOGLEVEL;
    private static boolean debug = true;
@@ -57,7 +57,7 @@ public class Log
       excludeList.add( "(PwsRecord)" );
       excludeList.add( "(CryptoRandom" );
       excludeList.add( "(PwsFileFactory" );
-      excludeList.add( "(PwsRecList" );
+//      excludeList.add( "(PwsRecList" );
 //      excludeList.add( "(MenuHandler" );
       excludeList.add( "(DisplayManager" );
       excludeList.add( "(ButtonBarDialog" );
@@ -111,14 +111,12 @@ public static void setLogLevel ( int v ) {
 }
 
 /** The current logging report level.
- *  @since 0-3-0
  */
 public static int getLogLevel () {
    return logLevel;
 }
 
 /** The current debugging report level.
- *  @since 0-3-0
  */
 public static int getDebugLevel () {
    return debugLevel;

@@ -30,10 +30,10 @@ import org.jpws.pwslib.global.PassphraseUtils;
 import org.jpws.pwslib.global.Util;
 
 /**
- * This class defines a policy that will be used to generate a random password.
+ * This class defines a policy that is used to generate a random password.
  * The policy defines how long the generated password should be and which
- * character classes it should contain. The maximum password length is 256;
- * the possible character classes are:
+ * character classes it should contain. The maximum password length is 256.
+ * The possible character classes are:
  * <p>
  * <sl>
  *   <li>Upper case letters,
@@ -42,13 +42,16 @@ import org.jpws.pwslib.global.Util;
  *   <li>certain symbol characters.
  * </sl>
  * </p>
- * <p>In addition it also specifies whether certain confusable characters should
- * be removed from the password.  These are characters such as '1' and 'I'.
+ * <p>In addition it also specifies whether certain mistakable characters should
+ * be removed from the password. These are e.g. characters such as '1' and 'I'.
  */
 public class PwsPassphrasePolicy implements Cloneable
 {
    /** The maximum password length this policy can set up. Value is 256. */
    public static final int MAXKEYLENGTH = 256;
+   
+   /** The default password length for this policy (8 characters). */
+   public static final int DEFAULT_KEYLENGTH = 8;
    
 	/**
 	 * <code>true</code> if generated password should contain lowercase characters.
@@ -135,10 +138,11 @@ public class PwsPassphrasePolicy implements Cloneable
     */
    public PwsPassphrasePolicy( int value )
    {
-      if ( value > 0 )
+      if ( value > 0 ) {
          setFromInt( value );
-      else
+      } else {
          defaults();
+      }
    }
 
    /** 
@@ -148,20 +152,20 @@ public class PwsPassphrasePolicy implements Cloneable
     */
 	public PwsPassphrasePolicy ( String value )
    {
-	   if ( value != null )
-	   {
-	      if ( value.length() > 19 )
+	   if ( value != null ) {
+	      if ( value.length() > 19 ) {
 	         setFromInternal( value );
-	      else
+	      } else {
 	         setFromModern( value );
-	   }
-	   else
+	      }
+	   } else {
 	      defaults();
+	   }
    }
 
    private void defaults ()
    {
-      length = 8;
+      length = DEFAULT_KEYLENGTH;
       lowercaseChars = true;
       uppercaseChars = true;
       digitChars = true;
@@ -179,7 +183,6 @@ public class PwsPassphrasePolicy implements Cloneable
 	public boolean isValid()
 	{
 		int		count	= 0;
-
 		if ( lowercaseChars )	++count;
 		if ( uppercaseChars )	++count;
 		if ( digitChars )		++count;
@@ -207,11 +210,9 @@ public class PwsPassphrasePolicy implements Cloneable
    /** Completely sets up this policy from an integer representation. */ 
    public void setFromInt ( int v )
    {
-      int h;
-      
       length = v & 0xffff;
       
-      h = ( v >>> 16 ) & 0xffff;
+      int h = ( v >>> 16 ) & 0xffff;
       lowercaseChars = ( h & 1 ) == 1;
       uppercaseChars = ( h & 2 ) == 2;
       digitChars = ( h & 4 ) == 4;
@@ -223,11 +224,9 @@ public class PwsPassphrasePolicy implements Cloneable
 	/** Returns an integer representation of this policy. */
    public int getIntForm ()
    {
-      int v, h;
+      int v = length;
       
-      v = length;
-      
-      h = 0;
+      int h = 0;
       if ( lowercaseChars )
          h |= 1; 
       if ( uppercaseChars )
@@ -246,46 +245,41 @@ public class PwsPassphrasePolicy implements Cloneable
    }
    
    /** Returns the latest "modern" representation of this policy. 
-    * (This is used in PWS Format 3.6 and does NOT include the "own symbols" content)
+    * (This is used in PWS Format 3.6 and does NOT include the "own symbols" 
+    * content)
+    * 
     * @return String of length 19
     */
    public String getModernForm ()
    {
-      String hstr, v;
-      int h;
-      
-/* previous code (correct definition version)
-      // logic code
-      h = 0;
-      if ( hexadecimalChars )
-      {
-         h = 0x0800;
-      }
-      else
-      {
-         if ( lowercaseChars )
-            h = 0x8000; 
-         if ( uppercaseChars )
-            h |= 0x4000; 
-         if ( digitChars )
-            h |= 0x2000; 
-         if ( symbolChars )
-            h |= 0x1000; 
-         if ( easyview )
-            h |= 0x0400;
-         if ( pronounceable & !easyview )
-            h |= 0x0200;
-      }
-*/
+// previous code (correct definition version)
+//      // logic code
+//      int h = 0;
+//      if ( hexadecimalChars ) {
+//         h = 0x0800;
+//      } else {
+//         if ( lowercaseChars )
+//            h = 0x8000; 
+//         if ( uppercaseChars )
+//            h |= 0x4000; 
+//         if ( digitChars )
+//            h |= 0x2000; 
+//         if ( symbolChars )
+//            h |= 0x1000; 
+//         if ( easyview )
+//            h |= 0x0400;
+//         if ( pronounceable & !easyview )
+//            h |= 0x0200;
+//      }
+
       // correction of unambiguous case setting in HEXADECIMAL priority mode
-      if ( hexadecimalChars & (lowercaseChars == uppercaseChars) )
-      {
+      if ( hexadecimalChars & (lowercaseChars == uppercaseChars) ) {
          lowercaseChars = true;
          uppercaseChars = false;
       }
 
       // logic code
-      h = 0;
+      int h = 0;
       if ( hexadecimalChars )
          h = 0x0800;
       if ( lowercaseChars )
@@ -300,10 +294,10 @@ public class PwsPassphrasePolicy implements Cloneable
          h |= 0x0400;
       if ( pronounceable & !easyview )
          h |= 0x0200;
-      v = Util.intToHex( h ).substring(4);
+      String v = Util.intToHex( h ).substring(4);
       
       // value length code (3 unsigned hex digits)
-      hstr = Util.intToHex( length ).substring(5);
+      String hstr = Util.intToHex( length ).substring(5);
       v += hstr;
       
       // minimum occurrences values 
@@ -316,38 +310,38 @@ public class PwsPassphrasePolicy implements Cloneable
    }
    
    /** Returns an "internal" serialised format of this policy
-    * usable in programmatic context (no canonical format!).
+    * usable in programmatic context (not a canonical format!).
     * 
     * @return String internal text representation of pw-policy
     */
    public String getInternalForm ()
    {
-      String hstr, lead;
+      // leading canonical format (without own symbols)
+      String lead = getModernForm();
       
-      lead = getModernForm();  // leading canonical format (without own symbols)
-      if ( hasOwnSymbols() )
-      {
+      // add "own symbols"
+      if ( hasOwnSymbols() ) {
          lead += Util.shortToHex( ownSymbols.length ) + new String(ownSymbols);  
-      }
-      else
+      } else {
          lead += "0000";
-      
+      }
       return lead;
    }
    
    /** Completely sets up this policy from a "modern" representation 
     * (as used in PWS format 3.6). If the value is corrupted, the class'es
-    * default values are set. Reads the first 19 bytes of the input. */ 
+    * default values are set. Reads the first 19 bytes of the input.
+    * 
+    *  @param v String modern string representation of policy
+    */ 
    public void setFromModern ( String v )
    {
-      int h;
-      
       if ( v == null )
          throw new NullPointerException();
       
       try {
          // read the definiens values
-         h = Integer.parseInt( v.substring( 0, 4 ), 16 );
+         int h = Integer.parseInt( v.substring( 0, 4 ), 16 );
          length = Integer.parseInt( v.substring( 4, 7 ), 16 );
          minimumLowercase = Integer.parseInt( v.substring( 7, 10 ), 16 );
          minimumUppercase = Integer.parseInt( v.substring( 10, 13 ), 16 );
@@ -363,56 +357,53 @@ public class PwsPassphrasePolicy implements Cloneable
          easyview = ( h & 0x0400 ) == 0x0400;
          pronounceable = ( h & 0x0200 ) == 0x0200;
 
-         if ( hexadecimalChars & (lowercaseChars == uppercaseChars) )
-         {
+         if ( hexadecimalChars & (lowercaseChars == uppercaseChars) ) {
             lowercaseChars = true;
             uppercaseChars = false;
          }
-/*// previous method (correct to definition)         
-         // analyse
-         hexadecimalChars = ( h & 0x0800 ) == 0x0800;
-         if ( !hexadecimalChars )
-         {
-            lowercaseChars = ( h & 0x8000 ) == 0x8000;
-            uppercaseChars = ( h & 0x4000 ) == 0x4000;
-            digitChars = ( h & 0x2000 ) == 0x2000;
-            symbolChars = ( h & 0x1000 ) == 0x1000;
-            easyview = ( h & 0x0400 ) == 0x0400;
-            pronounceable = ( h & 0x0200 ) == 0x0200;
-         }
-*/         
+// previous method (correct to definition)         
+//         // analyse
+//         hexadecimalChars = ( h & 0x0800 ) == 0x0800;
+//         if ( !hexadecimalChars )
+//         {
+//            lowercaseChars = ( h & 0x8000 ) == 0x8000;
+//            uppercaseChars = ( h & 0x4000 ) == 0x4000;
+//            digitChars = ( h & 0x2000 ) == 0x2000;
+//            symbolChars = ( h & 0x1000 ) == 0x1000;
+//            easyview = ( h & 0x0400 ) == 0x0400;
+//            pronounceable = ( h & 0x0200 ) == 0x0200;
+//         }
+         
+      } catch ( Exception e ) { 
+    	  defaults(); 
       }
-      catch ( Exception e )
-      { defaults(); }
    }
    
    /** Completely defines this policy by reading from the
-    * "internal" serialised format.
+    * "internal" serialised format (non-canonical).
     * 
     * @param v String internal format serialisation of policy 
     */
    public void setFromInternal ( String v )
    {
-      int len;
-      String hstr;
-      
       // use the leading "modern" form
       setFromModern( v );
       
       // read own symbols set
       try {
          // read length info
-         len = Integer.parseInt( v.substring( 19, 23 ), 16 );
-         hstr = v.substring( 23, 23+len );
+         int len = Integer.parseInt( v.substring( 19, 23 ), 16 );
+         String hstr = v.substring( 23, 23+len );
          ownSymbols = len == 0 ? null : hstr.toCharArray();
+         
+      } catch ( Exception e ) { 
+    	  e.printStackTrace(); 
       }
-      catch ( Exception e )
-      { e.printStackTrace(); }
    }
    
    /** Returns the set of personal symbols for this passphrase policy.
     * 
-    * @return char[] with symbols or <b>null</b> if feature is void 
+    * @return char[] with symbols or <b>null</b> if unavailable
     */
    public char[] getOwnSymbols ()
    {
@@ -454,22 +445,22 @@ public class PwsPassphrasePolicy implements Cloneable
    
    public Object clone ()
    {
-      try { return super.clone(); }
-      catch ( CloneNotSupportedException e )
-      { return null; }
+      try { 
+    	  return super.clone(); 
+      } catch ( CloneNotSupportedException e ) { 
+    	  return null; 
+      }
    }
    
 	/**
-	 * Returns a <code>String</code> representation of the object, which is meant
-    * to be user legible.
+	 * Returns a <code>String</code> representation of the object, which is 
+	 * meant to be human readable.
 	 * 
-	 * @return A <code>String</code> representation of the object.
+	 * @return <code>String</code> representation of the object.
 	 */
 	public String toString()
 	{
-		StringBuffer	sb;
-
-		sb = new StringBuffer();
+		StringBuffer sb = new StringBuffer();
 
 		sb.append( "PwsPassphrasePolicy{ Length=" );
 		sb.append( length );
@@ -485,8 +476,7 @@ public class PwsPassphrasePolicy implements Cloneable
         sb.append( hexadecimalChars );
 		sb.append( ", Easyview=" );
 		sb.append( easyview );
-		if ( hasOwnSymbols() )
-		{
+		if ( hasOwnSymbols() ) {
 		   sb.append( ", Own Symbols=" );
 		   sb.append( new String( ownSymbols ) );
 		}
@@ -498,12 +488,11 @@ public class PwsPassphrasePolicy implements Cloneable
    /** Whether this policy equals in value another policy. Two policies are equal
     *  if and only if their integer representations are equal.
     * 
-    *  @param obj <code>PwsPassphrasePolicy</code> instance 
+    *  @param obj <code>Object</code>, may be null 
     */
    public boolean equals ( Object obj )
    {
-      if ( obj != null )
-      {
+      if ( obj != null && obj instanceof PwsPassphrasePolicy ) {
          PwsPassphrasePolicy pol = (PwsPassphrasePolicy)obj;
          String symbols = new String ( pol.getActiveSymbols() );
          return pol.getIntForm() == getIntForm() && 
@@ -512,7 +501,8 @@ public class PwsPassphrasePolicy implements Cloneable
       return false; 
    }
    
-   /** <code>equals()</code> compatible hashcode function. */
+   /** <code>equals()</code> compatible hashcode function. 
+    */
    public int hashCode ()
    {
       return getIntForm();

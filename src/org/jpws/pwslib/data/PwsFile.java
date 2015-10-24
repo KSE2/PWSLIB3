@@ -27,70 +27,85 @@ package org.jpws.pwslib.data;
 
 import java.awt.Dimension;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.Collection;
 import java.util.Iterator;
 
 import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.exception.ApplicationFailureException;
+import org.jpws.pwslib.exception.DuplicateEntryException;
+import org.jpws.pwslib.exception.InvalidPassphraseException;
+import org.jpws.pwslib.exception.PasswordSafeException;
 import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
 import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.order.DefaultRecordWrapper;
 import org.jpws.pwslib.persist.ApplicationAdapter;
+import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 
 /**
- *  Top level structure of this library to represent a <i>PasswordSafe</i> (PWS)
- *  database file. 
+ *  Top level structure of this library to represent a <i>Password Safe</i> 
+ *  (PWS) database file. It is both a container for a set of {@link PwsRecord} 
+ *  and a device to communicate the persistent state with external media.
  *  
  *  <p>This class is an extension of a record list ({@link PwsRecordList}),
- * hence data of all records is kept in memory, eventually causing restrictions
- * on the amount of records that can be kept in an application.  
- * The extension deals with all definitions required to represent or create
- * a "persistent state" (PWS file) of a record list on an external medium.
- * It also allows to define a set of up to 255 <b>"header fields"</b> which 
- * are data elements on a list generic level.
+ * hence data of all records are kept in memory, eventually causing restrictions
+ * on the amount of records that can be kept during a program session.  
+ * This class deals with all definitions required to represent, create or handle
+ * a "persistent state" (encrypted PWS file) of a record list on an external 
+ * medium. In addition to the record list, it allows to define a set of up to 
+ * 255 <b>"header fields"</b> which are data elements on a list generic level.
+ * Just as with <code>PwsRecordList</code>, the methods of this class are not
+ * synchronised.
  * 
  * <p><u>Persistent State</u> 
- * <p>The <b><i>persistent state</i></b> is <u>defined</u>/identified by a quadruple: 
- * i) a filename (filepath), 
- * ii) a related IO-context (application adapter),
- * iii) an access passphrase, 
- * and iv) a file format version. 
- * Using {@link ApplicationAdapter} is a fairly abstract conception to access 
- * peripheral media, which can be easily adapted to any user context. The full definition 
- * of a persistent state is however not mandatory to use an instance of <code>PwsFile</code>.
- * This class ensures that there are always valid settings for application adapter and
- * file format.
+ * <p>The <b><i>persistent state</i></b> is defined, in the sense of all
+ * required parameters for an IO-operation, by a quadruple: 
+ * i) the IO-context (application adapter),
+ * ii) the filename (filepath), 
+ * iii) the access passphrase, 
+ * and iv) the file format version. 
+ * It is ensured that there are always valid settings for application adapter 
+ * and file format. The default adapter is <code>Global.getStandardApplication()
+ * </code>.
+ * <p>Using {@link ApplicationAdapter} interface is a fairly abstract conception
+ * to access peripheral media and allows to adapt the services of this class to
+ * any user context. The full definition of a persistent state is however not 
+ * mandatory to use an instance of <code>PwsFile</code>. 
  * 
  * <p><u>File IO:</u> 
- * <p>Persistent states are accessed through data streams which are made
- * available by application adapters. The concrete handling of file-IO
- * and data formatting is handled by class {@link PwsFileFactory}.  
+ * <p>Persistent states (external file data) are accessed through data streams 
+ * which are made available by application adapters. The handling of file-IO
+ * and data formatting is done by class {@link PwsFileFactory}.  
  * To obtain an instance of this class from its persistent state, use the static
- * <code>PwsFileFactory.loadFile()</code> methods. To create a persistent state
+ * methods of class <code>PwsFileFactory</code> or the <code>loadFile()
+ * </code> method of this class. To create a persistent state
  * use the <code>save()</code> or <code>saveCopy()</code> methods of this class 
  * when all required parameters for the persistent state are available.
- * If a loaded file was of a different format version, or some indication of potential
- * data loss occurred during loading, the next save will make an attempt to preserve 
- * the existing file by adding a name extention ".old".
+ * If a loaded file was of a different format version, or some indication of 
+ * potential data loss occurred during loading, the next save will make an 
+ * attempt to preserve the existing file by adding a name extension ".old".
  *
  *  <p><u>File Formats</u>
  * <p>This class now supports reading and writing of all three historical, major 
- * file format versions of <i>PasswordSafe</i>. The following policy is adopted
- * concerning these formats. Files loaded from a persistent state (via <code>
- * PwsFileFactory</code>) feature the format version of the persistent state. 
+ * file format versions of <i>Password Safe</i>. The following policy is adopted
+ * concerning these formats. Files loaded from a persistent state feature the 
+ * format version of the persistent state. 
  * New instances (not loaded) feature the latest available format version.
  * File saving produces an output format version as currently set in the 
- * <code>PwsFile</code> object.
- * At any time the user can modify the file format setting of an instance without 
- * restrictions. Downgrading a file version will, however, likely result in loss
- * of record data that is not supported in the older format.  
+ * <code>PwsFile</code> object. At any time the user can modify the file format
+ * setting of an instance without restrictions. Downgrading a file version may,
+ * however, result in loss of record data that is not supported in the older 
+ * format.  
  *  
  * <p><u>Header Fields</u>
- * <p>Since library version 2-0-0 (and PWS format version 3) a facility for up to
- * 255 data fields, each of free length and type, is supported by <code>PwsFile</code>.
+ * <p>Since PWS format version 3 a facility for up to 255 data fields, each of
+ * free length and type, is supported by <code>PwsFile</code>.
  * This is a handy way of making file generic information available which may be
  * application specific. Through <code>getHeaderFields()</code> the user gets 
  * hold of a {@link HeaderFieldList} containing elements of type
@@ -100,8 +115,9 @@ import org.jpws.pwslib.persist.ApplicationAdapter;
  * this library should not define proprietary fields in the range 0x00 .. 0x7F.
  *  
  * <p><u>User Options:</u>
- * <p>User options take the form of a text string and are now stored as an element 
- * of the header field list (field-ID is <code>PwsFileHeaderV3.JPWS_OPTIONS_TYPE</code>). 
+ * <p>User options take the form of a text string and are now stored as an 
+ * element of the header field list (field-ID is 
+ * <code>PwsFileHeaderV3.JPWS_OPTIONS_TYPE</code>).
  * These options are reflected both into V3 and V2 files. For V2 files 
  * options also may contain the <i>PasswordSafe Preferences</i> (special options 
  * of the program PWS); for V3 files <i>PWS Preferences</i> are stored 
@@ -110,92 +126,71 @@ import org.jpws.pwslib.persist.ApplicationAdapter;
  * 
  * <p><u>Universal Encoding:</u>
  * <p>As of file format version V3 all text data is stored in universal encoding
- * (UTF-8). File format V2 (which is deprecated)
- * stores text in UTF-8 only if "B 24 1" is contained within the <i>PasswordSafe Preferences</i>,
- * otherwise it uses the current JVM default encoding (which may be locale
- * specific).
+ * UTF-8. Previous formats may also refer to the current JVM default encoding. 
  * 
  * @see PwsFileFactory
  * @see ApplicationAdapter
  */
 public class PwsFile extends PwsRecordList implements Cloneable
 {
-   /** Minimum number of security calculation loops for access key verification. 
-    * @since 2-1-0 */
-   private static final int SECURITY_ITERATIONS_MINIMUM = 2048;
+   /** Minimum number of security calculation loops for access key verification.
+   */
+   public static final int SECURITY_ITERATIONS_MINIMUM = 2048;
 
    /** Maximum number of security calculation loops for access key verification. 
-   * @since 2-1-0 */
-   private static final int SECURITY_ITERATIONS_MAXIMUM = 2048 * 2048;
+   */
+   public static final int SECURITY_ITERATIONS_MAXIMUM = 2048 * 2048;
    
    /** 
-    * The application adapter representing the context of the file's
-    * persistency state.
+    * The application adapter representing the context of this file's
+    * persistent state
     */
    private ApplicationAdapter application;
    
-   /** 
-	 * The fully qualified path to the file.
-	 */
+   /** The fully qualified path to the file */
    private String		   filePath;
 
-   /**
-     * The (persistent) file access passphrase.
-     */
+   /** The (persistent) file access passphrase */
    private PwsPassphrase   ps;
 
-   /** 
-    * File version number (major figure).
-    * @since 2-0-0
-    */
-   private int             fileVersionMajor = Global.FILEVERSION_LATEST_MAJOR;
+   /** PWS format version number (major figure) for this file */
+   private int             formatVersionMajor = Global.FILEVERSION_LATEST_MAJOR;
 
-   /** 
-    * File version number (minor figure).
-    * @since 2-2-0
-    */
-   private int             fileVersionMinor = Global.FILEVERSION_LATEST_MINOR;
+   /** PWS format version number (minor figure)  for this file */
+   private int             formatVersionMinor = Global.FILEVERSION_LATEST_MINOR;
 
-   /** 
-    * File version number of the load source.
-    * @since 2-0-0
-    */
+   /** PWS format version number of the load source */
    private int             sourceFormat;
    
-   /** 
-    * Number of calculation loops during file access authentication.
-    * @since 2-1-0
-    */
+   /** Number of calculation loops during file access authentication */
    private int             securityLoops = SECURITY_ITERATIONS_MINIMUM;
    
-   /**
-    * Whether the V3 file trailing checksum was verified OK.
-    * (False for V2 and V1 files.) 
+   /** Whether the V3 file trailing checksum was verified OK;
+    * (true for V2 and V1 files) 
     */
    private boolean         checksumOK = true;
 
-   /** 
-    * A list of rawfields forming the file's header fields.
-    * (This is a feature of the V3 file format.) 
-    * @since 2-0-0
+   /** A list of raw-fields representing the file's header fields;
+    * (feature of the V3 file format) 
     */
    private HeaderFieldList     headerFields = new PFHeaderFieldList(); 
    
    /**
-    * Flag indicating whether an attempt should be made to preserve an 
-    * existing persistent file state by renaming it as ".old" copy 
-    * during any save operation.
+    * Flag indicating whether an attempt should be made to preserve the 
+    * current persistent file state by renaming it as ".old" copy 
+    * during next save operation.
     */
    private boolean         preserveOld;
 
    
 	/**
 	 * Constructs a new, empty PWS database for the standard
-    * IO-context (by default the local file system) but with a void 
-    * definition of the persistent state. (Note that filepath and passphrase 
-    * have to be set up before this file can be saved.) 
-    * 
-    * @throws IllegalStateException if no global standard application is available
+     * IO-context (by default the local file system). This file has a void 
+     * definition of the persistent state; filepath and passphrase 
+     * have to be set up before this file can be saved. 
+     * 
+     * @throws IllegalStateException if no global standard application is 
+     *         available
 	 */
 	public PwsFile()
 	{
@@ -208,14 +203,55 @@ public class PwsFile extends PwsRecordList implements Cloneable
     /**
      * Constructs a new PWS database with an initial
      * record content as represented by the parameter record wrapper array. 
-     * Duplicate records in the array are silently ignored; no check for 
+     * Duplicate records in the array lead to an exception thrown; no check for 
      * record validity is performed.
+     * <p>The resulting instance has no persistent state definition and no
+     * passphrase assigned! 
      * 
      * @param recs array of <code>DefaultRecordWrapper</code> objects;
      *        may be <b>null</b>
-     * @since 0-4-0       
+     * @throws DuplicateEntryException 
      */
-    public PwsFile( DefaultRecordWrapper[] recs )
+    public PwsFile( DefaultRecordWrapper[] recs ) throws DuplicateEntryException
+    {
+       super( recs );
+       initBasic();
+
+       Log.log( 2, "(PwsFile) new PwsFile (with record set): ID = " + fileID );
+    }  // constructor
+
+    /**
+     * Constructs a new PWS database with an initial
+     * record content as given by the parameter record collection. 
+     * Duplicate records in the collection lead to an exception thrown; no check
+     * for record validity is performed.
+     * <p>The resulting instance has no persistent state definition and no
+     * passphrase assigned! 
+     * 
+     * @param recs <code>Collection</code> of <code>PwsRecord</code>,
+     *        may be <b>null</b>
+     * @throws DuplicateEntryException 
+     */
+    public PwsFile( Collection<PwsRecord> recs ) throws DuplicateEntryException
+    {
+       super( recs );
+       initBasic();
+
+       Log.log( 2, "(PwsFile) new PwsFile (with record set): ID = " + fileID );
+    }  // constructor
+
+    /**
+     * Constructs a new PWS database with an initial
+     * record content as given by the parameter record array. 
+     * Duplicate records in the array lead to an exception thrown; no check
+     * for record validity is performed.
+     * <p>The resulting instance has no persistent state definition and no
+     * passphrase assigned! 
+     * 
+     * @param recs array of <code>PwsRecord</code>, may be <b>null</b>
+     * @throws DuplicateEntryException 
+     */
+    public PwsFile( PwsRecord[] recs ) throws DuplicateEntryException
     {
        super( recs );
        initBasic();
@@ -228,12 +264,13 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * all required references for an external persistent state.
     * 
     * @param appl <code>ApplicationAdapter</code> the IO-context used to save
-    *        the persistent state of this file
-    * @param filepath the full filepath specification for the persistent state
-    * @param userpass a <code>PwsPassphrase</code> object defining the access
-    *        passphrase used to encrypt the content
+    *        the persistent state of this file; may be <b>null</b> for the 
+    *        global standard application
+    * @param filepath String filepath specification for the persistent state
+    * @param userpass <code>PwsPassphrase</code> passphrase used to encrypt 
+    *        the file
     * 
-    * @throws IllegalArgumentException if any param is void
+    * @throws IllegalArgumentException if a parameter is void
     */
    public PwsFile ( ApplicationAdapter appl,
                     String filepath, 
@@ -245,20 +282,39 @@ public class PwsFile extends PwsRecordList implements Cloneable
 
    /**
     * Constructs a fully defined, empty PWS database with
+    * all required references for an external persistent state.
+    * 
+    * @param file <code>ContextFile</code> the file definition 
+    *        used to save the persistent state of this file
+    * @param userpass <code>PwsPassphrase</code> passphrase used to encrypt 
+    *        the file
+    * 
+    * @throws IllegalArgumentException if a parameter is void
+    */
+   public PwsFile ( ContextFile file, PwsPassphrase userpass )
+   {
+      super();
+      if ( file == null )
+          throw new IllegalArgumentException( "file parameter missing" );
+      
+      initFull(file.getAdapter(), file.getFilepath(), userpass);
+   } // constructor
+
+   /**
+    * Constructs a fully defined, empty PWS database in
     * the standard application IO-context (by default the local file system).
     * 
-    * @param filepath the full filepath specification for the persistent state
-    * @param userpass a <code>PwsPassphrase</code> object defining the access
-    *        passphrase used to encrypt the content
+    * @param filepath String filepath specification for the persistent state
+    * @param userpass <code>PwsPassphrase</code> object defining the access
+    *        passphrase used to encrypt the file
     * 
-    * @throws IllegalArgumentException if any param is void
-    * @throws IllegalStateException if no global standard application is available
+    * @throws IllegalArgumentException if any parameter is void
+    * @throws IllegalStateException if no global standard application adapter 
+    *         is available
     */
-   public PwsFile ( String filepath, 
-                    PwsPassphrase userpass )
+   public PwsFile ( String filepath, PwsPassphrase userpass )
    {
-      initBasic();
-      initFull(application, filepath, userpass);
+	  this(null, filepath, userpass);
    }  // constructor
 
    private void initBasic ()
@@ -268,17 +324,20 @@ public class PwsFile extends PwsRecordList implements Cloneable
          throw new IllegalStateException( "no standard application available" );
       
       // take over UUID from super class into header fields
-      headerFields.setField( new PwsRawField( 1, getUUID().getBytes() ) );
+      headerFields.setField(new PwsRawField(1, getUUID().getBytes()));
       resetModified();
    }
    
    private void initFull ( ApplicationAdapter appl,
-                               String filepath, 
-                               PwsPassphrase userpass )
+                           String filepath, 
+                           PwsPassphrase userpass )
    {
-      if ( appl == null )
-         throw new IllegalArgumentException( "application missing" );
-      if ( filepath == null || filepath.equals("") )
+      if ( appl == null ) {
+    	  appl = Global.getStandardApplication();
+          if ( appl == null ) 
+              throw new IllegalStateException( "no standard application available" );
+      }
+      if ( filepath == null || filepath.isEmpty() )
          throw new IllegalArgumentException( "filepath missing" );
       if ( userpass == null )
          throw new IllegalArgumentException( "passphrase missing" );
@@ -297,96 +356,70 @@ public class PwsFile extends PwsRecordList implements Cloneable
    
    /**
     * Returns a shallow clone of this file structure (PwsFile). 
-    * File-ID number is modified to be unique and any 
-    * registered listeners are removed from the clone. The stored
-    * passphrase is a copy; UUID is the same.
+    * Registered file listeners are removed from the clone, UUID is the same.
     * 
-    * @return object of type <code>PwsFile</code>
-    * @since 2-1-0
+    * @return Object (type <code>PwsFile</code>)
     */
+   @Override
    public Object clone ()
    {
-      PwsFile file;
-      
-      if ( (file = (PwsFile) super.clone()) == null )
-         return null;
+      PwsFile file = (PwsFile)super.clone();
+      if ( file == null ) return null;
       
       file.headerFields = (HeaderFieldList) headerFields.clone();
-      file.ps = (PwsPassphrase)ps.clone();
-      
+
       Log.log( 2, "(PwsFile) new PwsFile (clone of " + idString + 
                "): ID = " + file.idString );
       return file;
    }
 
-   /**
-    * Returns a deep clone of this file structure (PwsFile).
-    * All records of the returned list are copies of the original. 
-    * File-ID number is modified to be unique and any 
-    * registered listeners are removed from the clone. The stored
-    * passphrase is a copy; UUID is the same.
+   /** Returns a copy of this file with a new UUID identifier. (This works 
+    * identical to clone except for a new identifier and the suiting return 
+    * type.)
     * 
-    * @return object of type <code>PwsFile</code>
-    * @since 2-1-0
+    * @return <code>PwsFile</code>
     */
-   public Object copy ()
+   @Override
+   public PwsFile copy () 
    {
-      PwsFile file;
-      Iterator it;
-      
-      file = (PwsFile) clone();
-
-      try {
-         file.clear();
-         for ( it = iterator(); it.hasNext(); )
-            file.addRecord( (PwsRecord)it.next() );
-      }
-      catch ( Exception e )
-      {
-         throw new IllegalStateException( "list copy error: " + e.getMessage() );
-      }
-      
-      Log.log( 2, "(PwsFile) create copy of " + idString + 
-               ": ID = " + file.idString );
-      return file;
+	   return (PwsFile)super.copy();
    }
-
+   
    /**
     * This method replaces entire content of this file, including all settings,
-    * by the contents of the parameter file. Works as a shallow clone of the record list
-    * and shares identity with the parameter file.
+    * by the contents of the parameter file. Works as a shallow clone of the 
+    * record list and shares identity with the parameter file.
     *   
     * @param f <code>PwsFile</code> new content for this file
     */
    public void replaceFrom ( PwsFile f )
    {
-      boolean p;
-      
       super.replaceFrom( f );
       application = f.application;
       filePath = f.filePath;
       checksumOK = f.checksumOK;
       preserveOld = f.preserveOld;
-      fileVersionMajor = f.fileVersionMajor;
-      fileVersionMinor = f.fileVersionMinor;
+      formatVersionMajor = f.formatVersionMajor;
+      formatVersionMinor = f.formatVersionMinor;
       securityLoops = f.securityLoops;
       sourceFormat = f.sourceFormat;
-      if ( f.ps != null )
-         ps = (PwsPassphrase)f.ps.clone();
+      ps = f.ps;
 
-      p = getEventPause();
+      boolean p = getEventPause();
       setEventPause( true );
       headerFields.clear();
-      for ( Iterator it = f.headerFields.iterator(); it.hasNext(); )
-         headerFields.setField( (PwsRawField)it.next() );
-//      headerFields = (HeaderFieldList)f.headerFields.clone();
+      for (Iterator<PwsRawField> it = f.headerFields.iterator(); it.hasNext();) {
+         headerFields.setField( it.next() );
+      }
       setEventPause( p );
       modified = f.modified;
    }
    
 	/**
-    * Returns the file name (full path) of the persistent state of this file or <b>null</b> 
-    * if it is not defined.
+    * Returns the file path of the persistent state definition of this file or 
+    * <b>null</b> if it is undefined.
+    * 
+    * @return String file path or null
     */
    public final String getFilePath()
    {
@@ -394,10 +427,10 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
 
    /**
-    * Returns the file name (last path element) of the persistent state of this file or <b>null</b> 
-    * if it is not defined.
+    * Returns the file name (last path element) of the persistent state 
+    * definition of this file or <b>null</b> if it is undefined.
     * 
-    * @since 2-1-0
+    * @return String file name or null
     */
    public final String getFileName()
    {
@@ -405,78 +438,75 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
 
 	/**
-	 * Returns the format version number for this file. The default format
+	 * Returns the major format version number for this file. The default 
      * of a new file is <code>Global.FILEVERSION_LATEST_MAJOR</code>.
 	 * 
-	 * @return int format number (values defined in class <code>Global</code>)
-     * 
-     * @since 2-0-0
+	 * @return int format version number
 	 */
 	public final int getFormatVersion()
    {
-      return fileVersionMajor;
+      return formatVersionMajor;
    }
 
 	/**
 	 * Returns the format information for this file, containing both major
 	 * and minor version numbers.
 	 * 
-	 * @return Dimension, width = major, height = minor version number 
-	 * @since 2-2-0
+	 * @return <code>Dimension</code>, width = major, 
+	 *         height = minor version number 
 	 */
 	public final Dimension getFileFormat ()
 	{
-	   return new Dimension( fileVersionMajor, fileVersionMinor );
+	   return new Dimension(formatVersionMajor, formatVersionMinor);
 	}
 	
     /**
-     * Returns the activated character set used to encode text strings on the persistent state.
-     * (The charset is "Utf-8" for V3 file format (fixum) or for V2 format if "B 24 1" is present in
-     * user options. It is the VM default character set otherwise.)
+     * Returns the activated character set used to encode text strings on the 
+     * persistent state. (The charset is "Utf-8" for V3 file format (fixum) or 
+     * for V2 format if "B 24 1" is present in user options. It is the VM 
+     * default character set otherwise.)
      *  
      * @return String charset name
-    * @since 2-0-0
      */ 
     public String getCharset ()
     {
-       return fileVersionMajor > Global.FILEVERSION_2 || 
-              (fileVersionMajor == Global.FILEVERSION_2 & getUserOptions().indexOf( "B 24 1" ) > -1) ? 
-              "Utf-8" : Global.getDefaultCharset();
+       return formatVersionMajor > Global.FILEVERSION_2 || 
+              (formatVersionMajor == Global.FILEVERSION_2 && getUserOptions()
+              .indexOf("B 24 1") > -1) ? "UTF-8" : Global.getDefaultCharset();
     }
     
    /**
-    * Sets the format version number for the file. This value determines
+    * Sets the format version number for this file. The value determines
     * the technical file format of the persistent state of this file.
-    * By default (for a new instance) the latest available format version
-    * is active. This is (normally) a fast returning operation.
+    * If the value is out of range, the latest format version is
+    * assumed.
     * 
-    * @param value the file format code (use one of the values defined in class <code>Global</code>)
-    *        or 0 for latest format
-    * @since 2-0-0
+    * @param value int file format version (use one of the values defined 
+    *              in class <code>Global</code>) or 0 for latest format
     */
-   public synchronized void setFormatVersion( int value )
+   public void setFormatVersion ( int value )
    {
-      int oldVersion;
-      
-      if ( value < 1 | value > Global.FILEVERSION_3 )
+      if ( value < 1 | value > Global.FILEVERSION_3 ) {
          value = Global.FILEVERSION_LATEST_MAJOR;
+      }
 
-      if ( value != fileVersionMajor )
-      {
+      if ( value != formatVersionMajor ) {
          // assign new format
-         oldVersion = fileVersionMajor;
-         fileVersionMajor = value;
+         int oldVersion = formatVersionMajor;
+         formatVersionMajor = value;
          
          // if upgrade from earlier version then remove unknown fields
-         if ( oldVersion < fileVersionMajor )
+         if ( oldVersion < formatVersionMajor ) {
             clearUnknownFields();
+         }
          
          // if switch to V3 format AND there is no UUID defined in header fields
          // then store UUID from PwsRecordList into relevant header field
          if ( value == Global.FILEVERSION_3 && 
-              headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE ) == null )
+              headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE ) == null ) {
             headerFields.setField( new PwsRawField( PwsFileHeaderV3.FILE_UUID_TYPE, 
                   getUUID().getBytes() ));
+         }
 
          // inform object and listeners of modification
          contentModified();
@@ -484,13 +514,14 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
 
 	/**
-	 * Returns the encryption passphrase used on this file (file access passphrase).
+	 * Returns the encryption passphrase used on this file (access passphrase).
 	 * 
-	 * @return a copy of the file's access passphrase or <b>null</b> if it is not defined
+	 * @return <code>PwsPassphrase</code> copy of the file's access passphrase 
+	 *         or <b>null</b> if it is not defined
 	 */
 	public final PwsPassphrase getPassphrase()
 	{
-		return ps == null ? null : (PwsPassphrase) ps.clone();
+		return ps == null ? null : (PwsPassphrase)ps.clone();
 	}
 
    /**
@@ -505,24 +536,22 @@ public class PwsFile extends PwsRecordList implements Cloneable
    
    /**
     * Returns a <code>ContextFile</code> representation of this database's
-    * persistent state definition.
+    * persistent state definition (application and filepath).
     * 
     * @return <code>ContextFile</code> or <b>null</b> if unavailable
-    * @since 2-1-0
     */
    public ContextFile getContextFile ()
    {
-      return hasResource() ? new ContextFile( getApplication(), getFilePath() ) : null;
+      return hasResource() ? new ContextFile(getApplication(), getFilePath()) : null;
    }
 
    /**
     * Returns the last modification time of the persistent state of this 
-    * file. 
+    * file. This queries to external medium.
     *  
-    * @return last modification time or 0 if there exists no persistent state
-    *         or this information is not available
+    * @return last long modification time (milliseconds) or 0 if there exists 
+    *         no persistent state or this information is not available
     * @throws IOException
-    * @since 0-3-0
     */
    public long lastModified () throws IOException
    {
@@ -534,41 +563,39 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * in this record list. (This refers to nominal field data sizes.)
     * 
     * @return long unknown data size
-    * @since 2-0-0 
     */
    public long getUnknownFieldSize ()
    {
-      return super.getUnknownFieldSize( fileVersionMajor ) 
-             + headerFields.getUnknownFieldSize( fileVersionMajor );
+      return super.getUnknownFieldSize( formatVersionMajor ) 
+             + headerFields.getUnknownFieldSize( formatVersionMajor );
    }
 
    /**
-    * Returns the number of datafields which are kept as non-canonical 
+    * Returns the number of data fields which are kept as non-canonical 
     * in this list of records.
     * 
     * @return int number of non-canonical records
-    * @since 2-0-0 
     */
+   @Override
    public int getUnknownFieldCount ()
    {
       return super.getUnknownFieldCount() + headerFields.getUnknownFieldCount();
    }
 
-   /** Clears away all non-canonical fields from this database, including unknown header 
-    * fields. 
-    * @since 2-0-0
+   /** Clears away all non-canonical fields from this database, including 
+    * unknown header fields. 
     */
+   @Override
    public void clearUnknownFields ()
    {
-      int ctrl;
-      
       super.clearUnknownFields();
       
       // clear UKF in headerfield list
-      ctrl = headerFields.size();
+      int ctrl = headerFields.size();
       headerFields.clearUnknownFields();
-      if ( headerFields.size() != ctrl )
+      if ( headerFields.size() != ctrl ) {
          contentModified();
+      }
    }
    
    /**
@@ -578,30 +605,27 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * This is a relatively expensive operation as it walks through analysing 
     * all records with each call.
     * 
-    * @param format the file format version of the persistent state
-    * @return int required (blocked) data space
-    * @since 2-0-0
+    * @param int format file format version of the projected persistent state
+    * @return long required (blocked) data size
     */
    public long getBlockedDataSize ( int format )
    {
-      long sum;
-      String charset;
-      
       // sum-up of record content 
-      charset = getCharset();
-      sum = super.getBlockedDataSize( format, charset );
+      String charset = getCharset();
+      long sum = super.getBlockedDataSize(format, charset);
 
       // constant file overhead
-      switch ( format )
-      {
+      switch ( format ) {
       case Global.FILEVERSION_1:
          sum += 56;
          break;
       case Global.FILEVERSION_2:
          sum += 56 + 12 * 8;
-         try { sum += PwsRawField.pwsFieldBlockSize( getUserOptions().getBytes( charset ).length, format ); }
-         catch ( UnsupportedEncodingException e )
-         {}
+         try { 
+        	 sum += PwsRawField.pwsFieldBlockSize( getUserOptions()
+        			.getBytes( charset ).length, format );
+         } catch ( UnsupportedEncodingException e ) {
+         }
          break;
       case Global.FILEVERSION_3:
          sum += headerFields.blockedDataSize( format );
@@ -616,104 +640,140 @@ public class PwsFile extends PwsRecordList implements Cloneable
 	* Writes this file to its persistent state in the linked 
     * IO-context. This method requires that the persistent state of
     * this file is fully defined. After successful operation, the 
-    * "modified" flag is reset to <b>false</b>. This method does 
-    * nothing if the "modified" flag is already <b>false</b>.
+    * MODIFIED flag is reset to <b>false</b>. This method does 
+    * nothing if the MODIFIED flag is found to be <b>false</b>.
     * <p><small>The persistent state of a file is defined by 
     * application adapter, filepath and access passphrase.</small>
 	 * 
     * @throws IllegalStateException if the required parameters for the
-    *         persistent state are undefined  
+    *         persistent state are not set up  
     * @throws IOException if an IO-error occurs
     * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
 	 */
-	public synchronized void save() throws IOException, ApplicationFailureException
+	public void save() throws IOException, ApplicationFailureException
 	{
-	   String hstr;
-      
-      if ( isModified() )
-      {
-         if ( application == null | filePath == null | ps == null )
-            throw new IllegalStateException( "persistent state parameters not set" );
+       if ( isModified() ) {
+          if ( application == null | filePath == null | ps == null )
+             throw new IllegalStateException( "persistent state parameters not set" );
          
-         if ( (sourceFormat != 0 & fileVersionMajor != sourceFormat) | preserveOld )
-         {
-            try {
-               // preserve a copy of the previous version of the file
-               hstr = filePath + ".old";
+          // rename existing file to "*.old" (conditional)
+          if ( (sourceFormat != 0 & formatVersionMajor != sourceFormat) 
+        	   | preserveOld ) {
+             try {
+                // preserve a copy of the previous version of the file
+                String hstr = filePath + ".old";
                
-               Log.log( 5, "(PwsFile) renaming previous file to : " + hstr ); 
-               if ( application.renameFile( filePath, hstr ) )
-                  Log.debug( 2, "renamed " + filePath + " to: " + hstr );
-               else
-                  Log.error( 2, "unable to rename file " + filePath +
-                        ", target: " + hstr );
-            }
-            catch ( Exception e )
-            {}
-         }
+                Log.log( 5, "(PwsFile) renaming previous file to : " + hstr ); 
+                if ( application.renameFile( filePath, hstr ) ) {
+                   Log.debug( 2, "--- renamed " + filePath + " to: " + hstr );
+                } else {
+                   Log.error( 2, "*** unable to rename file " + filePath +
+                         ", target: " + hstr );
+                }
+             } catch ( Exception e ) {
+             }
+          }
 
-         // save content of this file
-         hstr = idString + extFileRef(application, filePath);
+          // save content of this file
+          String hstr = idString + extFileRef(application, filePath);
+          Log.log( 4, "(PwsFile) saving file to" + hstr ); 
+
+          PwsFileFactory.saveFile( internalIterator(), application, filePath, ps, headerFields, 
+                securityLoops, formatVersionMajor );
+   	      resetModified();
+          Log.log( 4, "(PwsFile) file save finished (before event dispatch)");
          
-         Log.log( 4, "(PwsFile) saving file to" + hstr ); 
-         PwsFileFactory.saveFile( iterator(), application, filePath, ps, headerFields, 
-               securityLoops, fileVersionMajor );
-   	     resetModified();
-         Log.log( 4, "(PwsFile) file save finished (before event dispatch)");
-         
-         fireFileEvent( PwsFileEvent.LIST_SAVED, null );
-         
-         Log.debug( 2, "(PwsFile.save) file saved to: " + hstr ); 
-      }
+          fireFileEvent( PwsFileEvent.LIST_SAVED, null );
+          Log.debug( 2, "(PwsFile.save) file saved to: " + hstr ); 
+       }
 	}  // save
 
+	/** Writes a persistent state of this file to the given output stream.
+	 * There is no reset of the MODIFIED flag after execution.
+	 * 
+	 * @param output <code>OutputStream</code>
+     * @throws IllegalStateException if the encryption passphrase is not set up
+	 * @throws IOException if an IO-exception occurs
+     * @throws NullPointerException if output is null  
+	 */
+	public void write ( OutputStream output ) throws IOException 
+	{
+        if ( ps == null )
+            throw new IllegalStateException( "passphrase not set" );
+
+        Log.log( 6, "(PwsFile) writing file to output stream" ); 
+        PwsFileFactory.saveFile( internalIterator(), output, ps, headerFields, 
+              securityLoops, formatVersionMajor );
+        Log.log( 6, "(PwsFile) file written to output");
+	}
+	
+	/** Reads and renders a <code>PwsFile</code> from an input data stream.
+	 * 
+	 * @param input <code>InputStream</code>
+	 * @param ps <code>PwsPassphrase</code> encryption key
+	 * @return <code>PwsFile</code>
+     * @throws InvalidPassphraseException if the given passphrase is false
+	 * @throws PasswordSafeException
+	 * @throws IOException if an IO-error occcurs
+     * @throws NullPointerException if any parameter is null 
+	 */
+	public static PwsFile read ( InputStream input, PwsPassphrase ps ) 
+			throws IOException, PasswordSafeException 
+	{
+        Log.log( 6, "(PwsFile) reading a file from input stream" ); 
+        PwsFile file = PwsFileFactory.loadFile( input, ps, 0 );
+        Log.log( 6, "(PwsFile) file read from input stream");
+		return file;
+	}
+	
    /**
-    * Writes a copy of this file to a specified file of a specified medium, applying 
-    * the same passphrase as is defined for this file.  
+    * Writes a copy of this file to the specified file of the specified medium, 
+    * applying the same passphrase as is defined for this file.  
     * The copy will own a different UUID identifier.
     *
-    * @param app the application context in which the target file will be created;
-    *        if <b>null</b> then the same application is referred to as is defined
-    *        for <b>this</b> file  
-    * @param filepath the file name specification (relative to <code>app</code>) for 
-    *        the target file
+    * @param app ApplicationAdapter the application context in which the target
+    *        file will be created;
+    *        if <b>null</b> then the same application is referred to as is 
+    *        defined for <b>this</b> file  
+    * @param filepath String the file name specification for the target file
     * 
-    * @return UUID the file identifier value of the copy or <n>null</b> if unavailable
+    * @return UUID the file identifier value of the copy or <n>null</b> if 
+    *         unavailable
     * @throws IllegalArgumentException if <code>filepath</code> or the file
     *         passphrase are not defined
     * @throws IOException if an IO-error occurs
-    * @throws ApplicationFailureExeption if the IO-context fails to render
+    * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
     */
-   public synchronized UUID saveCopy( ApplicationAdapter app, String filepath ) 
+   public UUID saveCopy( ApplicationAdapter app, String filepath ) 
          throws IOException, ApplicationFailureException
    {
       return saveCopy( app, filepath, null, 0, false );
    }
 
    /**
-    * Writes a copy of this file to a specified file of a specified medium, 
+    * Writes a copy of this file to the specified file of the specified medium, 
     * allowing to setup a different access passphrase for the copy. 
     * The copy will own a different UUID identifier.
     *
-    * @param app the application context in which the target file will be created;
+    * @param app ApplicationAdapter the application context in which the target
+    *        file will be created;
     *        if <b>null</b> then the same application is referred to as defined
     *        for <b>this</b> file  
-    * @param filepath the file name specification (valid for <code>app</code>) for 
-    *        the target file
-    * @param pass an optional passphrase for the copy; if <b>null</b> the passphrase
-    *        of this file is used       
+    * @param filepath String the file name specification for the target file
+    * @param pass PwsPassphrase an optional passphrase for the copy; if 
+    *        <b>null</b> the passphrase of this file is used       
     * 
-    * @return UUID the file identifier value of the copy or <n>null</b> if unavailable
+    * @return UUID the file identifier value of the copy or <n>null</b> if 
+    *         unavailable
     * @throws IllegalArgumentException if <code>filepath</code> or the file
     *         passphrase are not defined
     * @throws IOException if an IO-error occurs
-    * @throws ApplicationFailureExeption if the IO-context fails to render
+    * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
-    * @since 0-3-1        
     */
-   public synchronized UUID saveCopy( ApplicationAdapter app, String filepath,
+   public UUID saveCopy( ApplicationAdapter app, String filepath,
          PwsPassphrase pass ) 
          throws IOException, ApplicationFailureException
    {
@@ -721,65 +781,63 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
 
    /**
-    * Writes a copy of this file to a specified file of a specified medium, allowing to 
-    * setup a different passphrase and a different file format version for the copy . 
+    * Writes a copy of this file to the specified file of the specified medium, 
+    * allowing to setup a different passphrase and a different file format 
+    * version for the copy. 
     *
-    * @param app the application context in which the target file will be created;
-    *        if <b>null</b> then the same application is referred to as defined
-    *        for <b>this</b> file  
-    * @param filepath the file name specification (valid for <code>app</code>) for 
-    *        the target file
-    * @param pass an optional passphrase for the copy; if <b>null</b> the passphrase
-    *        of this file is used
-    * @param format the target file format version or 0 for this file's actual 
+    * @param app ApplicationAdapter the application context in which the target 
+    *        file will be created; if <b>null</b> then the same application is 
+    *        referred to as defined for this file  
+    * @param filepath String the file name specification for the target file
+    * @param pass PwsPassphrase an optional passphrase for the copy; if 
+    *        <b>null</b> the passphrase of this file is used
+    * @param format int the target file format version or 0 for this file's 
     *        format setting   
-    * @param preserveUUID if <b>true</b> the existing UUID will be the same in the copy
-    *        otherwise a new one is created; V3 only                  
-    * @return UUID the file identifier value of the saved file or <b>null</b> if unavailable
-    * 
-    * @return UUID the file identifier value of the copy or <n>null</b> if unavailable
+    * @param preserveUUID if <b>true</b> the existing UUID will be the same in 
+    *        the copy otherwise a new one is created; V3 only                  
+    * @return UUID the file identifier value of the saved file or <b>null</b> if
+    *         unavailable
     * @throws IllegalArgumentException if <code>filepath</code> or the file
     *         passphrase are not defined
     * @throws IOException if an IO-error occurs
-    * @throws ApplicationFailureExeption if the IO-context fails to render
+    * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
-    * @since 2-0-0        
     */
-   public synchronized UUID saveCopy( ApplicationAdapter app, String filepath,
+   public UUID saveCopy( ApplicationAdapter app, String filepath,
          PwsPassphrase pass, int format, boolean preserveUUID ) 
          throws IOException, ApplicationFailureException
    {
-      HeaderFieldList headers;
-      UUID fid;
-      String hstr;
-      
       // some default constitutive values from original
       if ( app == null )
          app = application;
       if ( pass == null )
          pass = ps;
       if ( format == 0 )
-         format = fileVersionMajor;
+         format = formatVersionMajor;
 
       // we copy the headers to prevent update events striking through to the original 
-      headers = new HeaderFieldList( headerFields );
+      HeaderFieldList headers = new HeaderFieldList( headerFields );
       
-      if ( format == Global.FILEVERSION_3 & !preserveUUID )
-      {
+      if ( format == Global.FILEVERSION_3 & !preserveUUID ) {
          // this will trigger creation of a new UUID for the copy
          headers.removeField( 1 ); 
       }
       
       Log.log( 2, "(PwsFile) saving a file copy to" + idString  + extFileRef(app, filepath)); 
-      fid = PwsFileFactory.saveFile( iterator(), app, filepath, pass, headers, securityLoops, format );
-      hstr = headers.contains( 1 ) ? Util.bytesToHex( headers.getField( 1 ).getData() ) : "void";
+      UUID fid = PwsFileFactory.saveFile(iterator(), app, filepath, pass, headers, 
+    		     securityLoops, format);
+      String hstr = headers.contains(1) ? Util.bytesToHex(headers.getField(1).getData()) 
+    		                       : "void";
       Log.log( 2, "(PwsFile) copy done, target UUDI = " + hstr ) ; 
-      
       return fid;
    }
 
    /**
     * Returns a human info file path notation incorporating the IO-context name.
+    * 
+    * @param app <code>ApplicationAdapter</code> the application context 
+	* @param path String the path for the file
+	* @return String human readable info about context + file
     */
    protected String extFileRef ( ApplicationAdapter app, String filePath )
    {
@@ -787,15 +845,16 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
    
    /**
-	 * Sets the name of the datafile that contains the persistent state of this file.
-     * Use <b>null</b> to clear.
+	 * Sets the name of the external file that contains the persistent state of
+	 * this file. Use <b>null</b> to clear.
 	 * 
-	 * @param path the name for the file, may be <b>null</b> but not empty
+	 * @param path String the name for the file, may be <b>null</b> but not
+	 * empty
     * @throws IllegalArgumentException is the parameter value is empty
 	 */
-	public synchronized void setFilePath( String path )
+	public void setFilePath( String path )
 	{
-      if ( path != null && path.equals("") )
+      if ( path != null && path.isEmpty() )
          throw new IllegalArgumentException("empty filename");
       
 	  filePath = path;
@@ -808,10 +867,11 @@ public class PwsFile extends PwsRecordList implements Cloneable
    /**
     * Sets the application adapter (IO-context) for this file.
     * 
-    * @param app the new application context valid for this file
-    * @throws IllegalArgumentException is the parameter is void
+    * @param app <code>ApplicationAdapter</code> the new application context 
+    *            valid for this file
+    * @throws NullPointerException if the parameter is null
     */
-   public synchronized void setApplication( ApplicationAdapter app )
+   public void setApplication( ApplicationAdapter app )
    {
       if ( app == null )
          throw new NullPointerException();
@@ -824,14 +884,14 @@ public class PwsFile extends PwsRecordList implements Cloneable
 
    /** Sets application adapter and filepath of this file
     * from the parameter context file.
-    * @param f <code>ContextFile</code>
+    * 
+    * @param f <code>ContextFile</code> external file definition
     */
-   public synchronized void setPersistentFile ( ContextFile f )
+   public void setPersistentFile ( ContextFile f )
    {
-      if ( f == null ) 
+      if ( f == null ) {
           filePath = null;
-      else
-      {
+      } else {
          application = f.getAdapter();
          filePath = f.getFilepath();
       }
@@ -846,8 +906,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * <p><small>The policy of this value is the following: for format V2
     * files it represents the same data field that is also used by
     * PasswordSafe (PWS). For format V3 it represents a JPWS specific 
-    * data field (which is not an element of the PWS canon). The PWS
-    * specific preferences of a V3 file can be obtained by 
+    * data field. The PWS specific preferences of a V3 file can be obtained by 
     * <code>getHeaderFields().getField(PwsFileHeaderV3.PWS_PREFS_TYPE).getString("utf-8")</code>.
     * V1 format does not support an option string.</small>  
     *  
@@ -855,12 +914,8 @@ public class PwsFile extends PwsRecordList implements Cloneable
     */
    public String getUserOptions ()
    {
-      PwsRawField raw;
-      String options;
-      
-      
-      raw = headerFields.getField( PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
-      options = raw == null ? "" : raw.getString( "utf-8" );  
+      PwsRawField raw = headerFields.getField( PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
+      String options = raw == null ? "" : raw.getString( "utf-8" );  
 
       if ( Log.getLogLevel() > 6 )
       Log.log( 7, "(PwsFile) returning user options = \"" + options + "\"" );
@@ -879,34 +934,33 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * 
     * @param options String, may be <b>null</b> to clear an assignment
     */
-   public synchronized void setUserOptions ( String options )
+   public void setUserOptions ( String options )
    {
-      if ( options == null )
+      if ( options == null ) {
          options = "";
+      }
 
       Log.log( 7, "(PwsFile) setting user options = \"" + options + "\"" );
 //      Log.debug( 7, "(PwsFile.setUserOptions) old user options = \"" + getUserOptions() + "\"" );
-      if ( !options.equals( getUserOptions() ) )
-      {
+      if ( !options.equals( getUserOptions() ) ) {
          setModified();
          try{ 
             headerFields.setField( new PwsRawField( PwsFileHeaderV3.JPWS_OPTIONS_TYPE, options.getBytes("utf-8") )); 
             contentModified();
+         } catch ( UnsupportedEncodingException e ) {
          }
-         catch ( UnsupportedEncodingException e )
-         {}
       }
    }
    
    /**
-    * Sets the user passphrase for the encryption of this file (access passphrase). 
-    * There are no controls on the quality of the passphrase value used.
-    * (Note that the empty passphrase is allowed.)  
+    * Sets the user passphrase for the encryption of this file (access 
+    * passphrase).There are no controls on the quality of the passphrase value 
+    * used. The empty passphrase is allowed.  
     * 
-    * @param userpass <code>PwsPassphrase</code>, the access passphrase to be used 
-    *        on persistent states. Use <b>null</b> to clear
+    * @param userpass <code>PwsPassphrase</code>, the access passphrase to be 
+    *        used on persistent states. Use <b>null</b> to clear
     */
-   public synchronized void setPassphrase ( PwsPassphrase userpass )
+   public void setPassphrase ( PwsPassphrase userpass )
    {
       ps = userpass == null ? null : (PwsPassphrase)userpass.clone();
       setModified();
@@ -918,18 +972,18 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * Sets the marker for preserving an old version of the persistent state
     * when saving (previous content state). (Package internal use only.)
     * 
-    * @param value <b>true</b> = preserve old version
+    * @param boolean value <b>true</b> = preserve old version
     */
    void setPreserveOld ( boolean value )
    {
       preserveOld = value;
    }
 
-   /** Whether there exists a complete persistent file definition for this instance. 
+   /** Whether there exists a complete persistent file definition for this 
+    * instance. 
     * 
-    * @return <b>true</b> if and only if there is an application adapter defined 
-    *         and there is a filepath defined
-    * @since 0-3-0
+    * @return boolean <b>true</b> if and only if there is an application adapter 
+    *         and a filepath defined
     */
    public boolean hasResource ()
    {
@@ -938,15 +992,14 @@ public class PwsFile extends PwsRecordList implements Cloneable
 
    /** Whether this file has the same persistent resource as the parameter file.
     *  
-    * @param file file to compare
-    * @return <b>true</b> if and only if <code>file</code> is not <b>null</b> and
-    *         both compare objects have either no or identical persistent files
-    * @since 0-3-0
+    * @param file <code>PwsFile</code> file to compare
+    * @return boolean <b>true</b> if and only if <code>file</code> is not 
+    * 		  <b>null</b> and both compare objects have either no or identical 
+    * 		  persistent files
     */ 
    public boolean equalResource ( PwsFile file )
    {
-      if ( file == null )
-         return false;
+      if ( file == null ) return false;
       
       return (!hasResource() && !file.hasResource()) ||
              ( hasResource() && file.hasResource() &&
@@ -955,12 +1008,10 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
 
    /**
-    * The file format number of the data source
-    * from which this file was read in or 0 if 
-    * this file was not read in.
+    * The file format number of the data source from which this file was read 
+    * in, or 0 if this file was not read in.
     * 
     * @return int file format version
-    * @since 2-0-0
     */
    public int getSourceFormat ()
    {
@@ -970,23 +1021,20 @@ public class PwsFile extends PwsRecordList implements Cloneable
    /** Sets the file format version number of the data source
     * from which this file was read in. (Package internal)
     *  
-    * @param format file format version
-    * @since 2-0-0
+    * @param format int file format version
     */
    void setSourceFormat ( int format )
    {
       this.sourceFormat = format;
-      this.fileVersionMajor = format;
+      this.formatVersionMajor = format;
    }
 
    /** Returns the operational header field list of this file. 
-    * Use the returned object to perform your header field
-    * operations. 
+    * Use the returned object to perform your header field operations. 
     * (This list is always present but will be saved to a
     * persistent state only in file format version V3.)
     * 
     * @return <code>HeaderFieldList</code>
-    * @since 2-0-0
     */
    public HeaderFieldList getHeaderFields ()
    {
@@ -994,13 +1042,13 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
    
    /** Returns a list of recently used entries, represented by their
-    * serialised UUID values (32 hex char), separated by a ";" char.
+    * serialised UUID values (32 hex char), separated by a ";" char
+    * or <b>null</b> if this value is not available.
     *  
-    * @return String or <b>null</b> if this list is empty
+    * @return String or <b>null</b>
     */
    public String getRecentUsedEntries ()
    {
-      
       String hstr, uid, result = null;
       int num, i, index;
       
@@ -1008,25 +1056,24 @@ public class PwsFile extends PwsRecordList implements Cloneable
       PwsRawField raw = 
             getHeaderFields().getField( PwsFileHeaderV3.RECENT_ENTRIES_TYPE );
 
-      // interpret header value to fit our more process friendly formatting  
-      if ( raw != null )
-      {
+      // transform header value to our more process friendly formatting  
+      if ( raw != null ) {
          hstr = raw.getString( "ASCII" );
-         Log.debug( 10, "(PwsFile.getRecentUsedEntries) obtained header value: ".concat( hstr ) );
+         Log.debug(10, "(PwsFile.getRecentUsedEntries) obtained header value: "
+        		 .concat(hstr));
          if ( hstr.length() > 2 )
          try {
-            num = Integer.parseInt( hstr.substring( 0, 2 ), 16 );
-            for ( i = 0; i < num; i++ )
-            {
+            num = Integer.parseInt( hstr.substring(0, 2), 16 );
+            for ( i = 0; i < num; i++ ) {
                index = i*32+2;
                uid = hstr.substring( index, index+32 );
                result = result == null ? uid : result + ";" + uid; 
             }
-         } 
-         catch ( Exception e ) 
-         { e.printStackTrace(); }
+         } catch ( Exception e ) { 
+        	 e.printStackTrace(); 
+         }
       }
-      Log.debug( 10, "(PwsFile.getRecentUsedEntries) returning with UUID list: " + result );
+      Log.debug( 10, "(PwsFile.getRecentUsedEntries) returning with UUID list: " + result);
       return result;
    }
 
@@ -1039,85 +1086,75 @@ public class PwsFile extends PwsRecordList implements Cloneable
     */
    public void setRecentUsedEntries ( String value )
    {
-      PwsRawField field;
-      String hstr, va[];
-      
       Log.log( 10, "(PwsFile.setRecentUsedEntries) enter with param == [" + value + "]");
       
       // construct value for external PWS format 3.10
-      hstr = "";
-      if ( value != null )
-      {
-         va = value.split( ";" );
-         for ( int i = 0; i < va.length; i++  )
-         {
-            hstr += va[i];
+      String hstr = "";
+      if ( value != null ) {
+         String[] va = value.split( ";" );
+         for ( String s : va ) {
+            hstr += s;
          }
          hstr = Util.byteToHex( va.length ).concat( hstr );
       }
       
-      try
-      {
-         field = new PwsRawField( PwsFileHeaderV3.RECENT_ENTRIES_TYPE, 
-               hstr.getBytes( "ASCII" ) );
+      // create a new field and add to header field list
+      try {
+    	  PwsRawField field = new PwsRawField( PwsFileHeaderV3.RECENT_ENTRIES_TYPE, 
+                 hstr.getBytes( "ASCII" ) );
          getHeaderFields().setField( field );
          Log.debug( 10, "(PwsFile.setRecentUsedEntries) setting header field value to: ".concat( hstr ));
-      }
-      catch ( UnsupportedEncodingException e )
-      { e.printStackTrace(); }
+
+      } catch ( UnsupportedEncodingException e ) { 
+    	  e.printStackTrace(); 
+  	  }
    }
    
    /** Method to replace all existing header fields of this file
-    * with the fields of the parameter list. (This effectively
-    * comes as a shallow copy of the parameter list.)
+    * with the fields of the parameter list. 
+    * Does nothing if <code>list</code> is <b>null</b>.
     *   
-    *  @param list <code>HeaderFieldList</code>, if <b>null</b> nothing happens
-    *  @since 2-0-0
+    *  @param list <code>HeaderFieldList</code>, may be null
     */
    public void setHeaderFields ( HeaderFieldList list )
    {
-      Iterator it ;
-      PwsRawField fld;
-      byte[] buf;
-      boolean oldPause;
-
-      if ( list == null )
-         return;
+      if ( list == null ) return;
       
       if ( Log.getDebugLevel() > 6 )
-         Log.debug( 7, "(PwsFile) setHeaderFields(): " );
+         Log.debug( 7, "(PwsFile.setHeaderFields) - list cleared - new entries:" );
 
-      oldPause = eventPause;
+      // avoid event dispatching
+      boolean oldPause = eventPause;
       eventPause = true;
       
+      // take over parameter list values
       headerFields.clear();
-      for ( it = list.iterator(); it.hasNext(); )
-      {
-         fld = (PwsRawField)it.next();
+      for ( Iterator<PwsRawField> it = list.iterator(); it.hasNext(); ) {
+    	 PwsRawField fld = it.next();
          headerFields.setField( fld );
          if ( Log.getDebugLevel() > 6 )
             Log.debug( 7, "    id=" + fld.type + "  data=" + Util.bytesToHex( fld.getData() ) );
       }
       
-      // analyse file format if supplied
-      fld = headerFields.getField( PwsFileHeaderV3.FILE_FORMAT_TYPE );
-      if ( fld != null )
-      {
-         buf = fld.getData();
-         if ( buf.length >= 2 )
-         {
-            fileVersionMajor = buf[1];
-            fileVersionMinor = buf[0];
+      // update file format property if supplied
+      PwsRawField fld = headerFields.getField( PwsFileHeaderV3.FILE_FORMAT_TYPE );
+      if ( fld != null ) {
+    	 byte[] buf = fld.getData();
+         if ( buf.length >= 2 ) {
+            formatVersionMajor = buf[1];
+            formatVersionMinor = buf[0];
          }
       }
       
+      // resume event dispatching (old state)
       eventPause = oldPause;
       contentModified();
    }
    
-   /** Sets the checksum verification status for a V3 file.
+   /** Sets the checksum verification status. (This is normally only
+    * applicable for a V3 file.)
+    * 
     * @param ok boolean result of the checksum verification 
-    *  @since 2-0-0
     */
    protected void setChecksumResult ( boolean ok )
    {
@@ -1125,44 +1162,39 @@ public class PwsFile extends PwsRecordList implements Cloneable
    }
 
    /**
-    * Whether the checksum of a V3 file has been verified OK during
-    * loading of the persistent state. (True for V2 and V1 or new files.)
+    * Whether the checksum of this file has been set to "verified OK".
+    * (True by default)
     * 
-    * @return <b>true</b> if and only if this file is a V3 file AND 
-    *         load checksum is verified OK
-    *  @since 2-0-0
+    * @return boolean true == checksum verified
     */
    public boolean isChecksumVerified ()
    {
       return checksumOK;
    }
 
-   /** Sets the amount of security caclulation loops 
-    *  valid for the access shield of this database. 
-    *  The parameter value will be corrected to comply 
-    *  with minimum 2048 and maximum 4194304.  
-    *  (The property "SecurityLoops" is only meaningful
-    *  for V3 files.)
+   /** Sets the amount of security calculation loops valid for the access 
+    * shield of this database. The parameter value will be corrected to assume 
+    * a minimum of 2048 and maximum of 4194304.  
+    * (The property "SecurityLoops" is only meaningful for V3 files.)
     *  
-    * @param loops amount of calculation loops
-    * @since 2-1-0
+    * @param loops int amount of calculation loops
     */
    public void setSecurityLoops ( int loops )
    {
-      int i;
-      
-      i = securityLoops;
-      securityLoops = Math.max( SECURITY_ITERATIONS_MINIMUM, Math.min( SECURITY_ITERATIONS_MAXIMUM, loops ) );
-      if ( securityLoops != i )
+      int i = securityLoops;
+      securityLoops = Math.max( SECURITY_ITERATIONS_MINIMUM, 
+    		  Math.min( SECURITY_ITERATIONS_MAXIMUM, loops ) );
+      if ( securityLoops != i ) {
          contentModified();
+      }
    }
    
-   /** Returns the amount of security caclulation loops 
+   /** Returns the amount of security calculation loops 
     *  valid for the access shield of this database.
     *  (The property "SecurityLoops" is only meaningful
     *  for V3 files.)
     *  
-    *  @since 2-1-0
+    *  @return int security loops  
     */   
    public int getSecurityLoops ()
    {
@@ -1171,83 +1203,115 @@ public class PwsFile extends PwsRecordList implements Cloneable
    
    /**
     * Renders a content signature value for this PWS file.
-    * Returns a SHA-256 checksum which is a sum-up of all its records' signatures
-    * plus all its header field values. 
-    * This value is considered individual to an instance.
-    * (It may be assumed - although there is no guarantee - that this value is identical 
-    * over different releases of this software package and different sessions of a
-    * program running this package.)
+    * Returns a SHA-256 checksum which is the sum-up of all its records' 
+    * signatures plus all its header field values. 
+    * <p><small>It may not be assumed that this value is identical over 
+    * different releases of this software package, however it is expected to be
+    * identical over different program sessions running the same package.
+    * </small>
     * 
     * @return byte[] 32 byte signature value (SHA-256 digest) 
-    * @since 2-1-0
     */
+   @Override
    public byte[] getSignature ()
    {
-      SHA256 sha;
-      Iterator it;
-      
-      sha = new SHA256();
-      
+      SHA256 sha = new SHA256();
       sha.update( super.getSignature() );
-      for ( it = headerFields.iterator(); it.hasNext(); )
-         sha.update( ((PwsRawField)it.next()).data );
-      
+      for ( Iterator<PwsRawField> it = headerFields.iterator(); it.hasNext(); ) {
+         sha.update( it.next().data );
+      }
       return sha.digest();
    }
    
+   /**
+    * Renders a data content signature value for this PWS file.
+    * "Data content" is defined as the ordered set of records contained in this
+    * file. Returns a SHA-256 checksum which is the sum-up of all records' 
+    * signatures. 
+    * <p><small>It may not be assumed that this value is identical over 
+    * different releases of this software package, however, it is expected to be
+    * identical over different program sessions running the same package.
+    * </small>
+    * 
+    * @return byte[] 32 byte signature value (SHA-256 digest) 
+    */
+   public byte[] getDataSignature ()
+   {
+      return super.getSignature();
+   }
+   
 
+
+   /**
+    * Loads a PWS file of any format from the local file system.
+    * For other sets of parameters see the <code>PwsFileFactory</code> class!
+    * 
+    * @param file <code>File</code> file to open
+    * @param passphrase <code>PwsPassphrase</code> file access passphrase
+    * 
+    * @return the opened, fully operable <code>PwsFile</code> object 
+    * 
+    * @throws NullPointerException if any parameter is null 
+    * @throws FileNotFoundException if the specified file was not found or
+    *         access was denied
+    * @throws InvalidPassphraseException if file access could not be verified
+    * @throws PasswordSafeException if a file format error occurs
+    * @throws IOException if an IO-error occurred
+    */
+   public static PwsFile loadFile( File file, PwsPassphrase passphrase )
+		   	throws IOException, PasswordSafeException  {
+	   try {
+		   return PwsFileFactory.loadFile( DefaultFilesystemAdapter.get(), 
+    		      file.getAbsolutePath(), passphrase, 0 );
+	   } catch (IllegalArgumentException e) {
+		   throw new FileNotFoundException();
+	   }
+   }
+   
    
 // **************  INNER CLASSES  **************************+
    
    /**
-    * This class is a descendant of HeaderFieldList which adds
+    * This class is a descendant of <code>HeaderFieldList</code> which adds
     * functionality to set the file modified, including event
     * dispatching, upon content modification in the header list.
-    * 
-    * @since 2-1-0
     */
    
    private class PFHeaderFieldList extends HeaderFieldList
    {
-
-      public void clearUnknownFields ()
-      {
-         int size;
-
-         size = super.getUnknownFieldCount();
+      @Override
+	  public void clearUnknownFields () {
+         int size = super.getUnknownFieldCount();
          super.clearUnknownFields();
          if ( size > 0 )
             contentModified();
       }
 
-      public PwsRawField setField ( PwsRawField field )
-      {
-         PwsRawField f;
-         
-         f = super.setField( field );
-         if ( !field.equals( f ) )
+      @Override
+      public PwsRawField setField ( PwsRawField field ) {
+         PwsRawField f = super.setField( field );
+         if ( !field.equals( f ) ) {
             contentModified();
+         }
          return f;
       }
 
-      public void clear ()
-      {
-         int size;
-         
-         size = super.size();
+      @Override
+	  public void clear () {
+         int size = super.size();
          super.clear();
-         if ( size > 0 )
+         if ( size > 0 ) {
             contentModified();
+         }
       }
 
-      public PwsRawField removeField ( int type )
-      {
-         PwsRawField fld;
-         
-         if ( (fld = super.removeField( type )) != null )
+      @Override
+      public PwsRawField removeField ( int type ) {
+         PwsRawField fld = super.removeField( type );
+         if ( (fld) != null ) {
             contentModified();
+         }
          return fld;
       }
-   
    }
 }

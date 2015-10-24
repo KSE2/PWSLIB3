@@ -27,11 +27,12 @@ package org.jpws.pwslib.data;
 
 import java.nio.charset.IllegalCharsetNameException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.TreeMap;
 
 import org.jpws.pwslib.crypto.SHA256;
@@ -43,26 +44,56 @@ import org.jpws.pwslib.order.DefaultRecordWrapper;
 import org.jpws.pwslib.order.OrderedRecordList;
 
 /**
- *  Top level structure of this library to represent a list of PWS records
+ *  <b>Identification</b>
+ *  <br>Top level structure of this library to represent a list of PWS records
  *  ({@link PwsRecord}). Each instance carries a unique identifier (UUID)
- *  which is supplied automatically (the value may get altered by
- *  subclasses). <b>Note that this class is not synchronized.</b> If multiple
- *  threads may modify a list instance structurally they MUST synchronize
- *  on the instance or equivalent other object.
- *   
- *  <p>This class issues modification events which are defined by  
- *  {@link PwsFileEvent}. All data of this list is kept in memory,
- *  hence the total amount of processable records might be restricted
- *  depending on the user's runtime environment. 
+ *  which is supplied automatically but can be set through the interface.
+ *  There is a second identifier which is a static instance counter value.
+ *  The latter is meant for testing purposes only to discriminate instances
+ *  in cases where UUIDs could be identical on various instances. This value
+ *  is not operational for any programmatic context; it appears, however, on
+ *  several Log messages of this class.  
  *  
- *  <p>Above plain storage of records, and giving a set or records an identity,
- *  this class offers a) operations on the content set (like merge or group 
- *  manipulation), b) buffered storage (returned
- *  objects are clones of the stored objects) and c) some semantical control 
- *  (only valid records may be added or updated). Note: the semantical control
- *  is not complete as records are allowed to be invalid when they are read from
- *  a persistent state. Therefore it should not be assumed that all entries of 
- *  a list of this class are valid records.
+ *  <p><b>Containment Logic</b>
+ *  <br>The restriction on record entries is that they must be unique in the 
+ *  list, measured on their UUID values. The list has a "natural ordering" 
+ *  present, which is the ascending order of the UUID values of the elements. 
+ *  The reaction to duplicate insertion attempts can be adjusted in subclasses 
+ *  by overriding method <code>duplicateInsertion()</code>. The default 
+ *  behaviour is to throw a <code>DuplicateEntryException</code>; it can be 
+ *  modified to either ignore duplicates or overwrite existing entries. There 
+ *  also is a twin class ready which completely ignores duplicates, its name is 
+ *  <code>PwsIgDupRecordList</code>.
+ *  
+ *  <p><b>Some Interface Features</b>
+ *  <br>Above plain storage of records and giving a set of records identity,
+ *  this class offers additional features. a) operations on the content set 
+ *  (merge and set operations, group manipulation), b) mass operating methods,
+ *  c) buffered database storage (returned objects are clones of the stored 
+ *  objects and stored objects are clones of given objects), d) some 
+ *  semantical control of records validity (optional), e) iterator that allows
+ *  for concurrent list modification and f) a content signature value. This is 
+ *  a memory borne list, hence the total amount of records databases can hold 
+ *  may be restricted depending on the user's Java runtime environment.
+ *
+ *  <p><b>Event Dispatching</b>
+ *  <br>This class issues modification events which are defined by class
+ *  {@link PwsFileEvent}. Event dispatching occurs synchronous and can be 
+ *  suspended and resumed with method <code>setEventPause(boolean)</code>. 
+ *  Mass processing methods, like e.g. <code>addCollection()</code>, undertake 
+ *  effort to only dispatch a single generic list modification event upon 
+ *  termination instead of events for each processed record.
+ *  
+ *  <p><b>Synchronisation</b>
+ *  <br>Note this class is not synchronised. If multiple threads need to modify 
+ *  a list instance, they MUST synchronise their activities. 
+ *  Adding and removing of file listeners is synchronised.
+ *  
+ *  <p><b>Terminology</b>
+ *  <br>The term "elementary group name" is used in the descriptions. It is
+ *  defined as a substring of a GROUP value, starting with index 0 and 
+ *  comprising either the total value or ending 1 char before a '.' in the
+ *  value.  
  *  
  *  @see PwsFile
  *  @see PwsFileFactory
@@ -72,28 +103,22 @@ import org.jpws.pwslib.order.OrderedRecordList;
 public class PwsRecordList implements Cloneable
 {
    /** On merge conflict exclude the record.
-    *  @since 0-2-0
-    *  */
+    */
    public static final int MERGE_PLAIN = 0;
    /** On merge conflict include the record if it is modified younger.
-    *  @since 0-2-0
-    *  */
+    */
    public static final int MERGE_MODIFIED = 1;
    /** On merge conflict include the record if password is used younger.
-    *  @since 0-2-0
-    *  */
+    */
    public static final int MERGE_PASSACCESSED = 2;
    /** On merge conflict include the record if password is modified younger.
-    *  @since 0-2-0
-    *  */
+    */
    public static final int MERGE_PASSMODIFIED = 4;
    /** On merge conflict include the record if password lifetime is longer.
-    *  @since 0-2-0
-    *  */
+    */
    public static final int MERGE_EXPIRY = 8;
    /** On merge conflict include the record.
-    *  @since 0-2-1
-    *  */
+    */
    public static final int MERGE_INCLUDE = 16;
 
    /** Used to give each instance of this class a (transitional) name. */ 
@@ -108,25 +133,33 @@ public class PwsRecordList implements Cloneable
    /** A string representation of the internal ID number. */ 
    protected String idString;
    
-   /** List UUID; always mounted by default, but may also come from an external state. 
-    * @since 2-0-0
+   /** List UUID; always mounted by default, but may also come from an external
+    *  state. 
     */
    private UUID  listUUID = new UUID();
    
    /**
-	 * Map holding the records that are elements of this list, mapping
-     * from UUID into PwsRecord.
-	 */
-	private TreeMap		    recMap		= new TreeMap();
+    * Map holding the records that are elements of this list, mapping
+    * from UUID into PwsRecord.
+	*/
+   private TreeMap<UUID, PwsRecord> recMap	= new TreeMap<UUID, PwsRecord>();
 
-   /** Event listeners to this list; holds PwsFileListener values.*/
-   private ArrayList        listeners  = new ArrayList();
+   /** Event listeners to this list; holds PwsFileListener values.
+    * Late instantiation.
+    */
+   private ArrayList<PwsFileListener> listeners;
+   
+   /** Counter for list content modifications, including record updates.
+    */
+   private int modCounter;
+   
+   private int notedModValue;
    
 	/**
 	 * Flag indicating whether the file has been modified since creation or
-    * last save.
+     * last save.
 	 */
-	protected boolean			modified    = true;
+   protected boolean			modified;
     
     /**
      * Flag to indicate that no file-events shall be dispatched.
@@ -142,80 +175,135 @@ public class PwsRecordList implements Cloneable
 	}  // constructor
 
     /**
-     * Constructs a new PasswordSafe record list with an initial
+     * Constructs a new record list with an initial
      * record set as given by the parameter record wrapper array. 
-     * Duplicate records in the array are silently ignored; no check 
-     * for record validity is performed.
+     * Duplicate records in the array lead to an exception thrown.
+     * No check for record validity is performed. After initialising the 
+     * alteration state of the list is UNMODIFIED.
      * 
-     * @param recs array of <code>DefaultRecordWrapper</code> objects;
+     * @param recs <code>DefaultRecordWrapper[]</code> record wrapper objects,
      *        may be <b>null</b>
-     * @since 0-4-0       
+     * @throws DuplicateEntryException 
      */
-    public PwsRecordList( DefaultRecordWrapper[] recs )
+    public PwsRecordList( DefaultRecordWrapper[] recs ) 
+    		  throws DuplicateEntryException
     {
-       int i;
-       
        initInstance();
        
-       if ( recs != null )
-       for ( i = 0; i < recs.length; i++ )
-          try { addRecord( recs[ i ].getRecord() ); }
-          catch ( DuplicateEntryException e )
-          {}
+       if ( recs != null && recs.length > 0 ) {
+    	  PwsRecord[] arr = new PwsRecord[ recs.length ];
+    	  int i = 0;
+	      for ( DefaultRecordWrapper wrp : recs ) {
+	    	 arr[i++] = wrp.getRecord(); 
+	      }
+	      replaceContent(arr);
+          resetModified();
+       }
     }  // constructor
 
    /**
-     * Constructs a new PasswordSafe record list with an initial
-     * record set as given by the parameter record array. 
-     * Duplicate records in the array are silently ignored; no check 
-     * for record validity is performed.
+     * Constructs a new record list with an initial
+     * record set as given by the parameter array. 
+     * Duplicate records in the array lead to an exception thrown. No check 
+     * for record validity is performed. After initialising the alteration state
+     * of the list is UNMODIFIED.
      * 
-     * @param recs array of <code>PwsRecord</code> objects;
+     * @param recs <code>PwsRecord[]</code> record objects,
      *        may be <b>null</b>
-     * @since 0-6-0       
+     * @throws DuplicateEntryException 
      */
-    public PwsRecordList( PwsRecord[] recs )
+    public PwsRecordList( PwsRecord[] recs ) throws DuplicateEntryException
     {
-       this( DefaultRecordWrapper.makeWrappers( recs, null ) );
+        initInstance();
+
+        if ( recs != null ) {
+  	      replaceContent(recs);
+          resetModified();
+        }
+    }  // constructor
+
+    /**
+     * Constructs a new record list with an initial
+     * record set as given by the parameter record collection. 
+     * Duplicate records in the array lead to an exception thrown. No check 
+     * for record validity is performed. After initialising the alteration state
+     * of the list is UNMODIFIED.
+     * 
+     * @param recs <code>Collection</code> of <code>PwsRecord</code> record list,
+     *        may be <b>null</b>
+     * @throws DuplicateEntryException 
+     */
+    public PwsRecordList( Collection<PwsRecord> recs ) 
+    		   throws DuplicateEntryException
+    {
+       this( recs == null ? null : recs.toArray(new PwsRecord[recs.size()]) );
     }  // constructor
 
    private void initInstance ()
    {
       fileID = instanceCounter++;
       idString = " (" + fileID + "): ";
-      Log.log( 2, "(PwsRecList) new PwsRecordList: ID = " + fileID );
+      Log.log( 2, "(PwsRecList) new PwsRecordList: inst-ID = " + fileID );
    }  // initInstance
    
    /**
-    * Returns the content of this list as an array of (cloned) records.
+    * Returns the record content of this list as an array of (cloned) records.
+    * The order of the array corresponds to the natural order of this list. 
     * 
-    * @return array of <code>PwsRecord</code>
-    * @since 2-1-0
+    * @return <code>PwsRecord[]</code>
     */
    public PwsRecord[] toArray ()
    {
-      PwsRecord arr[];
-      Iterator it;
-      int i;
-
-      arr = new PwsRecord[ recMap.size() ];
-      for ( it = recMap.values().iterator(), i = 0; it.hasNext(); i++ )
-         arr[ i ] = (PwsRecord) ((PwsRecord)it.next()).clone();
+      PwsRecord[] arr = new PwsRecord[ size() ];
+      Iterator<PwsRecord> it = internalIterator();
+      for ( int i = 0; it.hasNext(); i++ ) {
+         arr[ i ] = (PwsRecord)it.next().clone();
+      }
       return arr;
    }
    
    /**
+    * Returns the record content of this list as a <code>List</code> of 
+    * (cloned) records. Modifications to the returned list
+    * do not strike through to this record list.
+    * 
+    * @return <code>List</code> of <code>PwsRecord</code>
+    */
+   public List<PwsRecord> toList () {
+	   List<PwsRecord> col = Arrays.asList(toArray());
+	   List<PwsRecord> list = new ArrayList<PwsRecord>(col);
+	   return list;
+   }
+   
+   /**
     * Returns the content of this list as an array of 
-    * DefaultRecordWrapper (on cloned records).
+    * <code>DefaultRecordWrapper</code> (of cloned records).
     * 
     * @param locale <code>Locale</code> to be used by wrappers 
     *        or <b>null</b> for system default
     * @return DefaultRecordWrapper[]
-    * @since 2-1-0
     */
    public DefaultRecordWrapper[] toRecordWrappers ( Locale locale )
    {
       return DefaultRecordWrapper.makeWrappers( toArray(), locale );
+   }
+
+   /** Method called by this class when an attempt is recognised to insert a
+    * duplicate of a record into this list. Records are identified by their
+    * UUID value. The default reaction is throwing 
+    * a <code>DuplicateEntryException</code>. The user can modify this reaction
+    * in a subclass and, where advantageous, add further activity. Other 
+    * possible reactions are: returning <b>true</b> means overwrite existing 
+    * record, returning <b>false</b> means ignore duplicate.
+    * 
+    * @param rec <code>PwsRecord</code> duplicate record
+    * @return boolean true == overwrite, false == ignore
+    * @throws DuplicateEntryException
+    */
+   protected boolean duplicateInsertion ( PwsRecord rec ) 
+		   throws DuplicateEntryException
+   {
+	   throw new DuplicateEntryException();
    }
    
 	/**
@@ -229,13 +317,11 @@ public class PwsRecordList implements Cloneable
     * 
     * @param rec <code>PwsRecord</code> the record to be added
     * @throws IllegalArgumentException if the record is not valid
-    * @throws DuplicateEntryException if the record already exists
-    * @since 2-2-0
+    * @throws DuplicateEntryException if the record already exists in this list
+    * @throws NullPointerException if parameter is <b>null</b>
     */
-	public void addRecordValid( PwsRecord rec )
-   throws DuplicateEntryException
+	public void addRecordValid( PwsRecord rec ) throws DuplicateEntryException
 	{
-
 	   if ( !rec.isValid() )
          throw new IllegalArgumentException( "invalid record: " +
                rec.getInvalidText() + " (cannot be added)" );
@@ -244,133 +330,264 @@ public class PwsRecordList implements Cloneable
 	}
 
    /**
-    * Adds a record to this list. The condition for adding the record is that
-    * its identification (UUID) may not exist already in this list. 
+    * Adds a record to this list by creating a clone of the parameter record. 
+    * The condition for adding the record is that its identification (UUID) 
+    * may not exist already in this list. This method does not perform any 
+    * check on semantical validity of the record.
     * 
-    * @param rec the record to be added.
-    * 
-    * @throws IllegalArgumentException if the record has no Record-ID
+    * @param rec <code>PwsRecord</code> the record to be added.
     * @throws DuplicateEntryException if the record already exists
-    * @since 2-2-0 modified validation logic
+    * @throws NullPointerException if parameter is null
     */
-   public void addRecord( PwsRecord rec )
-   throws DuplicateEntryException
+   public void addRecord( PwsRecord rec ) throws DuplicateEntryException
    {
       addRecordIntern( rec, "(addRecord)" );
    }
 
    /**
-    * Adds a clone of the parameter record to this list provided its identification
-    * is not already contained. This method does not perform any check on semantical 
-    * validity of the record.
+    * Adds a clone of the parameter record to this list provided its 
+    * identification is not already contained. Upon successful insertion,
+    * the internal stored record instance is returned. This method does not 
+    * perform any check on semantical validity of the record. 
+    * <p>Note that if the record has not been added due to a duplicate 
+    * handling setting, <b>null</b> is returned. <u>The return value must not be
+    * used to modify the record and not returned to user environment!</u>
     * 
-    * @param rec record to be inserted
-    * @param report logging marker
+    * @param rec <code>PwsRecord</code> record to be inserted
+    * @param report String logging marker
+    * @return <code>PwsRecord</code> the internal record object or <b>null</b>
     * @throws DuplicateEntryException if record-ID already exists
+    * @throws NullPointerException if rec is null
     */
-   private void addRecordIntern( PwsRecord rec, String report )
+   protected PwsRecord addRecordIntern( PwsRecord rec, String report )
          throws DuplicateEntryException
    {
-      PwsRecord copy;
-      
-      if ( contains( rec ) )
-         throw new DuplicateEntryException("double record entry, cannot be added");
+      if ( contains(rec) && !duplicateInsertion(rec) ) {
+    	 return null; 
+      }
    
-      copy = (PwsRecord)rec.clone();
-      recMap.put( copy.getRecordID(), copy );
+      PwsRecord copy = (PwsRecord)rec.clone();
+      Object replaced = recMap.put( copy.getRecordID(), copy );
       setModified();
       
       if ( Log.getDebugLevel() > 2 )
       Log.debug( 3, "(PwsRecList) record added to list " + report + idString  + rec.toString() 
             + ", entry no. " + (recMap.size()-1) + ", crc=" + rec.getCRC() );
-      fireFileEvent( PwsFileEvent.RECORD_ADDED, (PwsRecord)copy.clone() );
+      
+      int evType = replaced == null ? PwsFileEvent.RECORD_ADDED :
+    	  		   PwsFileEvent.RECORD_UPDATED;
+      fireFileEvent( evType, rec );
+      return copy;
    }
 
    
-   /** Adds a list of records into this record list. The first occurrence of a duplicate
-    *  entry will break execution of the inclusion.
+    /** Adds a list of records into this record list. The first occurrence of 
+    * a duplicate entry will break execution of insertion and throw an 
+    * exception. Does nothing if the parameter is <b>null</b>.
+    * <p>Note: this does not check for record validity.
     * 
-    * @param list <code>PwsRecordList</code>
-    * @return a reference to this record list
+    * @param list <code>PwsRecordList</code>, may be null
+    * @return <code>PwsRecordList</code>, this record list
     * @throws DuplicateEntryException
-    * @throws IllegalArgumentException if any input record is invalid
-    * @since 2-0-0
-    * @since 2-1-0 enhanced
     */
-   public PwsRecordList addRecordList ( PwsRecordList list ) throws DuplicateEntryException
+   public PwsRecordList addRecordList ( PwsRecordList list ) 
+		   throws DuplicateEntryException
    {
-      Iterator it;
-      boolean old;
-/*   
-      // test for all-valid argument
-      for ( it = list.iterator(); it.hasNext(); )
-         if ( !((PwsRecord)it.next()).isValid() )
-            throw new IllegalArgumentException( "list contains invalid record" );
-*/      
-      // insert list elements (without issuing file-events)
-      old = getEventPause();
-      setEventPause( true );
-      for ( it = list.iterator(); it.hasNext(); )
-         addRecordIntern( (PwsRecord)it.next(), "addRecordList" );
-      setEventPause( old );
+      if ( list != null && !list.isEmpty() ) {
+	      // insert list elements without issuing file-events
+	      boolean oldPause = getEventPause();
+       	  setEventPause( true );
+	      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+	         addRecordIntern( it.next(), "addRecordList" );
+	      }
+	      setEventPause( oldPause );
+      }
       return this;
-   }  // addRecordList
+   }
 
-   /** Removes a list of records from this record list. Does nothing if the 
-    * parameter is <b>null</b> and ignores records which are not contained.
+   /** Adds a collection of records into this record list. The first occurrence 
+    * of a duplicate entry will break execution of insertion and throw an 
+    * exception. Does nothing if the parameter is <b>null</b>.
+    * <p>Note: this does not check for record validity.
     * 
-    * @param list <code>PwsRecordList</code>; may be <b>null</b>
-    * @return a reference to this record list
-    * @since 2-0-0
-    * @since 2-1-0 enhanced
+    * @param coll <code>Collection</code> of <code>PwsRecord</code>, may be null
+    * @return <code>PwsRecordList</code>, this record list
+    * @throws DuplicateEntryException
+    */
+   public PwsRecordList addCollection (Collection<PwsRecord> coll) 
+		   throws DuplicateEntryException 
+   {
+      if ( coll != null && !coll.isEmpty() ) {
+	      // insert list elements without issuing file-events
+	      boolean oldPause = getEventPause();
+       	  setEventPause( true );
+	      for ( Iterator<PwsRecord> it = coll.iterator(); it.hasNext(); ) {
+	         addRecordIntern( it.next(), "addCollection" );
+	      }
+	      setEventPause( oldPause );
+      }
+      return this;
+   }
+   
+   /** Returns an iterator over the ordered set of elements of this list
+    * without inducing the making of clones of the records. This has to be 
+    * handled with great care!
+    * <p><u>Important Notice</u>: Subclasses of <code>PwsRecordList</code> MUST 
+    * not use the direct references supplied by this iterator to modify the 
+    * record values or carry them outside of the structure. Otherwise major 
+    * features of this class are broken. 
+    * 
+    * @return Iterator of PwsRecord
+    */
+   protected Iterator<PwsRecord> internalIterator () 
+   {
+	   return recMap.values().iterator();
+   }
+   
+   /** Removes a given list of records from this record list and returns a fail
+    * list if not all parameter records could be removed. Does nothing if 
+    * the parameter is <b>null</b>.
+    * 
+    * @param list <code>PwsRecordList</code>, may be <b>null</b>
+    * @return <code>PwsRecordList</code> of <code>PwsRecord</code>, list of 
+    *         records (elements from parameter) which could not be deleted from
+    *         this list; <b>null</b> if all elements from the parameter list 
+    *         were removed or the parameter was <b>null</b>
     */
    public PwsRecordList removeRecordList ( PwsRecordList list ) 
    {
-      Iterator it;
-      boolean old;
-   
-      if ( list != null )
-      {
-         old = getEventPause();
-         
-         if ( list.getRecordCount() > 1 )
-         {
-            // insert list elements (without issuing file-events)
-            setEventPause( true );
-         }
-         
-         for ( it = list.iterator(); it.hasNext(); )
-            removeRecord( (PwsRecord)it.next() );
-         
-         setEventPause( old );
+	  PwsRecordList fList = null;
+	  
+      if ( list != null && !list.isEmpty() ) {
+	      // insert list elements without issuing file-events
+	      boolean oldPause = getEventPause();
+       	  setEventPause( true );
+          for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+        	 PwsRecord rec = it.next();
+	         PwsRecord delRec = removeRecord( rec.getRecordID() );
+	         if ( delRec == null ) {
+	        	 if (fList == null) {
+	        		 fList = new PwsRecordList();
+	        	 }
+	        	 try {
+					fList.addRecordIntern(rec, "(removeRecordList-fail-entry)");
+				} catch (DuplicateEntryException e) {
+				}
+	         }
+	      }
+	      setEventPause( oldPause );
       }
-      return this;
+      return fList;
    }  // removeRecordList
 
-   /**
-    * Returns the cut set of this record list with the parameter
-    * record list. If the cut set is empty, an empty list is returned.
-    * (For identity only UUID of the records is evaluated; the elements
-    * of the result list are clones of elements of this list.)
+   /** Removes a collection of records from this record list and returns a fail
+    * list if not all parameter records could be removed. Does nothing 
+    * if the parameter is <b>null</b>.
     * 
-    * @param list <code>PwsRecordList</code>
-    * @return <code>PwsRecordList</code> cut set with parameter list
-    * @since 2-1-0
+    * @param coll <code>Collection</code> of <code>PwsRecord</code>, may be null
+    * @return <code>List</code> of <code>PwsRecord</code>, list of records
+    *         (elements from parameter) which could not be deleted from this 
+    *         list; <b>null</b> if all elements from the parameter list were 
+    *         removed or the parameter was <b>null</b>
     */
+   public List<PwsRecord> removeCollection (Collection<PwsRecord> coll) 
+   {
+	  ArrayList<PwsRecord> fList = null;
+	  
+      if ( coll != null && !coll.isEmpty() ) {
+	      // insert list elements without issuing file-events
+	      boolean oldPause = getEventPause();
+       	  setEventPause( true );
+	      for ( PwsRecord rec : coll ) {
+	         PwsRecord delRec = removeRecord( rec.getRecordID() );
+	         if ( delRec == null ) {
+	        	 if (fList == null) {
+	        		 fList = new ArrayList<PwsRecord>();
+	        	 }
+	        	 fList.add(rec);
+	         }
+	      }
+	      setEventPause( oldPause );
+      }
+      return fList;
+   }
+   
+   /**
+    * Returns a new record list containing the intersection of this record list 
+    * with the given record list. If the intersection is empty or the parameter 
+    * is <b>null</b>, an empty list is returned. 
+    * <p>DEPECATED: This method will be removed in a following release. Use
+    * <code>intersectionRecordList()</code> instead!
+    * 
+    * @param list <code>PwsRecordList</code>, may be null
+    * @return <code>PwsRecordList</code> intersection with parameter list
+    */
+   @Deprecated
    public PwsRecordList cutSetRecordList ( PwsRecordList list )
    {
-      PwsRecordList result;
-      PwsRecord rec, recHere;
-      Iterator it;
-
-      result = new PwsRecordList();
-      for ( it = list.iterator(); it.hasNext(); )
-      {
-         rec = (PwsRecord)it.next();
-         if ( (recHere = getRecord( rec.getRecordID() )) != null )
-            try { result.addRecord( recHere ); }
-            catch ( DuplicateEntryException e )
-            {}  // ignore duplicates
+	   return intersectionRecordList(list);
+   }
+   
+   /**
+    * Returns a new record list containing the intersection of this record list 
+    * with the given record list. If the intersection is empty or the parameter 
+    * is <b>null</b>, an empty list is returned. 
+    * 
+    * @param list <code>PwsRecordList</code>, may be null
+    * @return <code>PwsRecordList</code> intersection with parameter list
+    */
+   public PwsRecordList intersectionRecordList ( PwsRecordList list )
+   {
+      PwsRecordList result = new PwsRecordList();
+      if ( list != null && !list.isEmpty() ) {
+	      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+	    	 PwsRecord rec = it.next(); 
+	         if ( contains(rec) ) {
+	            try { 
+	            	result.addRecordIntern( rec, "(intersection)" );
+	            } catch ( DuplicateEntryException e ) {
+	            } 
+	         }
+	      }
+      	  result.resetModified();
+      }
+      return result;
+   }
+   
+   /**
+    * Returns a new record list that contains all records of this record list
+    * which are not element of the parameter record list. 
+    * 
+    * @param list <code>PwsRecordList</code>, may be null
+    * @return <code>PwsRecordList</code> list without parameter record set
+    */
+   public PwsRecordList excludeRecordList ( PwsRecordList list )
+   {
+      PwsRecordList result = copy();
+      result.removeRecordList(list);
+      result.resetModified();
+      return result;
+   }
+   
+   /** Returns a new record list which contains the union set of this record 
+    * list with the parameter record list.
+    * 
+    * @param list <code>PwsRecordList</code>, may be null
+    * @return <code>PwsRecordList</code> union set with parameter list
+    */
+   public PwsRecordList unionRecordList ( PwsRecordList list ) 
+   {
+      PwsRecordList result = copy();
+      if (list != null && !list.isEmpty()) {
+	      for (Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+	    	  PwsRecord rec = it.next();
+	    	  if (!result.contains(rec)) {
+				 try { result.addRecordIntern(rec, "union");
+				 } catch (DuplicateEntryException e) {
+				 }
+	    	  }
+	      }
+		  result.resetModified();
       }
       return result;
    }
@@ -380,90 +597,123 @@ public class PwsRecordList implements Cloneable
     *  resulting record list. Does nothing if the parameter is <b>null</b>
     *  or the empty list.
     * 
-    * @param list <code>PwsRecordList</code> of records to be updated; 
+    * @param list <code>PwsRecordList</code> of records to be updated, 
     *        may be <b>null</b>
     * @return <code>PwsRecordList</code> subset of parameter list containing
-    *         records which were not updated; <b>null</b> if empty
-    * @since 2-0-0
+    *         records which were not updated, <b>null</b> if empty
     */
    public PwsRecordList updateRecordList ( PwsRecordList list ) 
    {
-      PwsRecordList result;
-      PwsRecord rec;
-      Iterator it;
-      boolean old;
+      PwsRecordList result = null;
 
-      result = null;
-      if ( list != null && list.getRecordCount() > 0 )
-      {
-         old = getEventPause();
+      if ( list != null && !list.isEmpty() ) {
+    	 boolean old = getEventPause();
          setEventPause( true );
          
-         // insert list elements (without issuing file-events)
-         for ( it = list.iterator(); it.hasNext(); )
-         {
-            rec = (PwsRecord)it.next();
-            try { updateRecord( rec ); }
-            catch ( NoSuchRecordException e )
-            {
-               if ( result == null )
+         // update list elements (without issuing file-events)
+         for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+        	PwsRecord rec = it.next();
+            try { 
+            	updateRecord( rec ); 
+            } catch ( NoSuchRecordException e ) {
+               // insert not matching record to result list	
+               // late creation of result list	
+               if ( result == null ) {
                   result = new PwsRecordList();
-               try { result.addRecord( rec ); }
-               catch ( DuplicateEntryException e1 )
-               {}
+               }
+               // insert to result ignoring duplicates
+               try { 
+            	   result.addRecord( rec ); 
+               } catch ( DuplicateEntryException e1 ) {
+               }
             }
          }
-         
          setEventPause( old );
       }
       return result;
-   }  // addRecordList
+   }  // updateRecordList
+
+   /** Updates a collection of records in this record list. Unknown 
+    *  records of the collection are not updated and returned in the
+    *  resulting record list. Does nothing if the parameter is <b>null</b>
+    *  or empty.
+    *  <p><small>Multiple occurrences of a record in the collection are
+    *  permitted, in which case the last occurrence as given by the collection's
+    *  iterator is the effective update.</small>
+    * 
+    * @param coll <code>Collection</code> of <code>PwsRecord</code>, records to 
+    *             be updated, may be <b>null</b>
+    * @return <code>List</code> of <code>PwsRecord</code>, subset of parameter 
+    *         containing records which were not updated, <b>null</b> if 
+    *         there are no such records
+    */
+   public List<PwsRecord> updateCollection ( Collection<PwsRecord> coll ) 
+   {
+      List<PwsRecord> result = null;
+
+      if ( coll != null && !coll.isEmpty() ) {
+    	 boolean old = getEventPause();
+         setEventPause( true );
+         
+         // update list elements (without issuing file-events)
+         for ( Iterator<PwsRecord> it = coll.iterator(); it.hasNext(); ) {
+        	PwsRecord rec = it.next();
+            try { 
+            	updateRecord( rec ); 
+            } catch ( NoSuchRecordException e ) {
+               // insert not matching record to result list	
+               // late creation of result list	
+               if ( result == null ) {
+                  result = new ArrayList<PwsRecord>();
+               }
+               result.add( rec );
+            }
+         }
+         setEventPause( old );
+      }
+      return result;
+   }  // updateRecordList
 
    /**
-    * Updates an existing record in this list. The record to be updated is
-    * identified by its Record-ID (UUID). (Note that changes made to records 
-    * obtained from this interface will <b>not</b> strike through to the 
-    * corresponding list element. Hence the "updateRecord()" functions are the 
-    * indicated way to effectively change an existing record in the list.)
+    * Updates an existing record in this list by replacing it with a clone of
+    * the parameter record. The record to be updated is
+    * identified by its UUID value. 
+    * <p><small>Note that changes made to record 
+    * objects obtained from this interface will <b>not</b> strike through to the 
+    * corresponding list element. Hence the "updateRecord" methods are vital 
+    * to change an existing record in the list.</small>
     * 
-    * @param rec the record to be updated
+    * @param rec <code>PwsRecord</code> the record to be updated
     * @throws NoSuchRecordException if the parameter record is unknown
+    * @throws NullPointerException if parameter is <b>null</b>
     */
-   public void updateRecord( PwsRecord rec )
-         throws NoSuchRecordException
+   public void updateRecord ( PwsRecord rec ) throws NoSuchRecordException
    {
-      PwsRecord oldRec, copy;
-      int oldCrc;
-      
-      oldRec = getRecordIntern( rec.getRecordID() );
+      PwsRecord oldRec = getRecordShallow( rec.getRecordID() );
       if ( oldRec == null )
          throw new NoSuchRecordException("failed update on record " + rec);
    
-      oldCrc = oldRec.getCRC();
-      if ( oldCrc != rec.getCRC() )
-      {
-         copy = (PwsRecord)rec.clone();
-         recMap.remove( rec.getRecordID() );
-         recMap.put( rec.getRecordID(), copy );
+      if ( oldRec.getCRC() != rec.getCRC() ) {
+    	 PwsRecord copy = (PwsRecord)rec.clone();
+         recMap.put( copy.getRecordID(), copy );
          setModified();
          if ( Log.getDebugLevel() > 2 )
          Log.debug( 3, "(PwsRecordList.updateRecord) record updated in file" + idString  + copy ); 
-         fireFileEvent( PwsFileEvent.RECORD_UPDATED, (PwsRecord)copy.clone() );
+         fireFileEvent( PwsFileEvent.RECORD_UPDATED, rec );
       }
    }  // updateRecord
 
    /**
     * Updates an existing valid record in this list. The record to be updated is
-    * identified by its Record-ID (UUID). If the record is not valid and exception 
-    * is thrown.
+    * identified by its UUID value. If the record is not valid an 
+    * exception is thrown.
     * 
-    * @param rec the record to be updated; must be a valid record
-    * 
+    * @param rec <code>PwsRecord</code> the record to be updated, must be valid 
     * @throws IllegalArgumentException if the record is not valid
     * @throws NoSuchRecordException if the parameter record is unknown
+    * @throws NullPointerException if parameter is <b>null</b>
     */
-   public void updateRecordValid( PwsRecord rec )
-         throws NoSuchRecordException
+   public void updateRecordValid( PwsRecord rec ) throws NoSuchRecordException
    {
       if ( !rec.isValid() )
          throw new IllegalArgumentException("invalid record, cannot be updated");
@@ -473,28 +723,45 @@ public class PwsRecordList implements Cloneable
 
    /**
 	 * Returns the total number of records in this list.
+	 * <p>DEPRECATED: Method may get eliminated in future releases.
+	 * Use <code>size()</code> instead!
 	 * 
-	 * @return total number of records in the file
+	 * @return int, number of records
 	 */
+    @Deprecated
 	public int getRecordCount()
 	{
 		return recMap.size();
 	}
 
    /**
-    * Returns an iterator over all records. Records may be deleted from this list 
-    * by calling the <code>remove()</code> method on the iterator. This iterator
-    * returns records that are clone copies of the original file records; modified
-    * records have to get "updated" by use of the <code>updateRecord()</code> method.
-    * This iterator allows concurrent modifications of this list/database (it operates 
-    * on a copy of the list structure created when the iterator is invoked).   
+	 * Returns the total number of records in this list.
+	 * 
+	 * @return int, number of records
+	 */
+	public int size () 
+	{
+		return recMap.size();
+	}
+	
+   /**
+    * Returns an iterator over all records in the natural order of this list. 
+    * Records may be deleted from this
+    * list by calling the <code>remove()</code> method on the iterator. This 
+    * iterator returns records that are clones of the filed 
+    * records; records modified by the user have to be "updated" by use of the 
+    * <code>updateRecord()</code> method.
+    * The iterator allows concurrent modifications of this list.   
     * 
-    * @return an <code>Iterator</code> over all records (with a snapshot of the 
-    *         list situation at the timepoint of invokation)
+    * @return <code>Iterator</code> of <code>PwsRecord</code>, iterator over 
+    *         all records (a snapshot of the list situation at the time point 
+    *         of invocation)
     */
-   public Iterator iterator()
+   @SuppressWarnings("unchecked")
+   public Iterator<PwsRecord> iterator()
    {
-      return new FileIterator( ((Map)recMap.clone()).values().iterator() );
+      return new FileIterator( ((TreeMap<UUID, PwsRecord>)recMap.clone()).
+    		                    values().iterator() );
    }
 
    /**
@@ -502,150 +769,148 @@ public class PwsRecordList implements Cloneable
     * in this record list. 
     * (This refers to blocked data size according to the specified file format.)
     * 
-    * @param format the format version of the persistent state to be considered
+    * @param format int, the format version of the persistent state to be 
+    *               considered
     * @return long unknown data size
-    * @since 2-0-0 
     */
    public long getUnknownFieldSize ( int format )
    {
-      Iterator it;
-      long sum;
-      
-      for ( it = iterator(), sum = 0; it.hasNext(); )
-         sum += ((PwsRecord)it.next()).getUnknownFieldSize( format );
+      long sum = 0;
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         sum += it.next().getUnknownFieldSize( format );
+      }
       return sum;
    }
 
    /**
-    * Returns the number of datafields which are kept as non-canonical 
+    * Returns the number of data fields which are kept as non-canonical 
     * in this list of records.
     * 
-    * @return int number of non-canonical records
-    * @since 2-0-0 
+    * @return int, number of non-canonical records
     */
    public int getUnknownFieldCount ()
    {
-      Iterator it;
-      int count;
-      
-      for ( it = iterator(), count = 0; it.hasNext(); )
-         count += ((PwsRecord)it.next()).getUnknownFieldCount();
+      int count = 0;
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         count += it.next().getUnknownFieldCount();
+      }
       return count;
    }
 
    /**
     * Clears away all non-canonical fields in this list of records.
-    * @since 2-0-0 
     */
    public void clearUnknownFields ()
    {
-      PwsRecordList list;
-      PwsRecord rec;
-      Iterator it;
-      
-      if ( getUnknownFieldCount() > 0 )
-      {
-         list = new PwsRecordList();
-         for ( it = iterator(); it.hasNext(); )
-         {
-            rec = (PwsRecord)it.next();
-            if ( rec.getUnknownFieldCount() > 0 )
-            {
-               rec.clearExtraFields();
-               try { list.addRecord( rec ); }
-               catch ( DuplicateEntryException e )
-               {}
-            }
+	  int count = 0;   
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+    	 PwsRecord rec = it.next();
+    	 int recCount = rec.getUnknownFieldCount();
+    	 count += recCount; 
+         if ( recCount > 0 ) {
+           rec.clearExtraFields();
          }
-         updateRecordList( list ); 
-         
-         Log.log( 3, "cleared unknown fields in reclist" + idString );
+      }
+      if ( count > 0 ) {
+         Log.log( 3, "cleared " + count + " unknown fields in reclist " + idString );
+         contentModified();
       }
    }
 
    /**
-    * Returns the number of records in the file which belong to the 
+    * Returns the number of records in this list which belong to the 
     * specified group value, including descendant groups. (Note that
     * this function refers to the same set building principle as 
     * <code>getGroupedRecords()</code>.) 
     * 
     * @param group String GROUP field selection value; may be <b>null</b>
-    * @param exact whether elementary group names must match exactly the parameter
+    * @param exact boolean whether elementary group names must match exactly
+    *        the parameter
     *  
-    * @return number of specified grouped records in the file
-    * @since 0-4-0 (modified parameter list)
-    * @since 2-1-0 (modified parameter logic: group)        
+    * @return int number of grouped records as specified 
     */
    public int getGrpRecordCount( String group, boolean exact )
    {
-      if ( group == null )
-         return 0;
-      if ( group.length() == 0 )
-         return getRecordCount();
-      return new GroupFileIterator( group, exact ).grpList.size();
+      if ( group == null ) return 0;
+      return new GroupFileIterator(group, exact).grpList.size();
    }
 
    /**
-    * Returns an iterator over all records whose group value matches with the
+    * Returns an iterator over all records whose group values matches with the
     * parameter value. Two modi operandi are possible: relaxed and exact. In 
-    * exact mode the parameter value must be identical with an <b>elementary group
-    * name</b> in the record group value. In relaxed mode it suffices that the record
-    * value starts with the parameter value. Comparison is case sensitive.
-    * <p><u>Example</u>: Parameters <code>"AA.Miriam.Car",true</code> will return all
-    * records belonging to a group with this name, including all subgroups, but it
-    * will not return a record of the "AA.Miriam.Carfesh" group. In relaxed mode
-    * the records of the latter group are also returned. 
+    * exact mode the parameter value must be identical with an <b>elementary 
+    * group name</b> in the record group value. In relaxed mode it suffices that
+    * the record value starts with the parameter value. Comparison is case 
+    * sensitive.
+    * <p><u>Example</u>: Parameters <code>"AA.Miriam.Car",true</code> will 
+    * return all records belonging to a group with this name, including all 
+    * subgroups, but it will not return a record of the "AA.Miriam.Carfesh" 
+    * group. In relaxed mode the records of the latter group are also returned. 
     * 
-    * <p>If <code>group</code> is the empty name, the returned iterator encompasses 
-    * all records of this list. If group is <b>null</b> the iterator is empty.
+    * <p>If <code>group</code> is the empty name, the returned iterator 
+    * encompasses all records without a group value. If group is <b>null</b> 
+    * the iterator is empty.
     * 
-    * <p>Records may be deleted from the file by calling the <code>remove()</code> 
-    * method of the iterator.
+    * <p>Records may be deleted from this list by calling the <code>remove()
+    * </code> method of the iterator.
     * 
     * @param group String GROUP field selection value; may be <b>null</b>
-    * @return an <code>Iterator</code> of elements of type <code>PwsRecord</code>
-    * @since 0-4-0 (modified parameter list)
-    * @since 2-1-0 (modified parameter logic: group)        
+    * @param exact boolean whether elementary group names must match exactly
+    *        the parameter
+    * @return <code>Iterator</code> of <code>PwsRecord</code>
     */
-	public Iterator getGroupedRecords ( String group, boolean exact )
-   {
-      return new GroupFileIterator( group, exact );
-   }
+	public Iterator<PwsRecord> getGroupedRecords ( String group, boolean exact )
+    {
+      return new GroupFileIterator(group, exact);
+    }
+	
+	/** Returns a record list containing all records belonging to the given
+	 * GROUP name. If there is no record for this group name, the empty list
+	 * is returned.
+	 * 
+	 * @param group String selective group name
+	 * @return <code>PwsRecordList</code>
+	 */
+	public PwsRecordList getGroup ( String group ) {
+		PwsRecordList list = new PwsRecordList();
+		for (Iterator<PwsRecord> it = getGroupedRecords(group, true); it.hasNext();) {
+			try { list.addRecord(it.next());
+			} catch (DuplicateEntryException e) {
+			}
+		}
+		return list;
+	}
    
    /**
     * Returns the number of records which are expired on the date given.
     * 
-    * @param date the epoch timepoint for this evaluation
-    * @return number of expired records for <code>date</code>
-    * @since 0-3-0
+    * @param date long epoch time-point for this evaluation
+    * @return int, number of expired records at <code>date</code>
     */
    public int countExpired ( long date )
    {
-      Iterator it;
-      int count;
-      
-      count = 0;
-      for ( it = recMap.values().iterator(); it.hasNext(); )
-         if ( ((PwsRecord)it.next()).willExpire( date ) )
+      int count = 0;
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         if ( it.next().willExpire( date ) ) {
             count++;
+         }
+      }
       return count;
    }
 
    /**
     * Returns the number of invalid records.
     * 
-    * @return number of invalid records
-    * @since 2-2-0        
+    * @return int number of invalid records
     */
    public int countInvalid ()
    {
-      Iterator it;
-      int count;
-      
-      count = 0;
-      for ( it = recMap.values().iterator(); it.hasNext(); )
-         if ( !((PwsRecord)it.next()).isValid() )
+      int count = 0;
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         if ( !((PwsRecord)it.next()).isValid() ) {
             count++;
+         }
+      }
       return count;
    }
 
@@ -655,32 +920,34 @@ public class PwsRecordList implements Cloneable
     * 
     * @return <code>PwsRecordList</code> list of invalid records
     *         or <b>null</b> if no invalid records were inheld
-    * @since 2-2-0        
     */
    public PwsRecordList clearInvalidRecs ()
    {
       PwsRecordList list = null;
-      PwsRecord rec;
-      Iterator it;
-      
-      for ( it = recMap.values().iterator(); it.hasNext(); )
-         if ( !(rec = (PwsRecord)it.next()).isValid() )
-         {
-            if ( list == null )
+
+      // investigate all records for validity
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+    	 PwsRecord rec = it.next(); 
+         if ( !rec.isValid() ) {
+            if ( list == null ) {
                list = new PwsRecordList();
+            }
             try { 
                list.addRecordIntern( rec, "(clearInvalidRecs)" );
-               this.removeRecord( rec );
-            }
-            catch ( DuplicateEntryException e )
-            {}
+            } catch ( DuplicateEntryException e ) {
+          	}
          }
+      }
+
+      // remove invalid records and return list
+      if (list != null) {
+    	  removeRecordList(list);
+      }
       return list;
    }
    
    /**
     * Whether this database has invalid records.
-    * @since 2-2-0        
     */
    public boolean hasInvalidRecs ()
    {
@@ -689,135 +956,153 @@ public class PwsRecordList implements Cloneable
    
    /**
     * Renames the GROUP name of a set of records. The set of records is selected
-    * by the parameter <code>group</code> as if through <code>getGroupedRecords(group,true)</code>.
-    * For each record of the group, the <b>elementary group name</b> part which is defined by 
-    * <code>group</code> is replaced by the string <code>newGroup</code>.  
-    * <p>!!Note!! This is very powerful and you can relocate this group to a completely 
-    * different place in the group tree! 
+    * by the parameter <code>group</code> name as if through 
+    * <code>getGroupedRecords(group,true)</code>. For each record of the group, 
+    * the <b>elementary group name</b> part which is defined by <code>group
+    * </code> is replaced by the string <code>newGroup</code>.  
     * 
-    * @param group String as a record group definiens 
-    * @param newGroup String that replaces the <code>group</code> text in the records'
-    *        GROUP field
-    * @return <code>PwsRecordList</code> a list of the records actually modified by this 
-    *         operation        
-    * @since 0-4-0
-    * @since 2-1-0 return type (record list), event org
+    * @param group String elementary group name (defines a set of records);
+    *        may be <b>null</b> for no operation      
+    * @param newGroup String that replaces the <code>group</code> text in the 
+    *        records' GROUP field; may be <b>null</b> for ""
+    * @return <code>PwsRecordList</code> a list of the records actually modified
+    *         by this operation        
     */
    public PwsRecordList renameGroup ( String group, String newGroup )
    {
-      PwsRecordList list;
-      PwsRecord rec;
-      Iterator it;
-      String grp, hstr;
-      boolean old;
-      
-      old = getEventPause();
+      PwsRecordList list = new PwsRecordList();
+      boolean oldPause = getEventPause();
       setEventPause( true );
 
-      list = new PwsRecordList();
-      for ( it = getGroupedRecords( group, true ); it.hasNext(); )
-      {
-         rec = (PwsRecord) it.next();
-         grp = rec.getGroup();
-         hstr = newGroup;
-         if ( grp.length() > group.length() )
-            hstr += grp.substring( group.length() );
-         rec.setGroup( hstr ); 
+      for ( Iterator<PwsRecord> it = getGroupedRecords( group, true ); it.hasNext(); ) {
+         PwsRecord rec = it.next();
+         String oldGrp = rec.getGroup();
+         String newValue = newGroup == null ? "" : newGroup;
+         // in case of subgroup, append subgroup text to new group name
+         if ( oldGrp.length() > group.length() ) {
+            newValue += oldGrp.substring( group.length() );
+         }
+         rec.setGroup( newValue ); 
          try { 
             updateRecord( rec ); 
-            try { list.addRecordIntern( rec, "* internal rename group *" ); }
-            catch ( Exception e )
-            {}
-         }
-         catch ( NoSuchRecordException e )
-         {
+            try { 
+            	list.addRecordIntern( rec, "* internal rename group *" ); 
+            } catch ( Exception e ) {
+            }
+         } catch ( NoSuchRecordException e ) {
             throw new IllegalStateException( "PWSLIB renameGroup():\r\n" + e );
          }
       }
 
-      setEventPause( old );
+      setEventPause( oldPause );
       return list;
    }  // renameGroup
 
    /**
-    * Deletes a set of records which is defined by the <code>group</code> parameter.
-    * This affects all records which belong to the specified <b>elementary group name</b>.
-    * <p>(The set of deleted records is equivalent to <code>
-    * getGroupedRecords( group, true )</code>). 
+    * Deletes a set of records which is defined by the <code>group</code> 
+    * parameter. This affects all records which belong to the specified 
+    * <b>elementary group name</b>, including all descendant groups.
+    * <p>The set of deleted records is equivalent to <code>
+    * getGroupedRecords(group, true)</code>. 
     *   
-    * @param group String an elementary group name (of the record GROUP field)  
-    * @since 0-4-0
+    * @param group String an elementary group name (of the record GROUP field)
+    * @return <code>PwsRecordList</code> with set of records removed
     */
-   public void removeGroup ( String group )
+   public PwsRecordList removeGroup ( String group )
    {
-      boolean oldEvtPause;
-      
-      oldEvtPause = getEventPause();
+	  PwsRecordList result = new PwsRecordList(); 
+      boolean oldPause = getEventPause();
       setEventPause( true );
-      for ( Iterator it = getGroupedRecords( group, true ); it.hasNext(); )
-      {
-         it.next();
+      
+      for ( Iterator<PwsRecord> it = getGroupedRecords( group, true ); it.hasNext(); ) {
+         try {
+			result.addRecord(it.next());
+ 		 } catch (DuplicateEntryException e) {
+		 }
          it.remove();
       }
-      setEventPause( oldEvtPause );
+      setEventPause( oldPause );
+
+      // control success
+      if ( containsGroup(group) ) {
+    	  throw new IllegalStateException("*** failed to remove GROUP completely: ".concat(group));
+      }
+      return result;
    }
    
-   /** Adds the parameter parent expression to the given list
+   /** Adds the parameter parent expression to the given list of group names
     * and analyses and adds all predecessor group names of parent.
     * 
-    * @param list ArrayList of Strings
+    * @param list <code>List</code> of <code>String</code>
     * @param parent String, group name, may be <b>null</b>
     */
-   private void addParentGroupNames ( ArrayList list, String parent )
+   private void addParentGroupNames ( List<String> list, String parent )
    {
       // analyse parent of parent and recurse 
       String pp = PwsRecord.groupParent( parent );
-      if ( pp != null )
+      if ( pp != null ) {
          addParentGroupNames( list, pp );
+      }
       
       // try add parent
-      if ( !list.contains( parent ) )
+      if ( !list.contains( parent ) ) {
          list.add( parent );
+      }
    }
 
-   /** Returns an ordered list of the GROUP field values of this record list
-    *  where each group name only shows once. (Ordering follows collation rules
-    *  of the actual VM default locale.)
-    *  The empty group name is considered a possible element. If this record-list
-    *  is empty, an empty list is returned.
+   /** Returns an ordered list of all <b>elementary group names</b> used in this
+    *  record list. Complex group names are analysed into their elementary
+    *  group names and all these names included as elements of the list.
+    *  Ordering follows collation rules of the actual VM default locale.
+    *  The empty group name is considered a possible element. If this 
+    *  record list is empty, an empty list is returned.
     *  
-    *  @return java.util.List of strings
-    *  @since 0-4-0
+    *  @return <code>List</code> of <code>String</code>
     */
-   public List getGroupList ()
+   public List<String> getGroupList ()
    {
-      OrderedRecordList recList;
-      ArrayList list;
-      String group, parent, p=null;
-      int i;
-
-      list = new ArrayList();
-      recList= new OrderedRecordList( this );
+	   return getGroupList(true);
+   }
+   
+   /** Returns an ordered list of group names used in this
+    *  record list. If the parameter is <b>true</b>, complex group names are 
+    *  analysed into their elementary group names and all implied names included 
+    *  as elements of the list. Otherwise only actually assigned group names
+    *  are included.
+    *  <p>Ordering follows collation rules of the actual VM default locale.
+    *  The empty group name is considered a possible element. If this 
+    *  record list is empty, an empty list is returned.
+    *
+    *  @param analyse boolean true == include implied group names,
+    *                         false == only actually assigned group names 
+    *  @return <code>List</code> of <code>String</code>
+    */
+   public List<String> getGroupList (boolean analyse)
+   {
+      ArrayList<String> list = new ArrayList<String>();
+      OrderedRecordList recList = new OrderedRecordList( this );
       recList.loadDatabase( this, 0 );
-      for ( i = 0; i < recList.size(); i++ )
-      {
-         group = recList.getItemAt( i ).getRecord().getGroup();
+      String p=null;
+      
+      for ( int i = 0; i < recList.size(); i++ ) {
+         String group = recList.getItemAt( i ).getRecord().getGroup();
          
          // allow empty group as element
-         if ( group == null )
+         if ( group == null ) {
             group = "";
+         }
 
          // add parent group names
-         parent = PwsRecord.groupParent( group );
-         if ( parent != null && !parent.equals(p) )
-         {
+         String parent = PwsRecord.groupParent( group );
+         if ( parent != null && !parent.equals(p) ) {
             addParentGroupNames( list, parent );
             p = parent;
          }
 
          // add group name if not contained
-         if ( !list.contains( group ) )
+         if ( !list.contains( group ) ) {
             list.add( group );
+         }
       }
       
       removeFileListener( recList );
@@ -829,18 +1114,13 @@ public class PwsRecordList implements Cloneable
     * The empty group name is considered a possible element.
     * 
     * @return int number of distinct groups
-    * @since 2-0-0
     */
    public int getGroupCount ()
    {
-      HashMap map;
-      Iterator it;
-      String grpval;
-      
-      map = new HashMap( Math.max( getRecordCount(), 32 ) );
-      for ( it = iterator(); it.hasNext(); )
-      {
-         grpval = ((PwsRecord)it.next()).getGroup();
+      HashMap<String, Object> map = 
+    		  new HashMap<String, Object>( Math.max(size(), 32) );
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         String grpval = it.next().getGroup();
          map.put( grpval, null );
       }
       return map.size();
@@ -849,55 +1129,70 @@ public class PwsRecordList implements Cloneable
    /**
 	 * Whether this list or any of its records have been modified.
 	 * 
-	 * @return <code>true</code> if and only if the content of this list has been
-    *         modified since the last save or load
+	 * @return <code>true</code> if and only if the content of this list has 
+	 *         been modified since the last save or load
 	 */
-	public boolean isModified()
+	public boolean isModified ()
 	{
 		return modified;
+	}
+	
+	/** Whether this record list is empty.
+	 * 
+	 * @return boolean true == empty list
+	 */
+	public boolean isEmpty ()
+	{
+		return size() == 0;
 	}
 
 	/**
 	 * Deletes the specified record from this list.
-    * Does nothing if the record is not contained in the list
-    * or the parameter is void.
-    * (A record is identified by its Record-ID (UUID).)
+     * Does nothing if the parameter is <b>null</b> or the given record is not 
+     * contained in this list.
 	 * 
-	 * @param rec the record to be deleted (may be <b>null</b>)
+	 * @param rec <code>PwsRecord</code> the record to be deleted, may be null
+     * @return <code>PwsRecord</code> the record which was removed 
+     *         from the list or <b>null</b> if the record was not contained            
 	 */
-	public void removeRecord( PwsRecord rec )
+	public PwsRecord removeRecord( PwsRecord rec )
 	{
-		if ( contains( rec ) )
-		{
-			recMap.remove( rec.getRecordID() );
-			setModified();
-         if ( Log.getDebugLevel() > 2 )
-         Log.debug( 3, "record removed from list" + idString  + rec.toString() ); 
-            fireFileEvent( PwsFileEvent.RECORD_REMOVED, rec );
-		}
+    	if ( rec == null ) return null;
+		return removeRecord( rec.getRecordID() );
 	}
 
     /**
     * Deletes the specified record from this list.
-    * Does nothing if the record is not contained in this list.
-    * (A record is identified by its Record-ID (UUID).)
+    * Does nothing if the parameter is <b>null</b> or the given ID is not 
+    * contained in this list. 
     * 
-    * @param recID the UUID identification of the record to be deleted
-    *        (may be <b>null</b>)
-    * @since 0-4-0
+    * @param recID <code>UUID</code> identification of the record to be deleted,
+    *        may be <b>null</b>
+    * @return <code>PwsRecord</code> the record which was removed 
+    *         from the list or null if the record was not contained            
     */
-    public void removeRecord( UUID recID )
+    public PwsRecord removeRecord( UUID recID )
     {
-       PwsRecord rec;
-       
-       if ( (rec = getRecordIntern( recID )) != null )
-          removeRecord( rec );
+    	if ( recID == null ) return null;
+
+    	PwsRecord deleted = recMap.remove( recID );
+		if ( deleted != null ) {
+			setModified();
+			PwsRecord copy = (PwsRecord)deleted.clone();
+			
+			if ( Log.getDebugLevel() > 2 )
+		    Log.debug( 3, "record removed from list" + idString  + deleted.toString() ); 
+            fireFileEvent( PwsFileEvent.RECORD_REMOVED, copy );
+            return copy;
+		}
+		return null;
     }
 
-   /** Whether the specified record exists in this list.
+   /** Whether the specified record is contained in this list.
     * 
-    *  @return <b>true</b> if and only if <code>rec</code> is not <b>null</b> and 
-    *          a record with the identification (UUID) of the parameter record 
+    *  @param rec <code>PwsRecord</code> record, may be null
+    *  @return <b>true</b> if and only if the parameter is not <b>null</b> 
+    *          and a record with the given identification (UUID)  
     *          exists in this list
     */
    public boolean contains ( PwsRecord rec )
@@ -905,70 +1200,127 @@ public class PwsRecordList implements Cloneable
       return rec == null ? false : recMap.containsKey( rec.getRecordID() );
    }
    
-   /** Whether a record with the specified Record-ID (UUID) exists in this list.
+   /** Whether a record with the specified record-Id (UUID) exists in this list.
     * 
-    *  @return <b>true</b> if and only if <code>recID</code> is not <b>null</b> and
-    *          a record with the given Record-ID exists in this list
+    *  @param recId <code>UUID</code> record Id, may be null
+    *  @return <b>true</b> if and only if <code>recId</code> is not <b>null</b>
+    *          and a record with the given Id exists in this list
     */
-   public boolean contains ( UUID recID )
+   public boolean contains ( UUID recId )
    {
-      return recID == null ? false : recMap.containsKey( recID );
+      return recId == null ? false : recMap.containsKey( recId );
    }
 
-   /** Whether the specified group path exists in this list as a full group name.
+   /** Whether the specified group path exists in this list as a group name.
+    * If the parameter is <b>null</b>, <b>false</b> is returned.
     * 
+    *  @param group String group name probed, may be <b>null</b>
     *  @return <b>true</b> if and only if there exists at least one record with 
     *          a GROUP value that starts with the parameter group name 
     *          (assuming it to be a complete elemental group name)
-    * @since 0-4-0
     */
    public boolean containsGroup ( String group )
    {
-      Iterator it;
-      String hstr;
-      int len;
-      
+	  if ( group == null ) return false;
+	  
       group = PwsRecord.groupNormalized( group );
-      len = group.length();
-      for ( it = recMap.values().iterator(); it.hasNext(); )
-      {
-         hstr = ((PwsRecord)it.next()).getGroup();
-         if ( hstr != null && hstr.startsWith( group ) &&
-              (hstr.length() == len || hstr.charAt( len ) == '.') )
+      int len = group.length();
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         String hstr = it.next().getGroup();
+         if ( hstr == null ) hstr = "";
+         if ( hstr.startsWith( group ) &&
+              (hstr.length() == len || hstr.charAt( len ) == '.') ) {
             return true;
+         }
       }
       return false;
    }
    
    /**
-    * Returns the record with the specified Record-ID as direct reference
-    * to internal storage.
+    * Returns <b>true</b> if and only if the given record list is not 
+    * <b>null</b> and all of its elements are also an element of this list.
     * 
-    * @param recID the Record-ID of the requested record (may be <b>null</b>)
-    * @return the requested <code>PwsRecord</code> or <b>null</b> if the record 
-    *         is unknown in this file
-    * @since 0-4-0        
+    * @param list <code>PwsRecordList</code>, may be null
+    * @return boolean true == parameter list is contained
     */
-   protected PwsRecord getRecordIntern ( UUID recID )
+   public boolean containsRecordList ( PwsRecordList list ) 
    {
-      return recID == null ? null : (PwsRecord)recMap.get( recID );
+	  if ( list == null ) return false;
+	  
+      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+    	 if ( !contains(it.next()) ) {
+    		 return false;
+    	 }
+      }
+      return true;
+   }
+   
+   /**
+    * Returns <b>true</b> if and only if the given record collection is not 
+    * <b>null</b> and all of its elements are also an element of this list.
+    * The empty collection is always contained.
+    * 
+    * @param coll <code>Collection</code> of <code>PwsRecord</code>, may be null
+    * @return boolean true == parameter list is contained
+    */
+   public boolean containsCollection ( Collection<PwsRecord> coll ) 
+   {
+	  if ( coll == null ) return false;
+	  
+      for ( Iterator<PwsRecord> it = coll.iterator(); it.hasNext(); ) {
+    	 if ( !contains(it.next()) ) {
+    		 return false;
+    	 }
+      }
+      return true;
    }
    
    /**
     * Returns the record with the specified Record-ID as a clone of
     * the stored record of this list.
     * 
-    * @param recID the Record-ID of the requested record
-    * @return the requested <code>PwsRecord</code> or <b>null</b> if the record 
-    *         is unknown in this file
+    * @param recID <code>UUID</code> Record-ID of the requested record.
+    *        may be null
+    * @return <code>PwsRecord</code>, the requested record or <b>null</b> if 
+    *         such a record is unknown to this list
     */
    public PwsRecord getRecord ( UUID recID )
    {
-      PwsRecord rec;
-       
-      if ( (rec = getRecordIntern( recID )) != null )
+      PwsRecord rec = getRecordShallow( recID );
+      if ( rec != null ) {
          rec = (PwsRecord)rec.clone();
+      }
       return rec;
+   }
+   
+   /**
+    * Returns a clone of the stored record with Record-ID as given by the 
+    * parameter record.
+    * 
+    * @param rec <code>PwsRecord</code> the requested record, may be null
+    * @return <code>PwsRecord</code>, the stored record or <b>null</b> if 
+    *         such a record is unknown to this list
+    */
+   public PwsRecord getRecord ( PwsRecord rec )
+   {
+      return rec == null ? null : getRecord(rec.getRecordID());
+   }
+   
+   /**
+    * Returns the record with the specified Record-ID as a direct reference to
+    * the stored record of this list.
+    * <p><u>Important Notice</u>: This method MUST 
+    * NOT be used to modify the referenced record value or carry it
+    * to public. Otherwise major features of this class are broken! 
+    * 
+    * @param recID <code>UUID</code> Record-ID of the requested record, 
+    *              may be null
+    * @return <code>PwsRecord</code>, the requested record or <b>null</b> if 
+    *         such a record is unknown to this list
+    */
+   protected PwsRecord getRecordShallow ( UUID recID )
+   {
+      return recID == null ? null : recMap.get( recID );
    }
    
    /**
@@ -976,150 +1328,162 @@ public class PwsRecordList implements Cloneable
     * this record list on a persistent state. (This takes into respect the 
     * general file formating rules of a PWS file of the specified format.) 
     * 
-    * @param format the file format version of the persistent state
-    * @param charset encoding used on text data of the contained records 
+    * @param format int, file format version of the persistent state
+    * @param charset String, encoding used for text values 
     * @return long required (blocked) data space
-    * @throws IllegalCharsetNameException if charset is unknown to the executing VM
-    * @since 2-0-0
+    * @throws IllegalCharsetNameException if charset is unknown to JVM
     */
    public long getBlockedDataSize ( int format, String charset )
    {
-      Iterator it;
-      long sum;
-      
-      // constant size consisting of header and trailer data
-      sum = 0;
-
-      // record sum-up
-      for ( it = iterator(); it.hasNext(); )
-         sum += ((PwsRecord)it.next()).getBlockedDataSize( format, charset );
-      
+      long sum = 0;
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+         sum += it.next().getBlockedDataSize( format, charset );
+      }
       return sum;
    }
 
    /**
     * Renders a content signature value for this list of records.
-    * Returns a SHA-256 checksum which is a sum-up of all its records' signatures. 
-    * Note that this value is not strictly individual for a given instance because 
-    * two lists with identical records (or empty) will have the same signature value.
-    * (It may be assumed - although there is no guarantee - that this value is identical 
-    * over different releases of this software package and different sessions of a
-    * program running this package.)
+    * Returns a SHA-256 checksum which is a sum-up of all its records' 
+    * signatures. Note that this value is not individual for a given list 
+    * instance because two lists with identical records (or empty) will have the
+    * same signature value.
+    * <p>It may not be assumed that this value is identical 
+    * over different releases of this software but over different sessions of a
+    * program running this package.
     * 
     * @return byte[] 32 byte signature value (SHA-256 digest) 
-    * @since 2-0-0
     */
    public byte[] getSignature ()
    {
-      SHA256 sha;
-      Iterator it;
-      
-      sha = new SHA256();
-      for ( it = recMap.values().iterator(); it.hasNext();  )
-         sha.update( ((PwsRecord)it.next()).getSignature() );
-      
+      SHA256 sha = new SHA256();
+      for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext();  ) {
+         sha.update( it.next().getSignature() );
+      }
       return sha.digest();
    }
    
-	/** Removes all records from this list / file.
+	/** Removes all records from this record list.
     */
    public void clear ()
    {
-      int size;
-      
-      if ( (size = getRecordCount()) > 0 )
-      {
+      int size = size();
+      if ( size > 0 ) {
          recMap.clear();
          setModified();
-   
-         Log.debug( 3, "clear, all records removed in list" + idString  + size );
+         Log.debug( 3, "(PwsRecordList.clear) -- all records removed in list" 
+                    + idString  + size );
          fireFileEvent( PwsFileEvent.LIST_CLEARED, null );
       }
    }
    
    /**
     * Returns a shallow clone of this record list (PwsRecordList). 
-    * File-ID number is modified to be unique and any 
+    * UUID value is the same, File-ID number is modified to be unique and any 
     * registered listeners are removed from the clone. 
-    * 
-    * @return object of type <code>PwsRecordList</code> 
-    * @since 2-1-0
+    * <p><small>This class treats record values as constants. Neither does it
+    * internally modify referenced record instances, nor does it give the user
+    * any opportunity to do this. Because of this feature, the shallow clone of
+    * this list is functionally equivalent to a deep clone.</small> 
+    *      
+    * @return <code>Object</code> of type <code>PwsRecordList</code> 
     */
+   @Override
+   @SuppressWarnings("unchecked")
    public Object clone ()
    {
       PwsRecordList list;
-      
-      try { list = (PwsRecordList) super.clone(); }
-      catch ( CloneNotSupportedException  e ) 
-      { return null; }
+
+      try { 
+    	  list = (PwsRecordList) super.clone(); 
+      } catch ( CloneNotSupportedException  e ) { 
+    	 return null; 
+      }
    
-      list.recMap = (TreeMap) recMap.clone();
-      list.listeners  = new ArrayList();
+      list.recMap = (TreeMap<UUID, PwsRecord>) recMap.clone();
+      list.listeners  = null;
       list.fileID = instanceCounter++;
       list.idString = " (" + list.fileID + "): ";
-      list.modified = true;
       Log.log( 2, "(PwsRecList) new PwsRecordList (clone of " + idString + 
-               "): ID = " + list.fileID );
-      
+               "): inst-ID = " + list.fileID );
       return list;
    }
 
-   /**
-    * Returns a deep clone of this record list (all records
-    * of the returned list are copies of the original).  
-    * File-ID number is modified to be unique and any 
-    * registered listeners are removed from the clone. 
+   /** Returns this list's instance ID value (testing purpose).
     * 
-    * @return object of type <code>PwsRecordList</code> 
-    * @since 2-1-0
+    * @return int instance ID, starting from zero
     */
-   public Object copy ()
+   public int getInstId () 
    {
-      PwsRecordList list;
-      Iterator it;
-      
-      list = (PwsRecordList) clone();
-
-      try {
-         list.clear();
-         for ( it = iterator(); it.hasNext(); )
-            list.addRecord( (PwsRecord)it.next() );
-      }
-      catch ( Exception e )
-      {
-         throw new IllegalStateException( "list copy error: " + e.getMessage() );
-      }
+	   return fileID;
+   }
+   
+   /**
+    * Returns a clone of this record list with a new UUID value. This works
+    * the same as <code>clone()</code> but gives the list a new identity and
+    * renders the specific type.
+    * 
+    * @return <code>PwsRecordList</code> 
+    */
+   public PwsRecordList copy ()
+   {
+      PwsRecordList list = (PwsRecordList)clone();
+      list.setUUID(new UUID());
+      list.resetModified();
       
       Log.log( 2, "(PwsRecList) create copy of PwsRecordList " + idString + 
-               ": ID = " + list.fileID );
+               ": inst-ID = " + list.fileID );
       return list;
    }
    
    /**
-    * This method replaces entire content of this record list, including most settings,
-    * by the contents of the parameter record list. (This list keeps its original
-    * fileID number, thus making it different from the parameter list, but it takes over
-    * the other list's listUUID. The fileID, however, is only used for testing causes.)
-    * For any operational businesses, this list will have the identity of the parameter list
-    * and work as a shallow clone.
+    * This method replaces the entire content of this record list, including 
+    * private data members (except for the instance ID),
+    * by the content of the parameter record list. Note: This list takes over
+    * the other list's UUID value!
     *   
     * @param a <code>PwsRecordList</code> new content and identity for this list
     */
+   @SuppressWarnings("unchecked")
    public void replaceFrom ( PwsRecordList a )
    {
-      modified = a.modified;
-      listeners = (ArrayList)a.listeners.clone();
       listUUID = a.listUUID;
-      recMap = (TreeMap)a.recMap.clone();
+      listeners = (ArrayList<PwsFileListener>)a.getFileListeners();
+      recMap = (TreeMap<UUID, PwsRecord>)a.recMap.clone();
+      setModified();
+      fireFileEvent( PwsFileEvent.LIST_UPDATED, null );
+   }
+
+   /** Replaces the record content of this list with the parameter set of
+    * records. If <b>null</b> or the empty array is given, this works
+    * equivalent to <code>clear()</code>.
+    * <p>Note: This adds clones of the records given by the parameter.
+    * 
+    * @param recs <code>PwsRecord[]</code>, may be null
+    * @throws DuplicateEntryException 
+    */
+   public void replaceContent ( PwsRecord[] recs ) throws DuplicateEntryException
+   {
+	   clear();
+	   
+       if ( recs != null && recs.length > 0 ) {
+    	  boolean oldPause = getEventPause();
+    	  setEventPause(true);
+	      for ( PwsRecord rec : recs ) {
+        	 addRecordIntern( rec, "replaceContent" ); 
+	      }
+	      setEventPause(oldPause);
+       }
    }
    
 	/**
 	 * Sets the flag to indicate that the list of records has been modified.  
      * (There should not normally be any reason to call this method as it 
-     * should be called indirectly when a record is added, changed or removed.)
+     * is called indirectly when a record is added, removed or updated.)
 	 */
 	protected void setModified()
 	{
+		modCounter++;
 		modified = true;
 	}
 
@@ -1133,48 +1497,88 @@ public class PwsRecordList implements Cloneable
 
    /**
     * Adds a <code>PwsFileListener</code> to this list of records.
-    * @param listener
+    * A specific listener object is listed only once although this method may
+    * be called multiple times. Does nothing if the parameter is <b>null</b>.
+    * 
+    * @param listener <code>PwsFileListener</code>, may be null
     */
    public void addFileListener ( PwsFileListener listener )
    {
-      if ( listener != null && !listeners.contains( listener ) )
-      synchronized ( listeners )   
-         { listeners.add( listener ); }
+      if ( listener != null ) {
+    	 if ( listeners == null ) {
+    		 listeners = new ArrayList<PwsFileListener>();
+    	 }
+    	 synchronized ( listeners ) { 
+    		if ( !listeners.contains( listener ) ) {
+    		   listeners.add( listener );
+    		}
+    	 }	
+      }
+   }
+   
+   /** Returns a copy of the list of file listeners to this record list or
+    * <b>null</b> if there are no listeners defined.
+    * 
+    * <p>Note: Modification to the returned value is harmless.
+    * 
+    * @return List of <code>PwsFileListener</code> or <b>null</b>
+    */
+   @SuppressWarnings("unchecked")
+   public List<PwsFileListener> getFileListeners ()
+   {
+	  if ( listeners != null && !listeners.isEmpty() ) { 
+	     synchronized ( listeners ) {
+	        return (List<PwsFileListener>)listeners.clone();
+	     }
+	  } 
+	  return null;
    }
    
    /**
     * Removes a <code>PwsFileListener</code> from this list of records.
-    * @param li the <code>PwsFileListener</code> to be removed
+    * 
+    * @param listener <code>PwsFileListener</code> to be removed, 
+    *                 may be null
     */
-   public void removeFileListener ( PwsFileListener li )
+   public void removeFileListener ( PwsFileListener listener )
    {
-      if ( li != null )
-      synchronized ( listeners )   
-         { listeners.remove( li ); }
+      if ( listeners != null & listener != null )
+      synchronized ( listeners ) { 
+    	 listeners.remove( listener ); 
+      }
    }
    
    /**
     * Fires a <code>PwsFileEvent</code> of the specified type to the listeners 
-    * to this list.
-    * @param type event type as defined in <code>PwsFileEvent</code>  
-    * @param rec optional record reference
+    * to this list. The operation runs synchronous.
+    * 
+    * @param type int, event type as defined in class <code>PwsFileEvent</code>  
+    * @param rec <code>PwsRecord</code>, optional record reference
     */
    protected void fireFileEvent ( int type, PwsRecord rec )
    {
-      PwsFileEvent evt;
-      int i, size;
-      
-      if ( !eventPause && (size=listeners.size()) > 0 )
-      {
-         evt = new PwsFileEvent( this, type, rec );
-         for ( i = 0; i < size; i++ )
-            ((PwsFileListener) listeners.get( i )).fileStateChanged( evt );
+  	 PwsFileEvent evt = new PwsFileEvent( this, type, rec );
+  	 fireFileEvent(evt);
+   }
+   
+   /**
+    * Fires the given <code>PwsFileEvent</code> to the listeners 
+    * to this list. The operation runs synchronous.
+    * 
+    * @param event <code>PwsFileEvent</code>, may be null
+    */
+   protected void fireFileEvent ( PwsFileEvent event )
+   {
+      if ( event != null && !eventPause && 
+    	   listeners != null && !listeners.isEmpty() ) {
+         for ( PwsFileListener li : getFileListeners() ) {
+            li.fileStateChanged( event );
+         }
       }
    }
    
-   /** Sets this list to state MODIFIED and issues a CONTENT_CHANGED event
-    * to file listeners.
-    * @since 2-1-0
+   /** Sets this list to state MODIFIED and issues a CONTENT_ALTERED event
+    *  to file listeners.
     */ 
    protected void contentModified ()
    {
@@ -1182,33 +1586,61 @@ public class PwsRecordList implements Cloneable
       fireFileEvent( PwsFileEvent.CONTENT_ALTERED, null );
    }
    
-   /**
-    * Switch to determine whether file-events shall be dispatched from this
-    * record list. (May be used to interrupt event handling during some
-    * operation phases.) This value is <b>false</b> by default. 
-    * <p>This method issues a LIST_UPDATED event when it switches
-    * from state <b>true</b> to state <b>false</b>.
-    *  
-    * @param v <b>true</b> means events will be dispatched, <b>false</b> they
-    *          will not be dispatched 
-    * @since 2-0-0
-    */
-   public void setEventPause ( boolean v )
+   /** Returns the UUID identifier of this record list.
+    * 
+    * @return <code>org.jpws.pwslib.global.UUID</code>
+    */ 
+   public UUID getUUID ()
    {
-      boolean old;
+      return listUUID;
+   }
+
+   /** Sets the UUID identifier for this record list. This replaces the 
+    * existing identifier.
+    * 
+    * @param fileUUID <code>org.jpws.pwslib.global.UUID</code>
+    * @throws NullPointerException if parameter is null
+    */
+   public void setUUID ( UUID fileUUID )
+   {
+      if ( fileUUID == null )
+         throw new NullPointerException();
       
-      old = eventPause;
-      eventPause = v;
-      if ( old & !eventPause )
-      {
+      this.listUUID = fileUUID;
+      contentModified();
+      Log.log( 7, "(PwsRecordList) set UUID to : " + fileUUID );
+   }
+   
+   /**
+    * Switch to determine whether file-events will be dispatched from this
+    * record list. This may be used to suppress event firing during some
+    * operation phases. The default value is <b>false</b>. 
+    * <p>This method issues a LIST_UPDATED event when it switches
+    * from state <b>true</b> to state <b>false</b> and the file has been 
+    * modified during the events-off phase.
+    *  
+    * @param value boolean, <b>true</b> means events will be dispatched, 
+    *          <b>false</b> they will not be dispatched 
+    */
+   public void setEventPause ( boolean value )
+   {
+      boolean old = eventPause;
+      eventPause = value;
+      boolean risingFlank = !old & eventPause;
+      boolean fallingFlank = old & !eventPause;
+      if ( risingFlank ) {
+    	  notedModValue = modCounter;
+      }
+      if ( fallingFlank & notedModValue != modCounter ) {
          fireFileEvent( PwsFileEvent.LIST_UPDATED, null );
       }
    }
    
    /**
     * Whether this list object is set to not dispatch file events.
-    * @return <b>true</b> if and only if this list does not dispatch events
-    * @since 2-0-0
+    * 
+    * @return boolean <b>true</b> if and only if this list does not dispatch 
+    *         events
     */
    public boolean getEventPause ()
    {
@@ -1216,93 +1648,111 @@ public class PwsRecordList implements Cloneable
    }
    
    /**
-    * Assigns a new GROUP value to any set of records within this record list, 
-    * replacing previous assignments. Does nothing if the selection is empty.
-    * Note on return value: This method doesn't list records as moved whose 
-    * group values would not change by the requested operation.
+    * Assigns a new GROUP value to a set of records within this record list 
+    * and in the parameter record wrapper array. Modifies only records which
+    * are element of this list. Does nothing if the selection is null or empty.
+    * 
+    * <p>The return value is a new array of wrappers which contains all records
+    * actually updated. Note this method doesn't list records whose 
+    * group values have not changed by the requested operation.
     *  
-    * @param set array of <code>DefaultRecordWrapper</code>, may be <b>null</b>
-    * @param group a String value for the GROUP record field (may be <b>null</b> 
-    *        which is equivalent to empty)
-    * @param keepPaths if <b>true</b> previously existing group values will be
-    *        appended to the parameter group value  
+    * @param set <code>DefaultRecordWrapper[]</code>, records to update, 
+    *        may be <b>null</b>
+    * @param group String new value for the GROUP record field (may be 
+    *        <b>null</b> which is equivalent to empty)
+    * @param keepPaths boolean, if <b>true</b> previously existing group values 
+    *        will be appended to the parameter group value  
     * @return <code>DefaultRecordWrapper[]</code> list of records 
     *        actually moved or <b>null</b> if no operation              
-    * @since 2-1-0
     */
    public DefaultRecordWrapper[] moveRecords ( DefaultRecordWrapper[] set, 
                                  String group, boolean keepPaths )
    {
-      PwsRecordList list, exList;
-      PwsRecord rec, setRec;
-      String newValue, oldValue;
-      int i;
-   
-      if ( group == null )
-         group = "";
+      // no operation if parameter record set is empty
+      if ( set == null || set.length == 0 ) return null;
 
-      if ( set != null && set.length > 0 )
-      {
-         // create a list of altered target records  
-         list = new PwsRecordList();
-         for ( i = 0; i < set.length; i++ )
-         {
-            setRec = set[i].getRecord();
-            if ( (rec = getRecord( setRec.getRecordID() )) != null )
-            {
-               // expand new group value by old group value (if opted)
-               oldValue = rec.getGroup();
-               newValue = keepPaths & oldValue != null ? 
-                     group.length() > 0 ? group + "." + oldValue : oldValue : group;
-               
-               // ignore record if its group value doesn't have to be altered
-               if ( newValue.equals( oldValue ) )
-                  continue;
-               
-               // set new group value in both update-list AND parameter record set
-               rec.setGroup( newValue );
-               setRec.setGroup( newValue );
-               try { list.addRecord( rec ); }
-               catch ( DuplicateEntryException e )
-               {}
-               catch ( IllegalArgumentException e )
-               {}
-            }
-         }
-         
-         // modify this list
-         if ( (exList = updateRecordList( list )) != null )
-            list.removeRecordList( exList );
-         
-         return list.toRecordWrappers( null );
+   	  if ( group == null ) {
+         group = "";
       }
-      return null;
+
+   	  Locale locale = set.length == 0 ? null : set[0].getLocale();
+   	  
+     // create a list of altered target records  
+   	 ArrayList<PwsRecord> list = new ArrayList<PwsRecord>();
+     for ( DefaultRecordWrapper wrapped : set ) {
+    	 
+    	PwsRecord setRec = wrapped.getRecord();
+    	PwsRecord rec = getRecord( setRec.getRecordID() );
+        if ( rec != null ) {
+           // expand new group value by old group value (if opted)
+           String oldValue = rec.getGroup();
+           String newValue = keepPaths & oldValue != null ? 
+                 group.length() > 0 ? group + "." + oldValue : oldValue : group;
+           
+           // ignore record if its group value doesn't have to be altered
+           if ( newValue.equals( oldValue ) ) {
+              continue;
+           }
+           
+           // set new group value in both update-list AND parameter record set
+           setRec.setGroup( newValue );
+           rec.setGroup( newValue );
+       	   list.add( rec ); 
+        }
+     }
+
+     // return modified records as wrappers or null if nothing modified
+     DefaultRecordWrapper[] result = null;
+     if ( !list.isEmpty() ) {
+	     // modify this list
+	     List<PwsRecord> exList = updateCollection( list );
+	     if ( exList != null ) {
+	        list.removeAll( exList );
+	     }
+	     
+	     // create array of modified records
+	     result = DefaultRecordWrapper.makeWrappers( list.toArray(
+	    		  new PwsRecord[list.size()]), locale );
+     }
+     return result;
    }  // moveEntries
 
-   /** Merges the parameter record list into this list by optionally respecting 
-    *  various conflict handling policies (details see constants of this class). 
-    *  Records added by this method receive the transient property "IMPORTED" or 
+   /** Merges the parameter record list into this list by optionally considering 
+    *  various conflict handling policies (descriptions see constants of this 
+    *  class).
+    *  A conflict arises if a record-id is encountered in the parameter list
+    *  which is also contained in this list. With the <code>modus</code> 
+    *  parameter a set of conflict solving policies can be enabled. If more than
+    *  one policy is set up, they are conjuncted with logical AND. That means
+    *  if one of the policies indicates exclusion, the record is excluded.
+    *  <p>Records added by this method receive the transient property "IMPORTED" or 
     *  "IMPORTED_CONFLICT", depending on how they were added. A returned record
-    *  list informs the caller about record which have been excluded.
+    *  list informs the caller about records which have been excluded. The value
+    *  0 is equivalent to MERGE_PLAIN.
     * 
-    * @param list the list of records to be added
-    * @param modus the merge conflict solving policy or 0;
-    *        policy constants of this class may be combined by OR-ing them
-    * @param allowInvalids determines whether invalid records of the source are
-    *        excluded (=false) or considered candidates for inclusion (=true)     
-    * @return a <code>PwsRecordList</code> holding all <b>not</b> included records
-    *         from the parameter list 
-    * @since 0-2-0
+    * @param list <code>PwsRecordList</code> the list of records to be added
+    * @param modus int the merge conflict solving policy;
+    *        policy constants of this class may be combined by adding them
+    * @param allowInvalids boolean determines whether invalid records of the 
+    *        source are excluded (=false) or considered candidates (=true)     
+    * @return <code>PwsRecordList</code> holding all <b>not</b> included 
+    *         records from the parameter list 
+    * @throws IllegalArgumentException if modus value is out of range   
     */
-   public synchronized PwsRecordList merge ( PwsRecordList list, int modus, 
-                       boolean allowInvalids )
+   public PwsRecordList merge ( PwsRecordList list, int modus, 
+                                boolean allowInvalids )
    {
       PwsRecordList result;
       PwsRecord rec, thisRec;
-      Iterator it;
       boolean merge_plain, merge_modified, merge_passmodified,
               merge_passaccessed, merge_expiry;
-      boolean fail, oldEvtPause;
+      boolean oldEvtPause;
+      
+      // control parameter
+      int bound = MERGE_PLAIN+MERGE_EXPIRY+MERGE_INCLUDE+MERGE_MODIFIED+
+    		      MERGE_PASSACCESSED+MERGE_PASSMODIFIED;
+      if ( modus < 0 || modus > bound ) 
+    	  throw new IllegalArgumentException("illegal modus value: " + modus);
       
       // analyse record exclusion options
       merge_plain = modus == MERGE_PLAIN;
@@ -1316,29 +1766,25 @@ public class PwsRecordList implements Cloneable
       oldEvtPause = getEventPause();
       setEventPause( true );
       
-      for ( it = list.iterator(); it.hasNext(); )
-      {
+      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+    	  
          // get next record from merge source list
-         rec = (PwsRecord)it.next();
+         rec = it.next();
          
-         // exclude record because of its invalid-state (if this filter is opted in parameter)
-         if ( !(allowInvalids || rec.isValid()) )
-         {
-            try { result.addRecord( rec ); }
-            catch( Exception e ) 
-            {}
+         // exclude record because of its invalid-state 
+         // if this filter is opted in parameter
+         if ( !(allowInvalids || rec.isValid()) ) {
+            try { result.addRecord( rec ); 
+            } catch( DuplicateEntryException e ) {
+            }
             continue;
          }
          
          // branch on containment of record
-         if ( this.contains( rec ) )
-         
          // if failing because of double entry
-         {
-            // get this-list record for comparison
-            thisRec = getRecordIntern( rec.getRecordID() );
-            fail = false;
-
+         thisRec = getRecordShallow( rec.getRecordID() );
+         if ( thisRec != null ) {
+         
             try {
                // criteria for record exclusion
                if (  merge_plain ||
@@ -1350,44 +1796,37 @@ public class PwsRecordList implements Cloneable
                            <= thisRec.getAccessTime()) ||
                     (merge_expiry && rec.getPassLifeTime() 
                            <= thisRec.getPassLifeTime())
-                  )
-               {
-                  // exclusion: include excluded record in fail-list
-                  fail = true;
+                  )  {
+            	   
+                  // exclusion: add excluded record to fail-list
                   result.addRecord( rec ); 
-               }
-               else
-               {
-                  // inclusion: update included record in this list
+
+               } else {
+                  // inclusion: update included record into this list
+                  removeRecord( rec );
+                  rec = addRecordIntern( rec, "(merge conflict)" ); 
                   rec.setImportStatus( PwsRecord.IMPORTED_CONFLICT );
-                  this.removeRecord( rec );
-                  this.addRecord( rec );
                }
-            }
-            catch ( Exception e1 )
-            {
-               System.out.println( "*** Failed Merge Record " 
-                    + (fail ? "(exclude-list): " : "(include-list): ")    
-                    + rec.toString() + "  " + rec.getTitle() );
-               System.out.println( e1 );
+
+            } catch ( DuplicateEntryException e1 ) {
+            	e1.printStackTrace();
             }
             continue;
          }
 
          // regular include (no-conflict)
          try { 
+            rec = addRecordIntern( rec, "(merge import)" ); 
             rec.setImportStatus( PwsRecord.IMPORTED );
-            this.addRecord( rec ); 
-         }
-         catch ( Exception e )
-         {
-            try { result.addRecord( rec ); }
-            catch ( Exception e1 )
-            {          
-               System.out.println( "*** Serious Record Failure (merge): " 
-                     + rec.toString() + "  " + rec.getTitle() );
-               System.out.println( e1 );
-            }
+
+         } catch ( DuplicateEntryException e ) {
+        	 e.printStackTrace();
+//            try { result.addRecord( rec ); 
+//            } catch ( Exception e1 ) {          
+//               System.out.println( "*** Serious Record Failure (merge): " 
+//                     + rec.toString() + "  " + rec.getTitle() );
+//               System.out.println( e1 );
+//            }
          }
       }  // for
 
@@ -1398,118 +1837,101 @@ public class PwsRecordList implements Cloneable
    // *******  INNER CLASSES  ************
       
    /**
-    * This provides a wrapper around the <code>Iterator</code> that is returned 
-    * by the Collections classes.
-    * It allows us return record clones only and to mark the list as modified 
-    * when records are removed via the iterator.
+    * This class provides a wrapper around the <code>Iterator</code> that is 
+    * returned by the <code>Collection</code> classes.
+    * It enables us to return record clones only via the iterator and mark the 
+    * enclosing list as modified when records are removed.
     */
-   private class FileIterator implements Iterator
+   private class FileIterator implements Iterator<PwsRecord>
    {
-      private Iterator  iter;
+      private Iterator<PwsRecord> iter;
       private PwsRecord record;
 
       /**
-       * Construct the <code>Iterator</code> linking it to the given list.
+       * Creates the <code>FileIterator</code> linking it to the given iterator
+       * of records.
        * 
-       * @param it an <code>Iterator</code> over records
+       * @param it <code>Iterator</code> over <code>PwsRecord</code>
        */
-      public FileIterator( Iterator it )
-      {
+      public FileIterator( Iterator<PwsRecord> it ) {
          iter  = it;
       }
 
       /**
        * Returns <code>true</code> if the iteration has more elements. 
        * 
+       * @return boolean 
        * @see java.util.Iterator#hasNext()
        */
-      public final boolean hasNext()
-      {
+      @Override
+	  public final boolean hasNext() {
          return iter.hasNext();
       }
 
       /**
        * Returns the next record in the iteration as a clone object.  
-       * The object returned will comply to type {@link PwsRecord}
+       * The object returned is of type {@link PwsRecord}
        * 
-       * @return the next element in the iteration
-       * 
+       * @return <code>PwsRecord</code> next element in the iteration
        * @see java.util.Iterator#next()
        */
-      public final Object next()
-      {
-         record = (PwsRecord)iter.next(); 
-         return record.clone();
+      @Override
+      public final PwsRecord next() {
+         record = iter.next(); 
+         return (PwsRecord)record.clone();
       }
 
       /**
-       * Removes the last returned record from the PasswordSafe
-       * file and marks the file as modified.
+       * Removes the last returned record from the enclosing record list
+       * and marks the list modified.
        * 
        * @see java.util.Iterator#remove()
        */
-      public final void remove()
-      {
-         if ( record != null )
-         {
+      @Override
+	  public final void remove() {
+         if ( record != null ) {
             removeRecord( record );
-            setModified();
          }
       }
    }  // class FileIterator 
    
       /**
-       * This provides an Iterator over a filtered list of records, namely
-       * a selection of records which is determined by a value of the "Group" field. 
+       * This class provides an <code>Iterator</code> over a filtered list of 
+       * records, based on the enclosing list. The selection of records is 
+       * determined by a value of the "GROUP" field. 
        * It allows to mark the file as modified when records are deleted from 
        * the file.
-       * 
-       * @since 2-0-0 (modified visibilty to private from public) 
        */
-      private class GroupFileIterator implements Iterator
+      private class GroupFileIterator implements Iterator<PwsRecord>
       {
-         private List grpList;
-         private Iterator iter;
+         private List<PwsRecord> grpList;
+         private Iterator<PwsRecord> iter;
          private PwsRecord next;
    
          /**
-          * Constructor, filtering the original file's record list
-          * and creating a new reference list. If group is the 
-          * empty name, this iterator encompasses all list
-          * records. If group is <b>null</b> an empty iterator is
-          * created.
+          * Constructor filtering the enclosing file's record list
+          * and creating a new reference list. If group is <b>null</b> an 
+          * empty iterator is created.
           * 
-          * @param group filter criterion value; may be <b>null</b>
-          * @since 0-4-0 (modified parameter list)        
-          * @since 2-1-0 (modified parameter logic: group)        
+          * @param group String filter value for GROUP field, may be <b>null</b>
           */
          public GroupFileIterator( String group, boolean exact )
          {
-            Iterator it;
-            PwsRecord record;
-            String grpval;
-            int length;
-            boolean isAll;
-            
-            grpList = new ArrayList();
+            grpList = new ArrayList<PwsRecord>();
             
             // build the record set of selection criterion
-            if ( group != null )
-            {
-               length = group.length();
-               isAll = length == 0;
-               for ( it = iterator(); it.hasNext(); )
-               {
-                  record = (PwsRecord)it.next();
-                  if ( isAll )
-                     grpList.add( record );
-                  else
-                  {
-                     grpval = record.getGroup();
-                     if ( grpval != null && grpval.startsWith( group ) &&
-                          ( !exact || grpval.length() == length || 
-                          grpval.charAt( length ) == '.' ) )
-                        grpList.add( record );
+            if ( group != null ) {
+               int length = group.length();
+               boolean isEmpty = length == 0;
+               for ( Iterator<PwsRecord> it = internalIterator(); it.hasNext(); ) {
+                  PwsRecord record = it.next();
+                  String grpval = record.getGroup();
+                  if ( isEmpty && grpval == null ||
+                	  grpval != null && grpval.startsWith( group ) &&
+                      ( !exact || grpval.length() == length || 
+                      grpval.charAt( length ) == '.' ) ) {
+                	 
+                     grpList.add( (PwsRecord)record.clone() );
                   }
                }
             }
@@ -1517,51 +1939,27 @@ public class PwsRecordList implements Cloneable
             iter = grpList.iterator();
          }  // constructor
    
-         public final boolean hasNext()
-         {
+         @Override
+         public final boolean hasNext() {
             return iter.hasNext();
          }
    
-         public final Object next()
-         {
-            next = (PwsRecord)iter.next();
-            return next.clone();
+         @Override
+		 public final PwsRecord next() {
+            next = iter.next();
+            return next;
          }
    
          /**
-          * Removes the last returned record from the list. 
+          * Removes the last returned record from the enclosing list. 
           */
-         public final void remove()
-         {
+         @Override
+		 public final void remove() {
             iter.remove();
-            if ( next != null )
+            if ( next != null ) {
                removeRecord( next );
+            }
          }
       }  // class GroupFileIterator
 
-   /** Returns the UUID identifier of this record list.
-    * @return <code>org.jpws.pwslib.global.UUID</code>
-    * @since 2-0-0
-    */ 
-   public UUID getUUID ()
-   {
-      return listUUID;
-   }
-
-   /** Sets the UUID identifier for this record list. 
-    * 
-    * @param fileUUID <code>org.jpws.pwslib.global.UUID</code>
-    *        (must not be <b>null</b>)
-    * @since 2-0-0
-    */
-   public void setUUID ( UUID fileUUID )
-   {
-      if ( fileUUID == null )
-         throw new NullPointerException();
-      
-      this.listUUID = fileUUID;
-      contentModified();
-      Log.log( 7, "(PwsRecordList) set UUID to : " + fileUUID );
-   }
-   
 }

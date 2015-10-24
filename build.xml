@@ -16,12 +16,13 @@
         <property name="rootfileset" value="build.xml MANIFEST.MF makejar.bat jartest.bat makeapi.bat makedist.bat .svnignore" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="3-0-0" />
+	<property name="ver" value="2-4-0" />
         <property name="apidoc wintitle" value="PasswordSafe V3 Library - PWSLIB API"/>
         <property name="release date" value="?????? 2015"/>
         <property name="release year" value="2015"/>
-        <property name="system format" value="3.10"/>
-	     <property name="classpath" value="${junit};${ftp4j}"/>
+        <property name="release type" value="snapshot"/>
+        <property name="system format" value="3.13"/>
+        <property name="classpath" value="${junit};${ftp4j}"/>
 
 
 <target name="init">

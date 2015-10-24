@@ -46,19 +46,16 @@ import org.jpws.pwslib.persist.V3_InputStream;
 
 /**
  * This class represents the header fields of a <b>PasswordSafe V3</b> database
- * (persistent state) and allows to obtain objects enabling to read the
- * remainder of the file in a decrypted fashion or to save the header to a new 
- * persistent state. 
+ * (persistent state) and allows to obtain objects enabling to read and decrypt 
+ * the remainder of the file or to save the header to a new persistent state. 
  *   
- * <p>The original format definition of V3 files is available under document name: "PWS Format V3.txt"
- * in the document folder of the developer download package.   
+ * <p>The original format definition as of the Password Safe project is 
+ * available under document name "formatV3.txt" in the document folder of the 
+ * developer package of this library.   
 
- * <p>This version of the class complies to PWS format definition 3.6. There is one
- * additional field added as feature for JPWS: <tt>JPWS_OPTIONS_TYPE</tt>. Files created
- * with this header will assert themselves as of this format version.
+ * There is one additional (non-canonical) field added as a feature for the 
+ * JPasswords project: <tt>JPWS_OPTIONS_TYPE</tt> on table position 0x40. 
  * 
- * @since 2-0-0
- * @since last modified 2-2-0
  * @author Wolfgang Keller
  */
 public class PwsFileHeaderV3
@@ -115,15 +112,19 @@ public class PwsFileHeaderV3
     */
    public static final int RECENT_ENTRIES_TYPE = 0x0f;
      
-   /** Field type code for the file format version field. 
+   /** Field type code for the named policies field. 
     * @since 2-2-0 
     */
    public static final int NAMED_POLICIES_TYPE = 0x10;
       
+   /** Field type code for the empty groups field. 
+    * @since 2-4-0 
+    */
+   public static final int EMPTY_GROUPS_TYPE = 0x11;
+      
    /** Field type code for the last PWS 3 canonical header field. 
-   * @since 2-1-0 
    */
-   public static final int LAST_STANDARD_HEADER_FIELD = 0x10;
+   public static final int LAST_STANDARD_HEADER_FIELD = 0x12;
 
    /** Internal constant for database version identification. */
    private static final byte[] PWS3_FILEID = { 'P', 'W', 'S', '3' };
@@ -174,69 +175,53 @@ public class PwsFileHeaderV3
 	public PwsFileHeaderV3( HeaderFieldList headerFields )
 	{
        Log.log( 5, "(PwsFileHeaderV3) initializer (headerFields)" );
-       if ( headerFields != null )
+       if ( headerFields != null ) {
           hdrFields = headerFields;
-
+       }
        ensureHeaderDefaults();
 	}
 
-    /* Writes actual values to some of the standard header fields;
+    /** Writes actual values to some of the standard header fields;
      * ensures existence and correct values of minimum header fields.
-     * (** Currently this suppresses header fields for identification
-     * of operator and host. **)
-     *    
-     * @since 2-1-0 
      */
     private void ensureHeaderDefaults ()
     {
-       PwsRawField raw;
-       
        Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 0" );
 
        // remove deprecated fields
        removeHeaderField( 0x05 );  // old user/host combination as of PWS V3.1
        
        // force file format version marker
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 1" );
        setHeaderField( new PwsRawField( 0, V3VERSION ) );
        
        // application name (of last save)
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 2" );
        setHeaderField( PwsRawField.makeTextField( APPLICATION_TYPE, Global.getProgramName() ));
        
        // operator name (of last save)
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 3" );
-       setHeaderField( PwsRawField.makeTextField( OPERATOR_TYPE, System.getProperty( "user.name" ) ) );
+       setHeaderField( PwsRawField.makeTextField( OPERATOR_TYPE, System.getProperty( "user.name" )));
 
        // host name (of last save)  ** UNUSED / ERASE **
        // currently we bring the OS name here
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 4" );
        setHeaderField( PwsRawField.makeTextField( HOST_TYPE, 
-             System.getProperty( "os.name" ) + " " + System.getProperty( "os.version" ) ) );
+             System.getProperty( "os.name" ) + " " + System.getProperty( "os.version" )));
 
        // time of last save
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 5, time = " + System.currentTimeMillis() );
-       raw = PwsRawField.makeTimeField( SAVETIME_TYPE, System.currentTimeMillis(), 4 );
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 5.1" );
+       PwsRawField raw = PwsRawField.makeTimeField( SAVETIME_TYPE, System.currentTimeMillis(), 4 );
        setHeaderField( raw );
 
        // ensure file-ID
-//       Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 6" );
-       if ( getFileID() == null )
-       {
-//          Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 7" );
-          setHeaderField( new PwsRawField( FILE_UUID_TYPE, new UUID().getBytes() ) );
+       if ( getFileID() == null ) {
+          setHeaderField( new PwsRawField( FILE_UUID_TYPE, new UUID().getBytes()));
        }
        Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, exit" );
     }
     
 	/**
 	 * Constructs a PWS V3 file header by reading the header data 
-    * from the parameter inputstream. (This is the mandatory constructor
-    * to perform passphrase verification.)  
+     * from the parameter input stream. (This is the mandatory constructor
+     * to perform passphrase verification on an existing persistent state.)  
 	 * 
-	 * @param input java.io.InputStream, placed at the beginning of a PWS file
-	 * 
+	 * @param input <code>InputStream</code>, placed at the beginning of a PWS file
 	 * @throws IOException if an error occurs while reading from the stream
      * @throws UnsupportedFileVersionException if the file is not a V3 file
 	 */
@@ -245,11 +230,8 @@ public class PwsFileHeaderV3
 	{
        this();
        
-       DataInputStream in;
-       byte[] buf;
-
        this.input = input;
-       in = new DataInputStream( input );
+       DataInputStream in = new DataInputStream( input );
 
        // read the core header values
        in.readFully( tag );
@@ -259,10 +241,9 @@ public class PwsFileHeaderV3
        
        in.readFully( salt );
 
-       buf = new byte[ 4 ];
+       byte[] buf = new byte[ 4 ];
        in.readFully( buf );
        iter = Util.readIntLittle( buf, 0 );
-       
        in.readFully( hpm );
        in.readFully( b12 );
        in.readFully( b34 );
@@ -273,9 +254,11 @@ public class PwsFileHeaderV3
 	}
 
     /**
-     * Sets the number of iterations to calculate the file access validator value (hpm).
+     * Sets the number of iterations to calculate the file access validator 
+     * value (hpm).
      * 
-     * @param i iterations (minimum 2048)
+     * @param i int, iterations (minimum == 2048)
+     * @throws IllegalArgumentException if parameter is less than the minimum
      */
     public void setIterations ( int i )
     {
@@ -290,7 +273,7 @@ public class PwsFileHeaderV3
     * the file (available only when reading constructor was used).
     * The stream is positioned to the first data element after the file header.
     * 
-    * @return PwsBlockInputStream
+    * @return <code>PwsBlockInputStream</code>
     */
    public PwsBlockInputStream getBlockStream ()
    {
@@ -299,6 +282,8 @@ public class PwsFileHeaderV3
 
    /** The actual number of iterations set to calculate the file access 
      *  validator value (hpm).
+     *  
+     *  @return int calculation loops
      */ 
     public int getIterations ()
     {
@@ -306,7 +291,10 @@ public class PwsFileHeaderV3
     }
     
     /** A random seed value used for calculating a checksum over the file's data.
-     *  (For files-to-be-written only available after <code>save()</code> operation.)
+     *  (For files-to-be-written only available after <code>save()</code> 
+     *  operation, otherwise <b>null</b>.)
+     *  
+     *  @return byte[] of length 32 or null if unavailable
      */ 
     public byte[] getHashSeed ()
     {
@@ -314,13 +302,15 @@ public class PwsFileHeaderV3
     }
 
    /** 
-    * Returns the hash function verification code actually encountered at the end of a 
-    * read-in persistent state of a file.
+    * Returns the hash function verification code actually encountered at the 
+    * end of a read-in persistent state of a file.
     * This code serves to verify integrity of user data and is possibly  
-    * available after EOF of the input blockstream (returned by <code>verifyPass()</code>) 
-    * has been reached; it may, however, not be available at all. 
+    * available after EOF of the input block stream (returned by 
+    * <code>verifyPass()</code>) has been reached; it may, however, not be 
+    * available at all. 
     *  
-    * @return byte[] hmac of length 32 or <b>null</b> if this information is unavailable
+    * @return byte[] hmac of length 32 or <b>null</b> if this information 
+    *                is unavailable
     */ 
     public byte[] getReadChecksum ()
     {
@@ -330,21 +320,19 @@ public class PwsFileHeaderV3
     /** 
      * Returns the UUID identifier of the PWS file if it is available.
      * (Note that for files-to-be-read this value is only available after
-     * a call to <code>verifyPass()</code> has returned successfull.)
+     * a call to <code>verifyPass()</code> has returned successful.)
      * 
      * @return file UUID or <b>null</b> if this information is not available
      */
     public UUID getFileID ()
     {
-       PwsRawField raw;
-       
-       raw = hdrFields.getField( FILE_UUID_TYPE );
+       PwsRawField raw = hdrFields.getField( FILE_UUID_TYPE );
        return raw == null ? null : new UUID( raw.getData() );
     }
     
     /**
-     * Returns a rawfield list containing all available file header fields
-     * currently assigned to the PWS file. (Content from a persistent state 
+     * Returns a raw-field list containing all available file header fields
+     * currently assigned in the PWS file. (Content from a persistent state 
      * (read-in) is only available after <code>verifyPass()</code>.)
      * The returned instance may be used to effectively alter list content. 
      * 
@@ -362,13 +350,18 @@ public class PwsFileHeaderV3
      * for a header field.
      * 
      * @param field <code>PwsRawField</code> the new field or field content
+     * @throws IllegalArgumentException if field is of illegal type 255 
      */
     public void setHeaderField ( PwsRawField field )
     {
        hdrFields.setField( field );
     }
     
-    /** Returns the specified header field or <b>null</b> if unavailable. */ 
+    /** Returns the specified header field or <b>null</b> if unavailable.
+     * 
+     *  @param type int, the header field type
+     *  @return <code>PwsRawField</code> or null
+     */ 
     public PwsRawField getHeaderField ( int type )
     {
        return hdrFields.getField( type );
@@ -376,11 +369,10 @@ public class PwsFileHeaderV3
     
     /**
      * Removes the header field of the given type and returns this
-     * field if it was present.
+     * field if it was present, <b>null</b> otherwise.
      * 
-     * @param type header field type (0..254)
+     * @param type int, header field type (0..254)
      * @return <code>PwsRawField</code> or <b>null</b>
-     * @since 2-1-0
      */
     public PwsRawField removeHeaderField ( int type )
     {
@@ -388,38 +380,34 @@ public class PwsFileHeaderV3
     }
     
 	/**
-    * Writes the V3 PWS file header part to the given output stream. Constructs 
-    * and returns a cipher for the encryption of the remaining parts of the file.
+    * Writes the V3 PWS file header part to the given output stream. 
+    * Constructs and returns a cipher for the encryption of the remaining parts 
+    * of the file.
     * 
-	* @param output an open <code>OutputStream</code> to which the file is written
-    * @param passphrase the user encryption passphrase used for this file
-    * @return the <code>PwsCipher</code> with which the remainder of the file 
-    *         has to be encrypted
+	* @param output <code>OutputStream</code> open stream to which the file 
+	*               is written
+    * @param passphrase <code>PwsPassphrase</code> the user encryption 
+    *               passphrase used for this file
+    * @return <code>PwsCipher</code> cipher to encrypt the remainder of the file 
 	* 
 	* @throws IOException if an IO error occurs
-    * @throws NullPointerException on missing param
+    * @throws NullPointerException on missing parameter
     */
-	public PwsCipher save( OutputStream output, 
-                     PwsPassphrase passphrase ) 
+	public PwsCipher save ( OutputStream output, PwsPassphrase passphrase ) 
                      throws IOException
 	{
-      PwsCipher  cipher;
-      OutputStream out;
-      Iterator it;
-      byte[] buf;
-      
       Log.log( 5, "(PwsFileHeaderV3) save" );
-      out = output;
-      cipher = update( passphrase );
+      OutputStream out = output;
+      PwsCipher cipher = update( passphrase );
       writeHmac = new PwsChecksum( hseed );
       
       ensureHeaderDefaults();
 
       // write the core header part
-      out.write( PWS3_FILEID );  // tag
+      out.write( PWS3_FILEID );  // file type tag
       out.write( salt );
       
-      buf = new byte[ 4 ];
+      byte[] buf = new byte[ 4 ];
       Util.writeIntLittle( iter, buf, 0 );
       out.write( buf );
       
@@ -429,24 +417,24 @@ public class PwsFileHeaderV3
       out.write( iv );
       
       // write the content header fields
-      for ( it = hdrFields.iterator(); it.hasNext(); )
-      {
-         ((PwsRawField)it.next()).writeEncrypted( out, cipher, Global.FILEVERSION_3, writeHmac );
+      for ( Iterator<PwsRawField> it = hdrFields.iterator(); it.hasNext(); ) {
+         it.next().writeEncrypted(out, cipher, Global.FILEVERSION_3, writeHmac);
       }
       
       // write field list terminator field
-      new PwsRawField( 0xff, null ).writeEncrypted( out, cipher, Global.FILEVERSION_3 );
+      new PwsRawField(0xff, null).writeEncrypted(out, cipher, Global.FILEVERSION_3);
       
       // log
-      Log.log( 5, "(PwsFileHeaderV3) file header saved: " + Util.bytesToHex( salt ));
+      Log.log(5, "(PwsFileHeaderV3) file header saved: " + Util.bytesToHex(salt));
       return cipher;
 	}
 
     /**
      * Returns the HMAC checksum object to be used for writing the remainder
-     * of the file. (Available after <code>save()</code> operation was performed.)
+     * of the file. (Available after <code>save()</code> operation was 
+     * performed.)
      * 
-     * @return <code>PwsChecksum</code>
+     * @return <code>PwsChecksum</code> or <b>null</b> if unavailable
      */
     public PwsChecksum getWriteHmac ()
     {
@@ -455,9 +443,10 @@ public class PwsFileHeaderV3
 
    /**
      * Returns the HMAC checksum object to be used for reading the remainder
-     * of the file. (Available after <code>verifyPass()</code> operation was performed.)
+     * of the file. (Available after <code>verifyPass()</code> operation was 
+     * performed.)
      * 
-     * @return <code>PwsChecksum</code>
+     * @return <code>PwsChecksum</code> or <b>null</b> if unavailable
      */
     public PwsChecksum getReadHmac ()
     {
@@ -466,37 +455,35 @@ public class PwsFileHeaderV3
     
 	/**
 	 * Prepares the header for saving. Places new random values into all 
-     * relevant fields of the file header. Creates and returns the PwsCipher 
-     * which is used for encrypting the remainder parts of the file. 
+     * relevant fields of the file header. Creates and returns the 
+     * <code>PwsCipher</code> which is used for encrypting the remainder parts 
+     * of the file. 
 	 * 
-	 * @param passphrase the user passphrase to encrypt the database.
-    * 
-    * @throws NullPointerException if passphrase is undefined
+	 * @param passphrase <code>PwsPassphrase</code> the user passphrase to 
+	 *                   initialise database encryption
+	 * @return <code>PwsCipher</code>
+     * @throws NullPointerException if passphrase is null
 	 */
 	private PwsCipher update( PwsPassphrase passphrase )
 	{
-       PwsCipher internCipher, fileCipher;
-       CryptoRandom cra;
-       byte[] pkey, fkey;
-       
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
 
       isRead = false;
 
       // create new random values
-      cra = Util.getCryptoRand();
+      CryptoRandom cra = Util.getCryptoRand();
       salt = cra.nextBytes( salt.length );
       iv = cra.nextBytes( iv.length );
-      fkey = cra.nextBytes( 32 );  // new file cipher key
+      byte[] fkey = cra.nextBytes( 32 );  // new file cipher key
       hseed = cra.nextBytes( 32 );  // new checksum seed
 
       // create the passphrase control value
-      pkey = makeInternalKey( passphrase, salt, iter );
+      byte[] pkey = makeInternalKey( passphrase, salt, iter );
       hpm = genRandHash( pkey );
 
       // create internal cipher
-      internCipher = new TwofishCipher( pkey );
+      PwsCipher internCipher = new TwofishCipher( pkey );
       
       // encrypt block values (B12, B34)
       b12 = internCipher.encrypt( fkey );
@@ -505,7 +492,7 @@ public class PwsFileHeaderV3
       isRead = true;
       
       // create the file cipher 
-      fileCipher = new TwofishCipher( fkey, iv );
+      PwsCipher fileCipher = new TwofishCipher( fkey, iv );
       Util.destroyBytes( fkey );
       Util.destroyBytes( pkey );
 
@@ -513,27 +500,24 @@ public class PwsFileHeaderV3
 	}
    
    /** Verifies whether the file trailing this header can be read with the 
-    * passphrase submitted as parameter. In the positive case creates and returns
+    * passphrase submitted as parameter. If yes, this creates and returns
     * the <code>PwsBlockInputStream</code> which is to be used for reading the 
-    * decrypted remainder of the file. This method also prepares the file's header 
-    * data fields (e.g. preferences, uuid, options, etc.) to become retrieveable 
-    * through this header. 
+    * decrypted remainder of the file. This method also prepares the file's 
+    * header data fields (e.g. preferences, uuid, options, etc.) to become 
+    * retrievable through this header. 
     * 
-    * @param passphrase PwsPassphrase a candidate file access key 
-    * @return a <code>PwsCipher</code> value not <b>null</b> if and only if the 
-    *         file of this header is accessible (can be decrypted) with the 
-    *         specified passphrase
+    * @param passphrase <code>PwsPassphrase</code> a candidate file access key 
+    * @return <code>PwsCipher</code> value if the file of this header is 
+    *         accessible (can be decrypted) with the given passphrase,
+    *         <b>null</b> otherwise
     * 
-    * @throws NullPointerException if passphrase is undefined
-    * @throws IllegalStateException if the header is not read from a file
+    * @throws NullPointerException if passphrase is null
+    * @throws IllegalStateException if the header is not read in
     *         or already has been verified before
     */ 
    public PwsBlockInputStream verifyPass ( PwsPassphrase passphrase ) throws IOException
    {
-      PwsCipher internCipher, fileCipher;
-      PwsRawField raw;
-      byte[] fkey, pkey, randHash, block;
-      
+	  // control parameter and correct header state 
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
       if ( !isRead )
@@ -541,16 +525,18 @@ public class PwsFileHeaderV3
       if ( isVerified )
          throw new IllegalStateException("duplicate header verification");
 
+      byte[] fkey, pkey, randHash, block;
+      
       // verify correct passphrase
       // create the passphrase control value
       pkey = makeInternalKey( passphrase, salt, iter );
       randHash = genRandHash( pkey );
 
       // if we have the correct passphrase
-      if ( Util.equalArrays( randHash, hpm ) )
-      {
+      if ( Util.equalArrays( randHash, hpm ) ) {
+    	  
          // create internal cipher
-         internCipher = new TwofishCipher( pkey );
+    	  PwsCipher internCipher = new TwofishCipher( pkey );
        
          // decrypt block values
          fkey = internCipher.decrypt( b12 );
@@ -560,31 +546,30 @@ public class PwsFileHeaderV3
          readHmac = new PwsChecksum( hseed );
          
          // create file cipher
-         fileCipher = new TwofishCipher( fkey, iv );
+         PwsCipher fileCipher = new TwofishCipher( fkey, iv );
          Util.destroyBytes( fkey );
          
          // read content header fields
          v3In = new V3_InputStream( input );
          blockStream = new BlockInputStream( v3In, fileCipher );
-         while ( true )
-         {
+         while ( true ) {
             block = blockStream.peekBlock();
 
             // quit reading if end-block appears
-            if ( block[4] == (byte)0xff )
-            {
+            if ( block[4] == (byte)0xff ) {
                blockStream.readBlock();
                break;
             }
             
             // else read a rawfield
-            raw = new PwsRawField( blockStream, Global.FILEVERSION_3 );
+            PwsRawField raw = new PwsRawField(blockStream, Global.FILEVERSION_3);
             Log.log( 5, "** read HEADER FIELD: t=" + raw.getType() + ", c=" + Util.bytesToHex( raw.getData() ));
             Log.log( 5, "                            " + Util.printableString( raw.getString( "UTF-8" ) ));
             setHeaderField( raw );
             readHmac.update( raw );
          }
          
+         // update for case success
          isVerified = true;
          blockStream.resetCounter();
          return blockStream;
@@ -592,54 +577,63 @@ public class PwsFileHeaderV3
       return null;
    }
 
-   /** Creates a PKEY from its given parameters. */
-   private static byte[] makeInternalKey ( PwsPassphrase passphrase, byte[] random, int iterations )
+   /** Creates a PKEY from its given parameters. 
+    * 
+    * @param passphrase <code>PwsPassphrase</code>
+    * @param random byte[] random bytes
+    * @param iterations int calculation loops
+    * @return byte[]
+    */
+   private static byte[] makeInternalKey ( PwsPassphrase passphrase, 
+		                                   byte[] random, 
+		                                   int iterations )
    {
       SHA256 sha = new SHA256();
-      byte[] key, x;
-      int i;
-      
-      key = passphrase.getBytes( null );
+      byte[] key = passphrase.getBytes( null );
 
       // calculate foot value (integrating salt) 
       sha.update( key );
       Util.destroyBytes( key );
       sha.update( random );
-      x = sha.digest();
+      byte[] x = sha.digest();
       
       // perform iterations
-      for ( i = 0; i < iterations; i++ )
-      {
+      for ( int i = 0; i < iterations; i++ ) {
          sha.reset();
          sha.update( x );
          x = sha.digest();
       }
-      
       return x;
    }
 
+   /** Creates a SHA-256 hash value from the given byte array.
+    * 
+    * @param pkey byte[]
+    * @return byte[] cryptographic hash value 
+    */
    private static byte[] genRandHash ( byte[] pkey )
    {
       SHA256 sha = new SHA256();
-      byte[] result;
-      
       sha.update( pkey );
-      result = sha.digest();
+      byte[] result = sha.digest();
       
       Log.debug( 10, "(PwsFileHeaderV3) producing a key validator hash =" + Util.bytesToHex( result ) );
       return result;
    }
    
-   /** Returns a cryptographic hash value for a random salt block and a passphrase.
+   /** Creates a cryptographic hash value for a random salt block and a passphrase.
     *  This follows a special procedure defined for PasswordSafe V3 files.
     * 
-    *  @return cryptographic hash value on the parameters
+    * @param passphrase <code>PwsPassphrase</code>
+    * @param random byte[] random bytes
+    * @param iterations int calculation loops
+    *  @return byte[] cryptographic hash value on the parameters
     */
-   public static byte[] genRandHash ( PwsPassphrase passphrase, byte[] random, int iterations )
+   public static byte[] genRandHash ( PwsPassphrase passphrase, 
+		                              byte[] random, 
+		                              int iterations )
    {
-      byte[] pkey;
-      
-      pkey = makeInternalKey( passphrase, random, iterations );
+      byte[] pkey = makeInternalKey( passphrase, random, iterations );
       return genRandHash( pkey );
    }
 }

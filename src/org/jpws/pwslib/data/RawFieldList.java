@@ -26,26 +26,23 @@
 
 package org.jpws.pwslib.data;
 
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.TreeMap;
 
 
-/** RawFieldList implements a map from field names (0..255) into type {@link PwsRawField}.
- * As field names function the "field types" as the assumption on each rawfield list
- * is that any field type may occur only once.  
+/** RawFieldList implements a sorted map from field names (0..255) into type 
+ * {@link PwsRawField}. Field names function as the "field types" as the 
+ * assumption on each rawfield list is that any field type may occur only once.  
  * <p>Fields returned by this list are a deep clone of the listed fields.
  * 
- * @since 2-0-0
  */
 public class RawFieldList implements Cloneable
 {
 
-/** map of type-ID into rawfields (<code>PwsRawField</code>) */
-private HashMap fields;
+/** Map of type-ID (Integer) into raw-fields (<code>PwsRawField</code>) */
+private TreeMap<Integer, PwsRawField> fields = new TreeMap<Integer, PwsRawField>();
 
-public RawFieldList ()
-{
-   fields = new HashMap();
+public RawFieldList () {
 }
 
 /**
@@ -53,28 +50,26 @@ public RawFieldList ()
  * to the parameter raw field list.
  * 
  * @param list source <code>RawFieldList</code>
- * @since 2-1-0
  */
-public RawFieldList ( RawFieldList list )
+public RawFieldList ( RawFieldList list ) 
 {
-   fields = new HashMap( list.fields );
+   fields = new TreeMap<Integer, PwsRawField>( list.fields );
 }
 
 
 /** Returns a shallow copy if this rawfield list.
  *  (Elements of the list are not cloned!)
  */ 
+@SuppressWarnings("unchecked")
 public Object clone ()
 {
-   RawFieldList o;
-   
    try { 
-      o = (RawFieldList)super.clone();
-      o.fields = (HashMap)this.fields.clone();
-      return o;
+	  RawFieldList list = (RawFieldList)super.clone();
+      list.fields = (TreeMap<Integer, PwsRawField>)this.fields.clone();
+      return list;
+   } catch (CloneNotSupportedException e) { 
+	  return null; 
    }
-   catch ( CloneNotSupportedException e )
-   { return null; }
 }
 
 /** 
@@ -87,15 +82,10 @@ public Object clone ()
   */
  public PwsRawField getField ( int type )
  {
-    PwsRawField raw;
-    Integer key;
-    
-    key = new Integer( type );
-    raw = (PwsRawField)fields.get( key );
-    
+    Integer key = new Integer( type );
+    PwsRawField raw = (PwsRawField)fields.get( key );
     return raw == null ? null : (PwsRawField)raw.clone();
  }
-
 
 /**
   * Sets the content of a field. If the field was already present in this list,
@@ -107,12 +97,10 @@ public Object clone ()
   */
  public PwsRawField setField ( PwsRawField field )
  {
-    Integer key;
-    
     if ( field == null )
        throw new NullPointerException();
     
-    key = new Integer( field.type );
+    Integer key = new Integer( field.type );
     return (PwsRawField) fields.put( key, field );
  }
 
@@ -126,15 +114,15 @@ public Object clone ()
   */
  public PwsRawField removeField ( int type )
  {
-    return (PwsRawField)fields.remove( new Integer( type ) );
+    return (PwsRawField)fields.remove( type );
  }
 
 /**
-  * Iterator over all fields of this list (in undefined order).
+  * Iterator over all fields of this list (in ascending sorted order).
   * 
   * @return Iterator of element type <code>PwsRawField</code>
   */
- public Iterator iterator ()
+ public Iterator<PwsRawField> iterator ()
  {
     return fields.values().iterator();
  }
@@ -154,18 +142,14 @@ public int size ()
  * this field list on a persistent state. (This takes into respect the 
  * general file formating rules of a PWS file.) 
  * 
- * @param format the file format version of the persistent state
+ * @param format int the file format version of the persistent state
  * @return long required (blocked) data space
- * @since 2-0-0
  */
-public long blockedDataSize ( int format )
+public long dataSize ( int format )
 {
-   Iterator it;
-   long sum;
-   
-   for ( it = iterator(), sum = 0; it.hasNext(); )
-   {
-      sum += ((PwsRawField)it.next()).getBlockedSize( format );
+   long sum = 0;
+   for ( Iterator<PwsRawField> it = iterator(); it.hasNext(); ) {
+      sum += it.next().getBlockedSize( format );
    }
    return sum;
 }
@@ -181,30 +165,11 @@ public void clear ()
 /**
  * Whether this list contains a field of the specified type.
  *  
- * @param type field name
- * @since 2-0-0
+ * @param type int field name
  */
 public boolean contains ( int type )
 {
-   return fields.containsKey( new Integer( type ) );
-}
-
-/**
- * Returns the total data size of all fields in this list.
- * (The size refers to nominal field lengths, not to required
- * blocked storage space.)
- * 
- * @param format the format version of the persistent state to be considered
- * @return long total data size
- */
-public long dataSize ( int format )
-{
-   Iterator it;
-   long sum;
-   
-   for ( it = iterator(), sum = 0; it.hasNext(); )
-      sum += ((PwsRawField)it.next()).getBlockedSize( format );
-   return sum;
+   return fields.containsKey( type );
 }
 
 /**
@@ -217,12 +182,11 @@ public long dataSize ( int format )
  */
 public String getStringValue ( int type )
 {
-   PwsRawField raw;
-   String value;
-   
-   value = "";
-   if ( (raw = getField( type )) != null )
+   String value = "";
+   PwsRawField raw = getField( type );
+   if ( raw != null ) {
       value = raw.getString("utf-8");
+   }
    return value;
 }
 

@@ -33,7 +33,6 @@ package org.jpws.pwslib.crypto;
  * Available are "ECB" and "CBC" modi. Crypting methods of this class are 
  * synchronized. 
  * 
- * @since 2-0-0
  */
 public class TwofishCipher implements PwsCipher
 {
@@ -66,25 +65,30 @@ public class TwofishCipher implements PwsCipher
       ciph = new CipherModeCBC( new TwofishECB( key ), init );
    }
 
+   @Override
    public synchronized byte[] decrypt ( byte[] buffer )
    {
       return ciph.decrypt( buffer, 0, buffer.length );
    }
 
+   @Override
    public synchronized byte[] encrypt ( byte[] buffer )
    {
       return ciph.encrypt( buffer, 0, buffer.length );
    }
 
+   @Override
    public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    {
       return ciph.decrypt( buffer, start, length );
    }
+   @Override
    public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
    {
       return ciph.encrypt( buffer, start, length );
    }
    
+   @Override
    public int getBlockSize ()
    {
       return ciph.getBlockSize();
@@ -94,5 +98,10 @@ public class TwofishCipher implements PwsCipher
    {
       return Twofish.self_test();
    }
+
+	@Override
+	public String getName() {
+		return ciph.getName();
+	}
 
 }

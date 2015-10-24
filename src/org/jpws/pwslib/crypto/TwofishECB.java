@@ -35,11 +35,12 @@ import org.jpws.pwslib.global.Util;
  * into a <code>PwsCipher</code> of the ECB modus.
  * Methods of this class are not synchronized.
  * 
- * @since 2-0-0
  */
 class TwofishECB implements PwsCipher
 {
 
+   private static String CIPHER_NAME = "Twofish";
+    
    private Object sk;
 
 /**
@@ -72,16 +73,19 @@ public TwofishECB ( byte[] key, int offset, int length )
    { throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); }
 }
 
+@Override
 public byte[] decrypt ( byte[] buffer, int start, int length )
 {
    return crypting( buffer, start, length, true );
 }
 
+@Override
 public byte[] encrypt ( byte[] buffer, int start, int length )
 {
    return crypting( buffer, start, length, false );
 }
 
+@Override
 public int getBlockSize ()
 {
    return Twofish.BLOCK_SIZE;
@@ -112,14 +116,21 @@ private byte[] crypting ( byte[] buffer, int start, int length, boolean dec )
    return result;
 }
 
+@Override
 public byte[] decrypt ( byte[] buffer )
 {
    return decrypt( buffer, 0, buffer.length );
 }
 
+@Override
 public byte[] encrypt ( byte[] buffer )
 {
    return encrypt( buffer, 0, buffer.length );
+}
+
+@Override
+public String getName() {
+	return CIPHER_NAME;
 }
 
 }

@@ -35,9 +35,9 @@ import org.jpws.pwslib.global.Log;
 /**
  * A descendant of <code>RawFieldList</code> that limits the range of
  * valid elements to field types 0..254 and supplies additional functionality
- * specific to headerfield lists.
+ * specific to header-field lists. Furthermore, the methods of this class
+ * are synchronised.
  * 
- * @since 2-0-0
  */
 public class HeaderFieldList extends RawFieldList
 {
@@ -56,17 +56,16 @@ public class HeaderFieldList extends RawFieldList
    
    /**
     * Creates a header field list with initial content identical
-    * to teh parameter header field list.
+    * to the parameter header field list.
     * 
     * @param list source <code>HeaderFieldList</code>
-    * @since 2-1-0
     */
    public HeaderFieldList ( HeaderFieldList list )
    {
       super( list );
    }
    
-   /** Whether the given headerfield type is a canonical (=known) field.
+   /** Whether the given header-field type is a canonical (=known) field.
     *  ("Canonical" here also includes JPWS defined field types.)
     * 
     * @param type int field type to investigate
@@ -78,50 +77,70 @@ public class HeaderFieldList extends RawFieldList
    }
 
 
-   public PwsRawField setField ( PwsRawField field )
+   @Override
+   public synchronized PwsRawField setField ( PwsRawField field )
    {
       if ( field.type == 0xff )
          throw new IllegalArgumentException( "illegal field type 0xff" );
       
-      return super.setField( field );
+      return super.setField(field);
    }
 
-   /**
+   @Override
+   public synchronized PwsRawField getField(int type) {
+	   return super.getField(type);
+   }
+
+   @Override
+   public synchronized PwsRawField removeField(int type) {
+	   return super.removeField(type);
+   }
+
+   
+	@Override
+	public synchronized Object clone() {
+		return super.clone();
+	}
+	
+	@Override
+	public synchronized void clear() {
+		super.clear();
+	}
+	
+/**
     * Clears away all fields from this list that are not canonical as defined by
     * <code>isCanonicalField()</code> of this class.
     */
-   public void clearUnknownFields ()
+   public synchronized void clearUnknownFields ()
    {
-      PwsRawField raw;
-      Iterator it;
-      
-      for ( it = iterator(); it.hasNext(); )
-      {
-         raw = (PwsRawField)it.next();
-         if ( !isCanonicalField( raw.type ) )
-         {
+      for ( Iterator<PwsRawField> it = super.iterator(); it.hasNext(); ) {
+    	 int type = it.next().type;
+         if ( !isCanonicalField( type ) ) {
             it.remove();
-            Log.debug( 7, "(HeaderFieldList.clearUnknownFields) removed UKF: " + raw.type );
+            Log.debug( 7, "(HeaderFieldList.clearUnknownFields) removed UKF: "
+            		.concat(String.valueOf(type)));
          }
       }
-
    }
 
+	@Override
+	public synchronized Iterator<PwsRawField> iterator() {
+		return super.iterator();
+	}
 
-   /**
+/**
     * Returns the number of fields which are kept as non-canonical 
     * in this list of header fields.
     * 
     * @return int number of non-canonical fields
     */
-   public int getUnknownFieldCount ()
+   public synchronized int getUnknownFieldCount ()
    {
-      Iterator it;
-      int count;
-      
-      for ( it = iterator(), count = 0; it.hasNext(); )
-         if ( !isCanonicalField( ((PwsRawField)it.next()).type ) ) 
+      int count = 0;
+      for ( Iterator<PwsRawField> it = super.iterator(); it.hasNext(); )
+         if ( !isCanonicalField( it.next().type ) ) { 
             count++;
+         }
       return count;
    }
 
@@ -131,30 +150,26 @@ public class HeaderFieldList extends RawFieldList
     * in this list of header fields. (This refers to blocked 
     * data sizes.)
     * 
-    * @param format the file format version of the persistent state
+    * @param format int the file format version of the persistent state
     * @return long size of all non-canonical fields
     */
-   public long getUnknownFieldSize ( int format )
+   public synchronized long getUnknownFieldSize ( int format )
    {
-      PwsRawField raw;
-      Iterator it;
-      long sum;
-      
-      for ( it = iterator(), sum = 0; it.hasNext(); )
-      {
-         raw = (PwsRawField)it.next();
-         if ( !isCanonicalField( raw.type ) ) 
+      long sum = 0;
+      for ( Iterator<PwsRawField> it = super.iterator(); it.hasNext(); ) {
+    	 PwsRawField raw = it.next();
+         if ( !isCanonicalField( raw.type ) ) {
             sum += raw.getBlockedSize( format );
+         }
       }
       return sum;
    }
 
 
-   public long blockedDataSize ( int format )
+   public synchronized long blockedDataSize ( int format )
    {
       // we are adding one block for the EOL marker on file
-      return super.blockedDataSize( format )
-             + (format == Global.FILEVERSION_3 ? 16 : 0);
+      return super.dataSize(format) + (format == Global.FILEVERSION_3 ? 16 : 0);
    }
    
 }

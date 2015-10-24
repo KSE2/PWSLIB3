@@ -39,15 +39,15 @@ import org.jpws.pwslib.global.UUID;
 
 
 /**
- *  PwsFileInputSocket organises data input from a simple 
+ *  PwsFileInputSocket organises data input from an ordinary 
  *  underlying data stream in order to read a persistent state of a
  *  PWS file and make its data content available to the user in a decrypted
- *  and handsome form. This takes care of decryption and de-packaging 
+ *  and convenient form. This takes care of decryption and unpacking 
  *  depending on the different PWS file format versions in a way that lets 
  *  the user ignore these differences. 
  *  
  *  <p>One instance of this socket can be used to obtain a single 
- *  instance of either the block-stream or the rawfield reader. Before this,
+ *  instance of either the block-stream or the raw-field reader. Before this,
  *  the socket must be opened through the <code>attemptOpen()</code> method,
  *  which can be performed repeatedly until the correct key (and file version) 
  *  have been matched. An instance can be opened only once.   
@@ -57,7 +57,6 @@ import org.jpws.pwslib.global.UUID;
  *  may be present in the stream but may get partly lost for subsequent users of
  *  the same input stream. 
  *  
- *  @since 2-0-0
  *  @see org.jpws.pwslib.data.PwsRawFieldReader
  *  @see org.jpws.pwslib.data.PwsBlockInputStream
  */
@@ -110,31 +109,27 @@ public PwsFileInputSocket ( InputStream input )
  *        (i.e. key matches)
  * 
  * @throws IllegalStateException if this socket is already open
- * @throws IOException if an error occured during reading 
+ * @throws IOException if an error occurred during reading 
  */
 public boolean attemptOpen ( PwsPassphrase key )
    throws IOException
 {
    
-   try { return attemptOpen( key, 0 ); }
-   catch ( WrongFileVersionException e )
-   { 
+   try { 
+	   return attemptOpen( key, 0 ); 
+   } catch ( WrongFileVersionException e ) { 
       return false;  // this should not happen as we are requesting a generic open 
-   }
-   catch ( UnsupportedFileVersionException e )
-   { 
+   } catch ( UnsupportedFileVersionException e ) { 
       return false;  // same here 
    }
 }
 
 /**
- * Attempts to open this socket by trying a key on a 
- * PWS file of an optionally restricted format which is
- * read from the supplied input stream starting at
- * its current position. Repeated calls to this method (open
- * attempts) are possible as long as previous calls have all
- * rendered negative. This method allows to force a specific
- * PWS file format version assumed.  
+ * Attempts to open this socket by trying a key on a PWS file of an optionally 
+ * restricted format which is read from the supplied input stream starting at
+ * its current position. Repeated calls to this method (open attempts) are 
+ * possible as long as previous calls have all rendered negative. This method
+ * allows to force a specific PWS file format version assumed.  
  * 
  * @param key the file access passphrase (secret key) 
  * @param fileVersion if not 0, the specified file version
@@ -148,54 +143,45 @@ public boolean attemptOpen ( PwsPassphrase key )
  *         was requested and not found to match the file (V1, V2)
  * @throws UnsupportedFileVersionException if V3 format 
  *         was requested and corrupted data was encountered   
- * @throws IOException if an error occured during reading 
+ * @throws IOException if an error occurred during reading 
  */
 public boolean attemptOpen ( PwsPassphrase key, int fileVersion )
    throws IOException, WrongFileVersionException, UnsupportedFileVersionException
 {
-   boolean generic;
-   
    if ( isOpen )
       throw new IllegalStateException( "socket is already open" );
    if ( isConsumed )
       throw new IllegalStateException( "socket consumed" );
    
-   generic = fileVersion == 0;
+   boolean generic = fileVersion == 0;
    
-   try {
-      // try V3 header format if no special request for other formats
-      in.reset();
-      if ( (generic | fileVersion == Global.FILEVERSION_3) && openV3( key, generic ) )
-      {
-         in.mark( 0 );
-         return true;
-      }
+  // try V3 header format if no special request for other formats
+  in.reset();
+  if ( (generic | fileVersion == Global.FILEVERSION_3) && openV3( key, generic ) ) {
+     in.mark( 0 );
+     return true;
+  }
    
-      // try V2 header format
-      in.reset();
-      if ( (generic | fileVersion == Global.FILEVERSION_2) && openV2( key, generic ) )
-      {
-         in.mark( 0 );
-         return true;
-      }
-      
-      // try V1 header format
-      in.reset();
-      if ( (generic | fileVersion == Global.FILEVERSION_1) && openV1( key, generic ) )
-      {
-         in.mark( 0 );
-         return true;
-      }
-   }
-   finally 
-   {
-   }
-   
-   return false;
+  // try V2 header format
+  in.reset();
+  if ( (generic | fileVersion == Global.FILEVERSION_2) && openV2( key, generic ) ) {
+     in.mark( 0 );
+     return true;
+  }
+  
+  // try V1 header format
+  in.reset();
+  if ( (generic | fileVersion == Global.FILEVERSION_1) && openV1( key, generic ) ) {
+     in.mark( 0 );
+     return true;
+  }
+
+  return false;
 }
 
 /**
  * Whether this input socket is open.
+ * 
  * @return <b>true</b> if and only if one of the "attemptOpen" methods has been
  *         performed successfully on this socket
  */
@@ -221,27 +207,27 @@ public boolean isOpen ()
 private boolean openV1 ( PwsPassphrase key, boolean generic ) 
    throws IOException, WrongFileVersionException
 {
-   PwsFileHeaderV1 header;
-   
    // read file header section (valid for ?)
-   header = new PwsFileHeaderV1( in );
+   PwsFileHeaderV1 header = new PwsFileHeaderV1( in );
 
    try {
       // verify the correct user passphrase and get the encrypt cipher 
-      if ( (blockStream = header.verifyPass( key )) == null )
+      if ( (blockStream = header.verifyPass( key )) == null ) {
          return false;
-   }
-   catch ( WrongFileVersionException e )
-   {
+      }
+
+   } catch ( WrongFileVersionException e ) {
       // react to wrong file version (i.e. a V2 file)
-      if ( generic )
+      if ( generic ) {
          return false;
+      }
       throw e;
    }
    
    // found the match, avoid large data buffering
    in.mark( 2048 );  
 
+   // update member data
    fversion = Global.FILEVERSION_1;
    isOpen = true;
    return true;
@@ -260,31 +246,31 @@ private boolean openV1 ( PwsPassphrase key, boolean generic )
  * @throws WrongFileVersionException if the enclosing request was version 
  *         specific (<code>generic</code> == false) and a wrong file version was 
  *         encountered
- * @throws IOException if an error occurs during reading
+ * @throws IOException if an error occurred during reading
  */
 private boolean openV2 ( PwsPassphrase key, boolean generic ) 
    throws IOException, WrongFileVersionException
 {
-   PwsFileHeaderV2 header;
-   
    // read file header section (valid for ?)
-   header = new PwsFileHeaderV2( in );
+   PwsFileHeaderV2 header = new PwsFileHeaderV2( in );
 
    try {
       // verify the correct user passphrase and get the encrypt cipher 
-      if ( (blockStream = header.verifyPass( key )) == null )
+      if ( (blockStream = header.verifyPass( key )) == null ) {
          return false;
-   }
-   catch ( WrongFileVersionException e )
-   {
-      if ( generic )
+      }
+
+   } catch ( WrongFileVersionException e ) {
+      if ( generic ) {
          return false;
+      }
       throw e;
    }
    
    // found the match, avoid large data buffering
    in.mark( 2048 );  
 
+   // update member data
    options = header.getOptions();
    fversion = Global.FILEVERSION_2;
    isOpen = true;
@@ -298,7 +284,7 @@ private boolean openV2 ( PwsPassphrase key, boolean generic )
  * @return <b>true</b> if and only if this socket is opened 
  *         (key success)
  * @throws NullPointerException if passphrase is undefined
- * @throws IOException if an error occurs during reading
+ * @throws IOException if an error occurred during reading
  */
 private boolean openV3 ( PwsPassphrase key, boolean generic ) 
    throws IOException, UnsupportedFileVersionException
@@ -308,20 +294,21 @@ private boolean openV3 ( PwsPassphrase key, boolean generic )
       headerV3 = new PwsFileHeaderV3( in );
    
       // verify the correct user passphrase and get the encrypt cipher 
-      if ( (blockStream = headerV3.verifyPass( key )) == null )
+      if ( (blockStream = headerV3.verifyPass( key )) == null ) {
          return false;
+      }
    
-   }
-   catch ( UnsupportedFileVersionException e )
-   {
-      if ( generic )
+   } catch ( UnsupportedFileVersionException e ) {
+      if ( generic ) {
          return false;
+      }
       throw e;
    }
    
    // found the match, avoid large data buffering
    in.mark( 2048 );  
 
+   // update member data
    headerFields = headerV3.getHeaderFields();
    hmac = headerV3.getReadHmac();
    options = headerFields.getStringValue( PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
@@ -334,6 +321,8 @@ private boolean openV3 ( PwsPassphrase key, boolean generic )
 /**
  * Returns the PWS file format version (for values see class <code>Global</code>) 
  * or 0 if the file has not been opened.
+ * 
+ * @return int file format version
  */
 public int getFileVersion ()
 {
@@ -341,8 +330,10 @@ public int getFileVersion ()
 }
 
 /**
- * Returns the blocksize of the cipher used to decrypt this socket's input stream
- * or 0 if this socket has not been opened.
+ * Returns the blocksize of the cipher used to decrypt this socket's input 
+ * stream or 0 if this socket has not been opened.
+ * 
+ * @return int cipher blocksize or 0
  */
 public int getBlocksize ()
 {
@@ -350,20 +341,17 @@ public int getBlocksize ()
 }
 
 /**
- * Returns a specialised iterator over all raw fields of the underlying 
- * PWS datafile. Serves for reading all PWS file data contents. 
+ * Returns a specialised iterator over all raw-fields of the underlying 
+ * PWS database. Serves for reading all PWS file data contents. 
  *  
  * @return <code>RawFieldReader</code>
- * 
  * @throws IllegalStateException if the socket is not open or another 
  *         input stream has been active for this socket
  * @throws IOException if an IO error occurs or the stream is corrupted        
  */
 public PwsRawFieldReader getRawFieldReader () throws IOException
 {
-   PwsBlockInputStream bs;
-   
-   bs = getBlockInputStreamIntern();
+   PwsBlockInputStream bs = getBlockInputStreamIntern();
    return new RawFieldReader( bs, fversion, hmac );
 }
 
@@ -372,7 +360,6 @@ public PwsRawFieldReader getRawFieldReader () throws IOException
  * The stream is positioned to the first block after the file header.
  *  
  * @return <code>PwsBlockInputStream</code>
- * 
  * @throws IllegalStateException if the socket is not open or another 
  *         input stream has been active for this socket
  * @throws IOException if an IO error occurs or the stream is corrupted        
@@ -380,7 +367,9 @@ public PwsRawFieldReader getRawFieldReader () throws IOException
 public PwsBlockInputStream getBlockInputStream () throws IOException
 {
    PwsBlockInputStream st = getBlockInputStreamIntern();
-   st.setStreamHmac(headerV3.getReadHmac());
+   if ( fversion == Global.FILEVERSION_3 ) {
+	  st.setStreamHmac( headerV3.getReadHmac() );
+   }
    return st;
 }
 
@@ -389,7 +378,6 @@ public PwsBlockInputStream getBlockInputStream () throws IOException
  * The stream is positioned to the first block after the file header.
  *  
  * @return <code>PwsBlockInputStream</code>
- * 
  * @throws IllegalStateException if the socket is not open or another 
  *         input stream has been active for this socket
  * @throws IOException if an IO error occurs or the stream is corrupted        
@@ -422,11 +410,10 @@ public void close ()
  * Returns the file's options string; available when socket is open. 
  * If the file format does not support an option string, an empty 
  * string is returned.
- * <p><small>For format V2 files this value
- * represents the same data field that is also used by
- * PasswordSafe (PWS). For format V3 it represents a JPWS specific 
- * data field (which is not an element of the PWS canon). The PWS
- * specific preferences of a V3 file can be obtained by 
+ * <p><small>For format V2 files this value represents the same data field that 
+ * is also used by PasswordSafe (PWS). For format V3 it represents a JPWS 
+ * specific data field (which is not an element of the PWS canon). The PWS
+ * specific preferences of a V3 file can be obtained by
  * <code>getHeaderFields().getField(PwsFileHeaderV3.PWS_PREFS_TYPE).getString("utf-8")</code>.</small>  
  * 
  * @return String file options text
@@ -437,12 +424,13 @@ public String getOptions ()
 }
 
 /** 
- * Returns the hash function verification code encountered at the end of a V3 file.
- * This code serves to verify integrity of user data. This information can only be 
- * available after EOF of the input blockstream has been reached; it may not be 
- * available at all.
+ * Returns the hash function verification code encountered at the end of a V3 
+ * file. This code serves to verify integrity of user data. This information can
+ * only be available after EOF of the input block stream has been reached; it 
+ * may not be available at all.
  *  
- * @return byte[] file hmac of length 32 or <b>null</b> if this information is unavailable
+ * @return byte[] file hmac of length 32 or <b>null</b> if this information is 
+ *                unavailable
  */ 
  public byte[] getReadChecksum ()
  {
@@ -450,12 +438,10 @@ public String getOptions ()
  }
 
  
- /** The number of security iterations of key calculation
-  * during file authentication. (Note this property is
-  * only available for file format V3.)
+ /** The number of security iterations of key calculation during file 
+  * authentication. (Note this property is only available for file format V3.)
   * 
   * @return number of calculation iterations or 0 if unavailable
-  * @since 2-1-0
   */
 public int getIterations ()
  {
@@ -463,13 +449,14 @@ public int getIterations ()
  }
 
 /** 
- * Returns the hash function checksum calculated over all read rawfield data
+ * Returns the hash function checksum calculated over all read raw-field data
  * of a V3 file.
- * This code serves to verify integrity of user data. This information can only be 
- * available after EOF of the input blockstream has been reached; it may not be 
- * available at all.
+ * <p>This code serves to verify integrity of user data. This information can 
+ * only be available after EOF of the input block stream has been reached; it 
+ * may not be available at all.
  *  
- * @return byte[] file hmac of length 32 or <b>null</b> if this information is unavailable
+ * @return byte[] file hmac of length 32 or <b>null</b> if this information is
+ *                unavailable
  */ 
  public byte[] getCalcChecksum ()
  {
@@ -497,9 +484,8 @@ public HeaderFieldList getHeaderFields ()
   */
  public UUID getFileUUID ()
  {
-    PwsRawField raw;
-    
-    raw = headerFields != null ? headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE ) : null;
+    PwsRawField raw = headerFields != null ? 
+    	  headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE ) : null;
     return raw == null ? null : new UUID( raw.getData() );
  }
 

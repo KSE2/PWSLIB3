@@ -12,9 +12,8 @@ import org.jpws.pwslib.global.PwsChecksum;
  * decrypted from an underlying blocked input stream (decrypted) 
  * which comes from a persistent state of a PWS file. 
  * 
- * <p>This implements the <code>Iterator</code> interface extended by a
- * close operation and a blocksize. This reader analyses
- * a block stream from the underlying data input source 
+ * <p>This implements the {@link PwsRawFieldReader} interface. This reader 
+ * analyses a block stream from the underlying data input source 
  * and renders elements of type <code>PwsRawField</code> in the 
  * order as they are encountered in the source.  
  * 
@@ -34,137 +33,125 @@ import org.jpws.pwslib.global.PwsChecksum;
  * 
  * @see PwsFileInputSocket
  * @see PwsFileHeaderV3
- * @since 2-0-0
  */
 class RawFieldReader implements PwsRawFieldReader
 {
+   public static int rawCount;
 
    private PwsBlockInputStream blockStream;
    private PwsRawField nextField;
    private PwsChecksum hmac;
-   private int blocksize;
    private int fileVersion;
 
    /**
-    * Creates a rawfield reader from the input source PWS block stream and 
+    * Creates a raw-field reader from the input source PWS block stream and 
     * a file format version as interpretation scheme. 
     *   
-    * @param bs <code>PwsBlockInputStream</code> input stream supplying decrypted data blocks
-    *        from a PWS file 
-    * @param format the file format version
-    * @param hmac <code>PwsChecksum</code> that is updated with resulting field values 
-    *        as reading progresses (this serves building up the verification checksum of the PWS file);
-    *        may be <b>null</b> 
+    * @param bs <code>PwsBlockInputStream</code> input stream supplying decrypted
+    *         data blocks from a PWS file 
+    * @param format int the file format version
+    * @param hmac <code>PwsChecksum</code> that is updated with resulting field 
+    *        values as reading progresses (this serves building up the verification 
+    *        checksum of the PWS file); may be <b>null</b> 
     * @throws IOException
     */
-   public RawFieldReader ( PwsBlockInputStream bs, int format, PwsChecksum hmac  ) throws IOException
+   public RawFieldReader ( PwsBlockInputStream bs, int format, PwsChecksum hmac  ) 
+		                 throws IOException
    {
       init( bs, format, hmac );
    }
    
    
    /**
-    * Creates a rawfield reader from the plain source data stream, a cryptographical cipher and 
-    * a file format version as interpretation scheme. 
+    * Creates a raw-field reader from the plain source data stream, a 
+    * cryptographical cipher and a file format version as interpretation scheme. 
     *   
     * @param input <code>InputStream</code> input stream delivering encrypted data
     *        from a PWS file
-    * @param cipher decryption cipher        
-    * @param format the file format version
-    * @param hmac <code>PwsChecksum</code> that is updated with resulting field values 
-    *        as reading progresses (this serves building up the verification checksum of the PWS file);
-    *        may be <b>null</b> 
+    * @param cipher <code>PwsCipher</code> decryption cipher        
+    * @param format int the file format version
+    * @param hmac <code>PwsChecksum</code> that is updated with resulting field 
+    *        values as reading progresses (this serves building up the verification
+    *        checksum of the PWS file); may be <b>null</b> 
     * @throws IOException
     */
-   public RawFieldReader ( InputStream input, PwsCipher cipher, int format, PwsChecksum hmac  ) throws IOException
+   public RawFieldReader ( InputStream input, PwsCipher cipher, int format, 
+		                   PwsChecksum hmac  ) throws IOException
    {
       blockStream = new BlockInputStream( input, cipher );
       init( blockStream, format, hmac );
    }
 
-   private void init ( PwsBlockInputStream bs, int format, PwsChecksum hmac ) throws IOException
+   private void init ( PwsBlockInputStream bs, int format, PwsChecksum hmac ) 
+		             throws IOException
    {
       blockStream = bs;
-      blocksize = blockStream.getBlockSize();
       fileVersion = format;
       this.hmac = hmac;
       readNextRawField();
    }
    
-   /* 
-    * Overridden: @see org.jpws.pwslib.data.PwsRawFieldReader#getBlocksize()
-    */
+   @Override
    public int getBlocksize ()
    {
-      return blocksize;
+      return blockStream.getBlockSize();
    }
    
-   /* 
-    * Overridden: @see org.jpws.pwslib.data.PwsRawFieldReader#close()
-    */ 
+   @Override
    public void close ()
    {
       nextField = null;
       blockStream = null;
    }
 
-   /* 
-    * Overridden: @see org.jpws.pwslib.data.PwsRawFieldReader#hasNext()
-    */
+   @Override
    public boolean hasNext ()
    {
       return nextField != null;
    }
 
-   /* 
-    * Overridden: @see org.jpws.pwslib.data.PwsRawFieldReader#next()
-    */
-   public Object next ()
+   @Override
+   public PwsRawField next ()
    {
-      PwsRawField field;
-      
-      if ( (field = nextField) != null )
-      {
-         try { readNextRawField(); }
-         catch ( Exception e )
-         {
+      PwsRawField field = nextField;
+      if ( field != null ) {
+         try { 
+        	 readNextRawField(); 
+         } catch ( Exception e ) {
             e.printStackTrace();
-            throw new IllegalStateException( "Exception: " + e );
+            throw new IllegalStateException( e );
          }
          return field;
-      }
-      else
-      {
+
+      } else {
          close();
          throw new NoSuchElementException();
       }
    }
 
-   /* 
-    * Overridden: @see org.jpws.pwslib.data.PwsRawFieldReader#remove()
-    */
+   @Override
    public void remove ()
    {
       throw new UnsupportedOperationException();
    }
    
-   public static int rawCount;
-
    private void readNextRawField () throws IOException
    {
       // clear instance member
       nextField = null;
 
       // break if no more data in block stream
-      if ( !blockStream.isAvailable() )
+      if ( !blockStream.isAvailable() ) {
          return;
+      }
 
       // create "next" raw field
       nextField = new PwsRawField( blockStream, fileVersion );
 
       // update reading checksum
-      if ( hmac != null )
+      if ( hmac != null ) {
          hmac.update( nextField );
+      }
 
       // update counter
       rawCount++;

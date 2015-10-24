@@ -36,45 +36,49 @@ public class NullCipher implements PwsCipher
 {
 
    public NullCipher ()
-   {
-   }
+   {}
 
    /** Returns the same content in a different buffer. */
+   @Override
    public synchronized byte[] decrypt ( byte[] buffer )
    {
       return decrypt( buffer, 0, buffer.length );
    }
 
    /** Returns the same content in a different buffer. */
+   @Override
    public synchronized byte[] encrypt ( byte[] buffer )
    {
       return encrypt( buffer, 0, buffer.length );
    }
 
    
-   
    /** Returns the same content in a different buffer. */
+   @Override
    public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    {
-      byte[] buf;
-      
-      buf = new byte[ length ];
+      byte[] buf = new byte[ length ];
       System.arraycopy( buffer, start, buf, 0, length );
       return buf;
    }
    
    /** Returns the same content in a different buffer. */
+   @Override
    public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
    {
-      byte[] buf;
-      
-      buf = new byte[ length ];
+      byte[] buf = new byte[ length ];
       System.arraycopy( buffer, start, buf, 0, length );
       return buf;
    }
    
+   @Override
    public int getBlockSize ()
    {
       return 8;
    }
+
+	@Override
+	public String getName() {
+		return "Nullcipher";
+	}
 }

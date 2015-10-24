@@ -34,7 +34,6 @@ import java.util.EventObject;
  *  Event issued for an {@link <code>OrderedListListener</code>}. The event can
  *  be related to a record (wrapper) whose position in a list is described by an 
  *  index value.
- *  @since 0-3-0
  */
 public class OrderedListEvent extends EventObject
 {
@@ -48,7 +47,7 @@ public class OrderedListEvent extends EventObject
    public static final int LIST_RELOADED = 4;
 
    private DefaultRecordWrapper record;
-   private int index;
+   private int index = -1;
    private int eventType;
    
 /**
@@ -69,22 +68,29 @@ public OrderedListEvent ( Object source,
    this.record = record;
 }
 
-/** Returns the event type. */
+/** Returns the event type.
+ * 
+ *  @return int
+ */
 public int getType ()
 {
    return eventType;
 }
 
-/** Returns the most recent index position of a record if the event type relates 
- *  to a record.
- *  @return list index position
+/** Returns the most recent list index position of a record if the event 
+ * type relates to a record.
+ *  
+ *  @return int, index position or -1
  */
 public int getIndex ()
 {
    return index;
 }
 
-/** Returns the record wrapper of a record if the event type relates to a record.*/
+/** Returns the wrapper of a record if the event type relates to a record.
+ * 
+ * @return <code>DefaultRecordWrapper</code> or <b>null</b>
+ */
 public DefaultRecordWrapper getRecord ()
 {
    return record;

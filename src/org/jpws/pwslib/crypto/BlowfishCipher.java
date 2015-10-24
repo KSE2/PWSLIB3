@@ -71,26 +71,31 @@ public class BlowfishCipher implements PwsCipher
       ciph = new CipherModeCBC( new BlowfishECB2( key ), init );
    }
 
+   @Override
    public synchronized byte[] decrypt ( byte[] buffer )
    {
       return decrypt( buffer, 0, buffer.length );
    }
 
+   @Override
    public synchronized byte[] encrypt ( byte[] buffer )
    {
       return encrypt( buffer, 0, buffer.length );
    }
 
+   @Override
    public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    {
       return ciph.decrypt( buffer, start, length );
    }
    
+   @Override
    public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
    {
       return ciph.encrypt( buffer, start, length );
    }
    
+   @Override
    public int getBlockSize ()
    {
       return ciph.getBlockSize();
@@ -100,5 +105,10 @@ public class BlowfishCipher implements PwsCipher
    {
       return BlowfishECB2.selfTest();
    }
+
+	@Override
+	public String getName() {
+		return ciph.getName();
+	}
 
 }

@@ -62,6 +62,8 @@ class BlowfishECB2 implements PwsCipher
 	 */
 	public final static int BLOCKSIZE = 8;
 
+    private static String CIPHER_NAME = "Blowfish";
+    
 	// size of the single boxes
 	final static int PBOX_ENTRIES = 18;
 	final static int SBOX_ENTRIES = 256;
@@ -1092,4 +1094,10 @@ class BlowfishECB2 implements PwsCipher
 		0x01c36ae4, 0xd6ebe1f9, 0x90d4f869, 0xa65cdea0, 0x3f09252d, 0xc208e69f,
 		0xb74e6132, 0xce77e25b, 0x578fdfe3, 0x3ac372e6
 	};
+
+	@Override
+	public String getName() {
+		return CIPHER_NAME;
+	}
+
 }

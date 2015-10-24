@@ -37,7 +37,6 @@ import java.net.URLConnection;
  * Implements a straight forward <code>ApplicationAdapter</code> for addressing
  * URL protocol files, based on the java.net package.
  *  
- *  @since 0-3-0
  */
 public class DefaultUrlAdapter implements ApplicationAdapter
 {
@@ -57,32 +56,22 @@ public static DefaultUrlAdapter get ()
    return instance;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getInputStream(java.lang.String)
- */
+@Override
 public InputStream getInputStream ( String path ) throws IOException
 {
-   URLConnection urlCon;
-   URL url;
-
-   url = new URL( path );
-   urlCon = url.openConnection();
+   URL url = new URL( path );
+   URLConnection urlCon = url.openConnection();
    urlCon.setAllowUserInteraction( true );
    //urlCon.connect();
 
    return urlCon.getInputStream();
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getOutputStream(java.lang.String)
- */
+@Override
 public OutputStream getOutputStream ( String path ) throws IOException
 {
-   URLConnection urlCon;
-   URL url;
-
-   url = new URL( path );
-   urlCon = url.openConnection();
+   URL url = new URL( path );
+   URLConnection urlCon = url.openConnection();
    urlCon.setAllowUserInteraction( true );
    urlCon.setDoOutput( true );
    //urlCon.connect();
@@ -90,150 +79,130 @@ public OutputStream getOutputStream ( String path ) throws IOException
    return urlCon.getOutputStream();
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getName()
- */
+@Override
 public String getName ()
 {
    return "URL File Locations";
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getType()
- */
+@Override
 public int getType ()
 {
    return INTERNET;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#deleteFile(java.lang.String)
- */
+@Override
 public boolean deleteFile ( String path ) throws IOException
 {
    return false;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#existsFile(java.lang.String)
- */
+@Override
 public boolean existsFile ( String path ) throws IOException
 {
-   URLConnection urlCon;
-   URL url;
-
    try {
-      url = new URL( path );
-      urlCon = url.openConnection();
+      URL url = new URL( path );
+      URLConnection urlCon = url.openConnection();
       urlCon.connect();
-      return urlCon.getContentLength() > -1;
-   }
-   catch ( FileNotFoundException e )
-   {
+      return urlCon.getLastModified() > 0;
+
+   } catch ( FileNotFoundException e ) {
       return false;
    }
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#renameFile(java.lang.String,java.lang.String)
- */
+@Override
 public boolean renameFile ( String path, String newPath ) throws IOException
 {
    return false;
 }
 
+@Override
 public void lockFileAccess ( String path ) throws IOException
 {
    // no-op
 }
 
+@Override
 public void unlockFileAccess ( String path ) throws IOException
 {
    // no-op
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canWrite()
- */
+@Override
 public boolean canWrite ( String path )
 {
    return false;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canRead()
- */
+@Override
 public boolean canRead ( String path ) throws IOException
 {
    return existsFile( path );
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canWrite()
- */
+@Override
 public boolean canDelete ( String path )
 {
    return false;
 }
 
+@Override
 public long getFileLength ( String path ) throws IOException
 {
-   URLConnection urlCon;
-   URL url;
-
-   url = new URL( path );
-   urlCon = url.openConnection();
+   URL url = new URL( path );
+   URLConnection urlCon = url.openConnection();
    urlCon.connect();
    return urlCon.getContentLength();
 }
 
+@Override
 public long getModifiedTime ( String path ) throws IOException
 {
-   URLConnection urlCon;
-   URL url;
-
-   url = new URL( path );
-   urlCon = url.openConnection();
+   URL url = new URL( path );
+   URLConnection urlCon = url.openConnection();
    urlCon.connect();
    return urlCon.getLastModified();
 }
 
-/** An object equals this adapter if it is an instance of <code>DefaultUrlAdapter
- *  </code>.
+/** An object equals this adapter if it is an instance of 
+ * <code>DefaultUrlAdapter</code>.
  */
+@Override
 public boolean equals ( Object obj )
 {
    return obj != null && obj instanceof DefaultUrlAdapter;
 }
 
+@Override
 public int hashCode ()
 {
    return classID;
 }
 
-public String[] list ( String trunk, String trail, boolean recurse ) throws IOException
+@Override
+public String[] list ( String trunk, String trail, boolean recurse ) 
+			throws IOException
 {
    return null;
 }
 
+@Override
 public String separator ()
 {
    return "/";
 }
 
+@Override
 public URL getUrl ( String filepath ) throws IOException
 {
-   URL url;
-   
-   url = new URL( filepath );
+   URL url = new URL( filepath );
    return url;
 }
 
+@Override
 public boolean setModifiedTime ( String path, long time ) throws IOException
 {
    return false;
 }
-
-
-
 }

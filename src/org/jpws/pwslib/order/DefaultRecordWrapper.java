@@ -43,13 +43,14 @@ import org.jpws.pwslib.global.Util;
  * <p>Mutability Status: This class walks from the assumption that the
  * record fields constituting the sort value (namely GROUP and TITLE) will
  * not likely change during the lifetime (validity) of an instance. Hence the
- * sort value is not recalculated except through the use of <code>refresh()</code>.
- * The general practice is to substitute wrappers of a record by a new instance
- * whenever a permanent modification occurs on the referenced record's content. 
+ * sort value is not recalculated except through the use of <code>refresh()
+ * </code>. The practised strategy is to substitute wrappers of a record by a 
+ * new instance whenever a permanent modification occurs on the referenced 
+ * record's content. 
  * 
- * @since 0-3-0
  */
-public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
+public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>, 
+             Collatable, Cloneable
 {
    /** Expiry status value. */
    public static final int EXPIRED = 1;
@@ -78,10 +79,10 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
 	/**
 	 * Constructor completely defining this record representation.
      * (The parameter object is used in direct reference.) 
-    * 
+     * 
 	 * @param rec the record to be represented 
-    * @param loc the locale used for sorting this instance; if <b>null</b>
-    *        the current VM default locale is used
+     * @param loc the locale used for sorting this instance; if <b>null</b>
+     *        the current VM default locale is used
 	 */
 	public DefaultRecordWrapper( PwsRecord rec, Locale loc )
 	{
@@ -95,9 +96,9 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
 
     /**
      * Makes a deep clone of this wrapper object.
-     * @since 2-1-0
      */
-    public Object clone ()
+    @Override
+	public Object clone ()
     {
        DefaultRecordWrapper obj;
        
@@ -117,25 +118,23 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
      * 
      * @param recs array of <code>PwsRecord</code>; may be <b>null</b>
      * @param loc Locale used in the wrapper objects; <b>null</b> for VM default
-     * @return array of DefaultRecordWrapper or <b>null</b>
-     * @since 2-1-0
+     * @return array of <code>DefaultRecordWrapper</code> or <b>null</b>
      */
-    public static DefaultRecordWrapper[] makeWrappers ( PwsRecord[] recs, Locale loc )
+    public static DefaultRecordWrapper[] makeWrappers (PwsRecord[] recs, Locale loc)
     {
-       DefaultRecordWrapper[] result;
-       int i;
+       if ( recs == null ) return null;
        
-       if ( recs == null )
-          return null;
-       
-       result = new DefaultRecordWrapper[ recs.length ]; 
-       for ( i = 0; i < recs.length; i++ )
+       DefaultRecordWrapper[] result = new DefaultRecordWrapper[ recs.length ]; 
+       for ( int i = 0; i < recs.length; i++ ) {
           result[ i ] = new DefaultRecordWrapper( recs[ i ], loc );
+       }
        return result;
     }
 
    /** Recalculates the expiry status of this record according to actual 
     *  compare values.
+    *  
+    *  @param expireScope long time duration in milliseconds (delta)
     */
    public void refreshExpiry ( long expireScope )
    {
@@ -154,8 +153,9 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
       sortValue = sortValueOf( record );
       importry = record.getImportStatus();
       refreshExpiry( Global.DEFAULT_EXPIRESCOPE );
-      if ( locale != null )
+      if ( locale != null ) {
          key = Collator.getInstance( locale ).getCollationKey( sortValue );
+      }
    }
    
    /** Sets a locale for the sort value of this wrapper. This determines the
@@ -165,33 +165,41 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
     */
    public void setLocale ( Locale l )
    {
-      if ( l == null )
+      if ( l == null ) {
          l = Locale.getDefault();
+      }
       
-      if ( !l.equals( locale ) )
-      {
+      if ( !l.equals( locale ) ) {
          locale = l;
          key = Collator.getInstance( locale ).getCollationKey( sortValue );
       }
    }
    
-   /** Returns the Locale used in this record wrapper for collating. 
-    * @since 2-1-0
+   /** Returns the <code>Locale</code> used in this record wrapper for collating.
+    * 
+    *  @return <code>Locale</code>
     */
    public Locale getLocale ()
    {
       return locale;
    }
    
-   /** Returns the standard sortvalue of the parameter record.
-    *  This is a concatenation of group and title fields. */
+   /** Returns the standard sort value of the parameter record.
+    *  This is a concatenation of group and title fields.
+    *  
+    *  @param rec <code>PwsRecord</code>
+    *  @return String record sort value
+    */
    public static String sortValueOf ( PwsRecord rec )
    {
       return sortValueOf( rec.getGroup(), rec.getTitle() );
    }
    
-   /** Returns the standard sortvalue given
-    *  the parameter group and title values. */
+   /** Returns the standard sort value given the parameter group and title 
+    * values.
+    * 
+    *  @return String sort value, combination of parameters 
+    */
    public static String sortValueOf ( String group, String title )
    {
       if ( group == null )
@@ -202,25 +210,23 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
    }
    
    /**
-    * Makes a deep clone of an array of DefaultRecordWrapper items.
+    * Makes a deep clone of an array of <code>DefaultRecordWrapper</code> items.
     * 
     * @param arr <code>DefaultRecordWrapper[]</code>
     * @return <code>DefaultRecordWrapper[]</code> deep clone of parameter
-    * @since 0-6-0
     */
    public static DefaultRecordWrapper[] cloneArray ( DefaultRecordWrapper[] arr )
    {
-      DefaultRecordWrapper[] res;
-      int i;
-      
-      res = new DefaultRecordWrapper[ arr.length ];
-      for ( i = 0; i < arr.length; i++ )
+      DefaultRecordWrapper[] res = new DefaultRecordWrapper[ arr.length ];
+      for ( int i = 0; i < arr.length; i++ ) {
          res[ i ] = (DefaultRecordWrapper)arr[ i ].clone();
+      }
       return res;
    }
    
 	/**
 	 * Returns the record contained in this record-wrapper (direct reference).
+	 * 
 	 * @return <code>PwsRecord</code>
 	 */
 	public PwsRecord getRecord()
@@ -230,8 +236,8 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
 
     /**
      * Returns the UUID value of the record contained in this wrapper.
-     * @return <code>PwsRecord</code>
-     * @since 2-1-0
+     * 
+     * @return <code>UUID</code> record UUID
      */
     public UUID getRecordID()
     {
@@ -239,22 +245,20 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
     }
 
    /**
-    * Returns the GROUP field value of the record. Other than at the record directly, 
-    * a void value results in an empty string.
+    * Returns the GROUP field value of the record. Other than at the record 
+    * directly, a void value results in an empty string.
     * 
     * @return String record GROUP value or empty string 
     */
    public String getGroup()
    {
-      String hstr;
-      
-      hstr = record.getGroup();
+      String hstr = record.getGroup();
       return hstr == null ? "" : hstr;
    }
 
    /** Expire status of this record. Returns 0 if not expired.
     * 
-    * @return one of { 0, EXPIRED, EXPIRE_SOON }
+    * @return int, one of { 0, EXPIRED, EXPIRE_SOON }
     */
    public int getExpiry ()
    {
@@ -271,31 +275,40 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
    }
    
    /** Wrappers equal parallel to their contained records. */ 
+   @Override
    public boolean equals ( Object obj )
    {
       return obj != null && 
              ((DefaultRecordWrapper)obj).getRecord().equals( record );
    }
 
+   /** <code>equals()</code> compatible hashcode. */
+   @Override
+   public int hashCode ()
+   {
+      return record.hashCode();
+   }
+   
    /** Wrappers compare to each other along their record sort-values. 
     * 
     * @param obj a <code>DefaultRecordWrapper</code> object
     * @return int compare result 
     */
+   @Override
    public int compareTo ( DefaultRecordWrapper obj )
    {
       return key.compareTo( obj.key );
    }
    
-   /** Wrappers compare to each other along their record sort-values.
-    * 
-    * @param obj a <code>DefaultRecordWrapper</code> object
-    * @return int compare result 
-    */
-   public int compareTo ( Object obj )
-   {
-      return compareTo( (DefaultRecordWrapper)obj );
-   }
+//   /** Wrappers compare to each other along their record sort-values.
+//    * 
+//    * @param obj a <code>DefaultRecordWrapper</code> object
+//    * @return int compare result 
+//    */
+//   public int compareTo ( Object obj )
+//   {
+//      return compareTo( (DefaultRecordWrapper)obj );
+//   }
    
    /** Returns the sort-value of the record. */
 	public String getSortValue ()
@@ -303,40 +316,37 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
 	   return sortValue;
    }
 
-   /** <code>equals()</code> compatible hashcode. */
-   public int hashCode ()
-   {
-      return record.hashCode();
-   }
-   
    /** Returns the collation key representing the sort value of this wrapper.
     *  The collation key is valid relative to the Locale set up for this wrapper.
     */
+   @Override
    public CollationKey getCollationKey ()
    {
       return key;
    }
    
    /**
-	 *  The displayable title of the contained record. Consists of the TITLE
+    *  The displayable title of the contained record. Consists of the TITLE
     *  field plus, if opted in program options, the USERNAME field.
-    *  The result of this is depending on the value of <code>Global.isDisplayUsernames()
-    *  </code>.
-	 * 
-	 * @return title String
-	 */
+    *  The result of this is depending on the value of 
+    *  <code>Global.isDisplayUsernames()</code>.
+	* 
+	* @return String title
+	*/
+	@Override
 	public String toString()
 	{
-	   String title, username;
-      
-      username = record.getUsername();
-      if ( (title = record.getTitle()) == null )
+       String username = record.getUsername();
+       String title = record.getTitle();
+       if ( title == null ) {
          title = defaultTitle;
-		return username == null || !Global.isDisplayUsernames() ? 
-             title : title + " [" + username + "]";
+       }
+	   return username == null || !Global.isDisplayUsernames() ? title : 
+ 		                          title + " [" + username + "]";
 	}
     
-   /** Sets the index position belonging to a sorted order. (Informational) */  
+   /** Sets the index position belonging to a sorted order. (Informational)
+    */  
    void setIndex ( int i )
    {
       index = i;
@@ -344,7 +354,7 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
    
    /** Returns the index position information belonging to a sorted order.
     *  This is only a procedural information and not of validity to the public! 
-    *  */  
+    */  
    int getIndex ()
    {
       return index;
@@ -366,27 +376,24 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
          return false;
       
       // transform domain to lowercase if "case ignore" opted
-      if ( !cs )
+      if ( !cs ) {
          for ( i = 0; i < domain.length; i++ )
             domain[i] = Character.toLowerCase( domain[i] );
+      }
       
       // investigate domain for matching pattern
       slen = domain.length - pattern.length + 1;
-      for ( i = 0; i < slen; i++ )
-      {
+      for ( i = 0; i < slen; i++ ) {
       
          found = true;
          for ( j = 0; j < pattern.length; j++ )
-            if ( domain[ i+j ] != pattern[ j ] )
-            {
+            if ( domain[ i+j ] != pattern[ j ] ) {
                found = false;
                break;
             }
 
-         if ( found )
-         {
-            if ( wd )
-            {
+         if ( found ) {
+            if ( wd ) {
                // left bound
                check = i == 0 || isBoundingChar( domain[i-1] );
                // right bound
@@ -403,10 +410,10 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
  /** 
  *  Whether this record contains the search text as specified.
  * 
- * @param text search text
- * @param cs whether search is case sensitive
- * @param wd whether search looks for whole words only
- * @return <b>true</b> if and only if the search text is contained in 
+ * @param text String search text
+ * @param cs boolean whether search is case sensitive
+ * @param wd boolean whether search looks for whole words only
+ * @return boolean <b>true</b> if and only if the search text is contained in 
  *         any one text field except the password 
  */
    public boolean hasText ( String text, boolean cs, boolean wd )
@@ -430,8 +437,7 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
          return true;
 
       // USERNAME
-      if ( (pass = record.getUsernamePws()) != null )
-      {
+      if ( (pass = record.getUsernamePws()) != null ) {
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
@@ -440,8 +446,7 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
       }
       
       // NOTES
-      if ( (pass = record.getNotesPws()) != null )
-      {
+      if ( (pass = record.getNotesPws()) != null ) {
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
@@ -450,8 +455,7 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
       }
       
       // URL
-      if ( (pass = record.getUrlPws()) != null )
-      {
+      if ( (pass = record.getUrlPws()) != null ) {
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
@@ -460,8 +464,7 @@ public class DefaultRecordWrapper implements Comparable, Collatable, Cloneable
       }
       
       // EMAIL
-      if ( (pass = record.getEmailPws()) != null )
-      {
+      if ( (pass = record.getEmailPws()) != null ) {
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );

@@ -37,11 +37,9 @@ import org.jpws.pwslib.global.Util;
 
 /**
  * Package class to implement the <code>PwsBlockInputStream</code> interface. 
- * @since 2-0-0
  */
 class BlockInputStream implements PwsBlockInputStream
 {
-
    private PwsCipher cipher;
    private PwsChecksum hmac;
    private InputStream input;  // underlying encrypted input stream
@@ -55,57 +53,58 @@ class BlockInputStream implements PwsBlockInputStream
     * The BlockInputStream starts decrypting at the current read position
     * of the parameter input stream.
     * 
-    * @param in input data stream
+    * @param in <code>InputStream</code> input data stream
     * @param cipher <code>PwsCipher</code> used to decrypt the stream
     * @throws IOException if data cannot be read from the input steam
     * @throws StreamCorruptedException if there is not enough data available
     *         to read one block for decryption 
     */
-   public BlockInputStream ( InputStream in, PwsCipher cipher ) throws IOException
+   public BlockInputStream (InputStream in, PwsCipher cipher) throws IOException
    {
       this.cipher = cipher;
       this.blocksize = cipher.getBlockSize();
       this.input = in;
-      try { readNextBlock(); }
-      catch ( EOFException e )
-      {
+      try { 
+    	  readNextBlock(); 
+      } catch ( EOFException e ) {
          throw new StreamCorruptedException( "unable to read first block" );
       }
    }
    
    private void readNextBlock () throws IOException
    {
-      byte[] block;
-      int readLen;
-      
       nextBlock = null;
-      block = new byte[ blocksize ];
-      readLen = input.read( block );
+      byte[] block = new byte[ blocksize ];
+      int readLen = input.read( block );
       
       // regular end of file (blocking ok)
-      if ( readLen == -1 )
-         return;
+      if ( readLen == -1 ) return;
       
       // irregular end of file (blocking false)
-      if ( readLen < blocksize )
-         throw new EOFException("illegal received block length: " + readLen );
+      if ( readLen < blocksize ) {
+         throw new EOFException("illegal read block length: " + readLen );
+      }
       
       nextBlock = cipher.decrypt( block );
    } // readNextBlock
    
+   @Override
    public void close ()
    {
-      if ( nextBlock != null )
+      if ( nextBlock != null ) {
           Util.destroyBytes(nextBlock);
+      }
       nextBlock = null;
       input = null;
    }
 
+   @Override
    public int getBlockSize ()
    {
       return blocksize;
    }
 
+   @Override
    public int getCount ()
    {
       return blockCount;
@@ -117,29 +116,29 @@ class BlockInputStream implements PwsBlockInputStream
       blockCount = 0;
    }
    
+   @Override
    public boolean isAvailable ()
    {
       return nextBlock != null;
    }
 
+   @Override
    public byte[] peekBlock ()
    {
       return nextBlock != null ? (byte[])nextBlock.clone() : null;
    }
    
+   @Override
    public byte[] readBlock () throws IOException
    {
-      byte[] block;
-      
-      block = null;
-      if ( nextBlock != null )
-      {
+      byte[] block = null;
+      if ( nextBlock != null ) {
          block = nextBlock;
          readNextBlock();
          blockCount++;
-      }
-      else
+      } else {
          close();
+      }
       
       // update a cleartext stream checksum
       if ( hmac != null ) {
@@ -148,27 +147,27 @@ class BlockInputStream implements PwsBlockInputStream
       return block;
    }
    
+   @Override
    public byte[] readBlocks ( int blocks ) throws IOException
    {
       byte[] buffer, buf2;
       int length, i, len;
       
-      length = blocks * blocksize;
-      if ( blocks < 0 )
+      if ( blocks < 0 ) 
          throw new IllegalArgumentException( "invalid block request: " + blocks );
 
+      length = blocks * blocksize;
       buffer = new byte[ length ];
 
       // don't make an effort for 0 requests
-      if ( length > 0 )
-      {
+      if ( length > 0 ) {
          // utilise simpler readBlock method for one-block request
-         if ( blocks == 1 )
+         if ( blocks == 1 ) {
             return readBlock();
+         }
          
          // end of stream reached
-         if ( nextBlock == null )
-         {
+         if ( nextBlock == null ) {
             close();
             return null;
          }
@@ -178,8 +177,7 @@ class BlockInputStream implements PwsBlockInputStream
          len = length - blocksize;
          buf2 = new byte[ len ];
          i = input.read( buf2 );
-         if ( i < len )
-         {
+         if ( i < len ) {
             close(); 
             throw new EOFException("block length (remainder)");
          }
@@ -205,11 +203,15 @@ class BlockInputStream implements PwsBlockInputStream
       return buffer;
    }
 
-   public PwsChecksum getStreamHmac() {
+   @Override
+   public PwsChecksum getStreamHmac () 
+   {
       return hmac;
    }
 
-   public void setStreamHmac(PwsChecksum hmac) {
+   @Override
+   public void setStreamHmac (PwsChecksum hmac) 
+   {
       this.hmac = hmac;
    }
 }

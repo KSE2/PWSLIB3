@@ -30,7 +30,6 @@ import java.text.CollationKey;
 
 /**
  *  Defining a class which bears a <code>CollationKey</code>. 
- *  @since 0-3-0
  */
 public interface Collatable
 {

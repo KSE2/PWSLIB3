@@ -44,12 +44,11 @@ import java.util.Iterator;
  * as if the end of the stream were reached. (Closing is
  * automatically performed when the last data element of
  * the file was read from the reader.) The close operation
- * does, however, not close the underlying input stream.
+ * does, however, not close an underlying input stream.
  * 
  * @see PwsFileInputSocket
- * @since 2-0-0
  */
-public interface PwsRawFieldReader extends Iterator
+public interface PwsRawFieldReader extends Iterator<PwsRawField>
 {
 
 /** The blocksize of the underlying cryptographical cipher. */
@@ -66,7 +65,7 @@ public abstract boolean hasNext ();
  *  If the end of the field stream is reached or this stream
  *  has been closed, a <code>NoSuchElementException</code> is thrown. 
  */
-public abstract Object next ();
+public abstract PwsRawField next ();
 
 public abstract void remove ();
 

@@ -36,7 +36,6 @@ import org.jpws.pwslib.global.Util;
  * <p>CBC mode requires block padding of the cipher text
  * and a base cipher that can both encrypt and decrypt.
  * 
- * @since 2-0-0
  */
 public class CipherModeCBC implements PwsCipher
 {
@@ -51,10 +50,10 @@ public class CipherModeCBC implements PwsCipher
 
 /**
  * Creates a CBC mode cipher from the parameter cipher and the
- * given initialization vector.
+ * given initialisation vector.
  * 
  * @param ci block-cipher in ECB mode 
- * @param iv initialization vector data (with a minimum length of <code>ci</code> blocksize)
+ * @param iv initialisation vector data (with a minimum length of <code>ci</code> blocksize)
  * @throws IllegalArgumentException
  */
 public CipherModeCBC ( PwsCipher ci, byte[] iv )
@@ -84,11 +83,13 @@ public CipherModeCBC ( PwsCipher ci )
    this( ci, new byte[ ci.getBlockSize() ] );
 }
 
+@Override
 public byte[] decrypt ( byte[] buffer )
 {
    return decrypt( buffer, 0, buffer.length );
 }
 
+@Override
 public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
 {
    byte[] buf1, plain, result;
@@ -96,6 +97,7 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    
    if ( direction == ENCRYPTING )
       throw new IllegalStateException( "mismatching crypting direction" );
+   
    direction = DECRYPTING;
    
    if ( length % blocksize != 0 )
@@ -105,8 +107,7 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    result = new byte[ length ];
    loops = length / blocksize;
    pos = 0;
-   for ( i = 0; i < loops; i++ )
-   {
+   for ( i = 0; i < loops; i++ ) {
       // extract data for this loop from user buffer
       System.arraycopy( buffer, start + pos, cbuf, 0, blocksize );
       
@@ -128,11 +129,13 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    return result;
 }  // decrypt
 
+@Override
 public byte[] encrypt ( byte[] buffer )
 {
    return encrypt( buffer, 0, buffer.length );
 }
 
+@Override
 public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
 {
    byte[] buf1=null, buf2, result;
@@ -140,6 +143,7 @@ public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
    
    if ( direction == DECRYPTING )
       throw new IllegalStateException( "mismatching crypting direction" );
+   
    direction = ENCRYPTING;
    
    if ( length % blocksize != 0 )
@@ -148,8 +152,7 @@ public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
    result = new byte[ length ];
    loops = length / blocksize;
    pos = 0;
-   for ( i = 0; i < loops; i++ )
-   {
+   for ( i = 0; i < loops; i++ ) {
       // extract data for this loop from user buffer
       System.arraycopy( buffer, start + pos, cbuf, 0, blocksize );
       
@@ -169,6 +172,7 @@ public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
    return result;
 }  // encrypt
 
+@Override
 public int getBlockSize ()
 {
    return blocksize;
@@ -189,6 +193,11 @@ public int getDirection ()
 public byte[] getVector ()
 {
    return vector;
+}
+
+@Override
+public String getName() {
+	return cipher.getName().concat(" mode CBC");
 }
 
 }

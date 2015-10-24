@@ -30,7 +30,6 @@ package org.jpws.pwslib.order;
  *  Interface for a listener to an ordered record list as represented  by the
  *  class <code>OrderedRecordList</code>.
  *  <p>See also {@link OrderedListEvent}, {@link OrderedRecordList}
- *  @since 0-3-0
 
  */
 public interface OrderedListListener

@@ -29,8 +29,9 @@ package org.jpws.pwslib.order;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
+
+import javax.swing.ListModel;
 
 import org.jpws.pwslib.data.PwsFile;
 import org.jpws.pwslib.data.PwsFileEvent;
@@ -40,31 +41,31 @@ import org.jpws.pwslib.data.PwsRecordList;
 
 /**
  *  Represents an ordered list of <code>DefaultRecordWrapper</code> objects
- *  which may (or may not) belong to a specific, singular <code>PwsRecordList</code>.
+ *  which may (or may not) belong to a specific, singular <code>PwsRecordList
+ *  </code>.
  *  List altering actions, like insertion and removal of records or loading
  *  of a database, preserve the order of the list. Record-wrappers may be 
  *  addressed by their index numbers in the list.
  * 
- *  <p>The design of this class is to function as a "middleware" between a record
- *  database object and any record aware data model which needs reference to a 
- *  sorted order of its items. The <code>OrderedRecordList</code> hereby listens to
- *  modification events of the underlying database
+ *  <p>The design of this class is to function as a "middleware" between a 
+ *  record database object and any record aware data model which needs reference
+ *  to a sorted order of its items. The <code>OrderedRecordList</code> hereby 
+ *  listens to modification events of the underlying database
  *  and transforms them into events of the sorted list. This class may, however, 
- *  also be used for simpler (or likewise more complex) purposes of sorting records
- *  as the bondage to a database is not mandatory. 
+ *  also be used for simpler (or likewise more complex) purposes of sorting 
+ *  records as the bondage to a database is not mandatory. 
  *  
  *  <p>The sorting follows a fixed combination of values, namely GROUP + TITLE.
- *  Sorting follows the <code>Collator</code> class to guarantee locale sensitive
- *  sorting success.
+ *  Sorting follows the <code>Collator</code> class to guarantee locale 
+ *  sensitive sorting success.
  *  
  *  <p>This class issues events for <code>OrderedListListener</code>s to reflect
- *  any list modifications. At the same time this class is a <code>PwsFileListener</code>
- *  and - if records were loaded from a Pws record list - it listens to 
- *  modifications of this database and aligns the elements of this list accordingly. 
- *  This design allows to update even complex display component arrangements by 
- *  simply modifying the underlying record database. 
+ *  any list modifications. At the same time this class is a 
+ *  <code>PwsFileListener</code>  and - if records were loaded from a Pws record
+ *  list - it listens to modifications of this database and aligns the elements 
+ *  of this list accordingly. This design allows to update even complex display 
+ *  component arrangements by simply modifying the underlying record database. 
  * 
- *  @since 0-3-0
  */
 public class OrderedRecordList implements PwsFileListener
 {
@@ -77,10 +78,10 @@ public class OrderedRecordList implements PwsFileListener
    /** The <code>java.util.List</code> holding <code>DefaultRecordWrapper</code>
     * objects representing the content of <code>loadedDbf</code> in sorted order.
     */ 
-   protected List list = new ArrayList();
+   protected ArrayList<DefaultRecordWrapper> list = new ArrayList<DefaultRecordWrapper>();
    
    private Locale locale = Locale.getDefault();
-   private List listeners = new ArrayList();
+   private ArrayList<OrderedListListener> listeners = new ArrayList<OrderedListListener>();
    private long expireScope;
 
    
@@ -105,7 +106,7 @@ public OrderedRecordList ( Locale locale )
 /** Constructor for an ordered record list which is related to a 
  *  <code>PwsRecordList</code> object. The current VM default locale
  *  is used for sorting records. 
- *  <p><b>Note:</b> In order to load data from and listen to a record list
+ *  <p><b>Note:</b> In order to load data from and listen to the record list
  *  the method <code>loadDatabase()</code> must be called once. The constructor
  *  however determines database bondage of this object.
  * 
@@ -137,17 +138,18 @@ public OrderedRecordList ( PwsRecordList f, Locale locale )
       throw new IllegalArgumentException();
    
    boundDbf = f;
-   if ( locale != null )
-   this.locale = locale; 
+   if ( locale != null ) {
+      this.locale = locale;
+   }
 }  // constructor
 
 /** Tests if the parameter record complys with database bondage of this list.
- *  (Does not remove bondage!) In case of non-compliance an exception is thrown.
+ *  In case of non-compliance an exception is thrown.
  * 
  *  @param rec record to be evaluated
  *  @throws IllegalArgumentException ("unrelated record") if bondage violation
  */
-protected void clearBondage ( PwsRecord rec )
+protected void verifyBondage ( PwsRecord rec )
 {
    if ( boundDbf != null && !boundDbf.contains( rec ) )
       throw new IllegalArgumentException( "unrelated record" );
@@ -157,42 +159,34 @@ protected void clearBondage ( PwsRecord rec )
  *  <code>PwsRecordList</code> object, the record must be an element of it. 
  *  <p>WARNING!! Applying this when this list has bondage may lead to 
  *  de-synchronization of list and database. This method does not insert a 
- *  record into the database.
+ *  record into the database!
  * 
- *  @param record record to be inserted as <code>DefaultRecordWrapper</code>
+ *  @param record DefaultRecordWrapper record to be inserted
  *  @throws IllegalArgumentException if the record fails to conform
  */
 public void insertItem ( DefaultRecordWrapper record )
 {
-   DefaultRecordWrapper wrap;
-   
-   wrap = record;
-   clearBondage( wrap.getRecord() );
+   DefaultRecordWrapper wrap = record;
+   verifyBondage( wrap.getRecord() );
    insertRecordIntern( wrap );
    fireOrderedListEvent( OrderedListEvent.ITEM_ADDED, wrap.getIndex(), wrap );
 }
 
-/** Inserts a record representation object into the sorted list without clearing 
+/** Inserts a record representation into the sorted list without verifying 
  *  file bondage and without issuing <code>OrderedListEvent</code>.
  * 
  *  @param wrap record representation object
  */  
 protected void insertRecordIntern ( DefaultRecordWrapper wrap )
 {
-   DefaultRecordWrapper item;
-   int i, index;
-   
-   index = list.size();
-   for ( i = 0; i < list.size(); i++ )
-   {
-      item = (DefaultRecordWrapper) list.get( i );
-      if ( wrap.compareTo( item ) < 0 )
-      {
+   int index = list.size();
+   for ( int i = 0; i < list.size(); i++ ) {
+	  DefaultRecordWrapper item = (DefaultRecordWrapper) list.get( i );
+      if ( wrap.compareTo( item ) < 0 ) {
          index = i;
          break;
       }
    }
-
    list.add( index, wrap );
    wrap.setIndex( index );
 }
@@ -201,39 +195,35 @@ protected void insertRecordIntern ( DefaultRecordWrapper wrap )
  *  object by discarding any previous content. If this object is bound to a 
  *  <code>PwsFile</code>, the parameter <code>list</code> must also be a
  *  <code>PwsFile</code> and have an identical resource file (persistent file). 
- *  If this object is not bound to a database, this method does, however, <u>not</u> 
- *  lead to bondage, regardless of the instance type of <code>list</code>.
+ *  If this object is not bound to a database, this method does, however, 
+ *  <u>not</u> lead to bondage, regardless of the instance type of 
+ *  <code>list</code>.
  *  <p>This method makes this object listen to the parameter record list for
  *  content change events.
  * 
- *  @param list database to be loaded
- *  @param expireScope time span in milliseconds for expire-soon status of records;
- *         0 for ignore
+ *  @param rlist database to be loaded
+ *  @param expireScope time span in milliseconds for expire-soon status of 
+ *         records; 0 for ignore
  * 
  *  @throws IllegalArgumentException if the parameter does not fit the bound dbf
  */   
-public void loadDatabase ( PwsRecordList list, long expireScope )
+public void loadDatabase ( PwsRecordList rlist, long expireScope )
 {
-   DefaultRecordWrapper wrap;
-   Iterator it;
-   int evt;
-   
    if ( boundDbf != null && boundDbf instanceof PwsFile && 
-        !((PwsFile)boundDbf).equalResource( (PwsFile)list ) )
+        !((PwsFile)boundDbf).equalResource( (PwsFile)rlist ) )
       throw new IllegalArgumentException( "unrelated database: " + 
-            ((PwsFile)list).getFilePath() );
+            ((PwsFile)rlist).getFilePath() );
    
-   loadedDbf = list;
+   loadedDbf = rlist;
    this.expireScope = expireScope;
-   list.addFileListener( this );
+   rlist.addFileListener( this );
    clearIntern();
-   for ( it = list.iterator(); it.hasNext(); )
-   {
-      wrap = makeRecordWrapper( (PwsRecord)it.next(), locale );
+   for ( Iterator<PwsRecord> it = rlist.iterator(); it.hasNext(); ) {
+	  DefaultRecordWrapper wrap = makeRecordWrapper( it.next(), locale );
       insertRecordIntern( wrap ); 
    }
-   // issue either LIST_CLEARED od LIST_RELOADED depending on resulting list size
-   evt = size() == 0 ? OrderedListEvent.LIST_CLEARED : OrderedListEvent.LIST_RELOADED;
+   // issue either LIST_CLEARED or LIST_RELOADED depending on resulting list size
+   int evt = size() == 0 ? OrderedListEvent.LIST_CLEARED : OrderedListEvent.LIST_RELOADED;
    fireOrderedListEvent( evt, -1, null );
 }
 
@@ -242,13 +232,10 @@ public void loadDatabase ( PwsRecordList list, long expireScope )
  * by use of <code>loadDatabase()</code>. This is an expensive operation 
  * and will cause a LIST_RELOADED event. Does nothing if there was no list
  * loaded.
- * 
- * @since 2-0-0
  */
 public void reload ()
 {
-   if ( loadedDbf != null )
-   {
+   if ( loadedDbf != null ) {
       loadDatabase( loadedDbf, expireScope );
    }
 }
@@ -258,22 +245,21 @@ public void reload ()
  *  user applications to supply a specific record wrapper type (which must be a
  *  subclass of <code>DefaultRecordWrapper</code>).
  * 
- * @param rec
- * @param locale
+ * @param rec PwsRecord
+ * @param locale Locale
  * @return <code>DefaultRecordWrapper</code> containing the argument record
  */
 public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale )
 {
-   DefaultRecordWrapper wrap;
-   
-   wrap = new DefaultRecordWrapper( rec, locale );
-   if ( expireScope >= 0 )
+   DefaultRecordWrapper wrap = new DefaultRecordWrapper( rec, locale );
+   if ( expireScope >= 0 ) {
       wrap.refreshExpiry( expireScope );
-   
+   }
    return wrap;
 }
 
-/** The number of elements in this list. */
+/** The number of elements in this list.
+ */
 public int size ()
 {
    return list.size();
@@ -287,9 +273,7 @@ public int size ()
  */
 public DefaultRecordWrapper getItemAt ( int index )
 {
-   if ( index > -1 && index < list.size() )
-      return (DefaultRecordWrapper) list.get( index );
-   return null;
+   return index > -1 && index < list.size() ? list.get( index ) : null;
 }
 
 /**
@@ -299,35 +283,35 @@ public DefaultRecordWrapper getItemAt ( int index )
  * @param group selective group value; if <b>null</b> an empty array is returned
  * @param exact whether select value must be a complete existing group name
  * @return array of <code>DefaultRecordWrapper</code>
- * @since 0-4-0        
  */
 public DefaultRecordWrapper[] getGroup ( String group, boolean exact )
 {
-   ArrayList outlist;
+   ArrayList<DefaultRecordWrapper> outlist;
    DefaultRecordWrapper rec;
    String grpval;
    int i, length;
 
-   if ( group == null )
+   if ( group == null ) {
       return new DefaultRecordWrapper[ 0 ];
+   }
    
-   outlist = new ArrayList();
+   outlist = new ArrayList<DefaultRecordWrapper>();
    length = group.length();
-   for ( i = 0; i < list.size(); i++ )
-   {
-      rec = (DefaultRecordWrapper) list.get( i );
+   for ( i = 0; i < list.size(); i++ ) {
+      rec = list.get( i );
       grpval = rec.getGroup();
       if ( grpval.startsWith( group ) &&
            ( !exact || length == 0 || 
-             grpval.length() == length || grpval.charAt( length ) == '.' ) )
-      {
-         outlist.add( rec );
+             grpval.length() == length || grpval.charAt( length ) == '.' ) )  {
+
+    	  outlist.add( rec );
       }
    }
-   return (DefaultRecordWrapper[]) outlist.toArray( new DefaultRecordWrapper[0] );
+   return outlist.toArray( new DefaultRecordWrapper[outlist.size()] );
 }  // getGroup
 
-/** Returns the active locale used to collate sortvalues of this list. */ 
+/** Returns the active locale used to collate sortvalues of this list.
+ */ 
 public final Locale getLocale ()
 {
    return locale;
@@ -345,7 +329,8 @@ public int indexOf ( PwsRecord rec )
 
 /** Returns the index position of the parameter record in this list.
  * 
- *  @param rec the record to be searched, represented by <code>DefaultRecordWrapper</code>
+ *  @param rec the record to be searched, represented by 
+ *         <code>DefaultRecordWrapper</code>
  *  @return index position or -1 of the record is unknown
  */ 
 public int indexOf ( DefaultRecordWrapper rec )
@@ -358,14 +343,11 @@ public int indexOf ( DefaultRecordWrapper rec )
  *  <p>WARNING!! Applying this method when this list has bondage may lead to 
  *  de-synchronization of list and database. This method does not remove a 
  *  record from the database.
- *  */
+ */
 public void removeItem ( int index )
 {
-   DefaultRecordWrapper item;
-   
-   if ( index > -1 && index < list.size() )
-   {
-      item = (DefaultRecordWrapper)list.get( index );
+   if ( index > -1 && index < list.size() ) {
+	  DefaultRecordWrapper item = (DefaultRecordWrapper)list.get( index );
       list.remove( index );
       fireOrderedListEvent( OrderedListEvent.ITEM_REMOVED, index, item );
    }
@@ -374,8 +356,7 @@ public void removeItem ( int index )
 /** Removes all elements from this list. */
 public void clear ()
 {
-   if ( size() > 0 )
-   {
+   if ( size() > 0 ) {
       clearIntern();
       fireOrderedListEvent( OrderedListEvent.LIST_CLEARED, -1, null );
    }
@@ -391,17 +372,13 @@ protected void clearIntern ()
  *  status is set. This method recalculates the status of all records; the start
  *  time of the scope is the actual system time.
  * 
- *  @param time time span in milliseconds
+ *  @param time time period in milliseconds
  */
 public void setExpireScope ( long time )
 {
-   Iterator it;
-   
-   if ( size() > 0 )
-   {
-      for ( it = list.iterator(); it.hasNext(); )
-      {
-         ((DefaultRecordWrapper)it.next()).refreshExpiry( time );
+   if ( size() > 0 ) {
+      for ( Iterator<DefaultRecordWrapper> it = list.iterator(); it.hasNext(); ) {
+         it.next().refreshExpiry( time );
       }
       fireOrderedListEvent( OrderedListEvent.LIST_RELOADED, -1, null );
    }
@@ -414,46 +391,56 @@ public void setExpireScope ( long time )
  */ 
 public void addOrderedListListener ( OrderedListListener lis )
 {
-   listeners.add( lis );
+	synchronized (listeners ) {
+		listeners.add( lis );
+	}
 }
 
-/** Removes an <code>OrderedListListener</code> to this list if registered. */
-public void removeOrderedListListener ( OrderedListListener lis )
+/** Removes the given <code>OrderedListListener</code> from this list.
+ * 
+ * @param listener <code>OrderedListListener</code>
+ */
+public void removeOrderedListListener ( OrderedListListener listener )
 {
-   listeners.remove( lis );
+	synchronized (listeners ) {
+		listeners.remove( listener );
+	}
+}
+
+@SuppressWarnings("unchecked")
+protected ArrayList<OrderedListListener> getListeners () {
+	synchronized (listeners ) {
+		return (ArrayList<OrderedListListener>)listeners.clone();
+	}
 }
 
 protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper rec )
 {
-   OrderedListEvent event;
-   int i;
-   
-   event = new OrderedListEvent( this, type, index, rec );
-   for ( i = 0; i < listeners.size(); i++ )
-      ((OrderedListListener) listeners.get( i )).orderedListPerformed( event );
+   OrderedListEvent event = new OrderedListEvent( this, type, index, rec );
+   ArrayList<OrderedListListener> copy = getListeners();
+   for ( int i = 0; i < copy.size(); i++ ) {
+      copy.get( i ).orderedListPerformed( event );
+   }
 }
 
 /** Test function printing the content of the ordered list in the sorted
- *  order. (The resulting line per record is index-nr, sort-value and record-id.)
+ *  order. (The resulting line per record is index-nr, sort-value and 
+ *  record-id.)
  * 
- * @param out
+ * @param out <code>PrintStream</code>
  */ 
 public void printout ( PrintStream out )
 {
-   DefaultRecordWrapper item;
-   PwsRecord rec;
-   String hstr;
-   
    out.println();
-   hstr = "- record list -";
-   if ( boundDbf != null && boundDbf instanceof PwsFile )
+   String hstr = "- record list -";
+   if ( boundDbf != null && boundDbf instanceof PwsFile ) {
       hstr = ((PwsFile)boundDbf).getFilePath();
+   }
    out.println( "+++ ORDERLIST PRINTOUT for DB : " + hstr );
    
-   for ( int i = 0; i < size(); i++ )
-   {
-      item = (DefaultRecordWrapper) list.get( i );
-      rec = item.getRecord();
+   for ( int i = 0; i < size(); i++ ) {
+	  DefaultRecordWrapper item = (DefaultRecordWrapper) list.get( i );
+      PwsRecord rec = item.getRecord();
       out.println( "   - rec (" + i + ") " + item.getSortValue() + ", " +
             rec.getRecordID() );
    }
@@ -462,44 +449,37 @@ public void printout ( PrintStream out )
 
 // ********* IMPLEMENTATION OF PwsFileListener **********
 
-   /** This implements the <code>PwsFileListener</code> interface for this class. */
+   /** Implementation the <code>PwsFileListener</code> interface for this class. 
+    */
+   @Override
    public void fileStateChanged ( PwsFileEvent evt )
    {
-      PwsRecord record;
-      int type, i;
+      int type = evt.getType();
+      PwsRecord record = evt.getRecord();
       
-      type = evt.getType();
-      record = evt.getRecord();
-      
-      if ( type == PwsFileEvent.RECORD_ADDED )
-      {
+      if ( type == PwsFileEvent.RECORD_ADDED ) {
          insertItem( makeRecordWrapper( record, locale ) );
       }
       
-      else if ( type == PwsFileEvent.RECORD_REMOVED )
-      {
-         i = indexOf( record );
+      else if ( type == PwsFileEvent.RECORD_REMOVED ) {
+         int i = indexOf( record );
          if ( i > -1 && i < size() )
             removeItem( i );
       }
       
-      else if ( type == PwsFileEvent.RECORD_UPDATED )
-      {
-         i = indexOf( record );
-         if ( i > -1 && i < size() )
-         {
+      else if ( type == PwsFileEvent.RECORD_UPDATED ) {
+         int i = indexOf( record );
+         if ( i > -1 && i < size() ) {
             removeItem( i );
             insertItem( makeRecordWrapper( record, locale ) );
          }
       }
       
-      else if ( type == PwsFileEvent.LIST_UPDATED )
-      {
+      else if ( type == PwsFileEvent.LIST_UPDATED ) {
          reload();
       }
       
-      else if ( type == PwsFileEvent.LIST_CLEARED )
-      {
+      else if ( type == PwsFileEvent.LIST_CLEARED ) {
          clear();
       }
    }

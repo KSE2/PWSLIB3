@@ -513,6 +513,7 @@ public void test_operate_blocks_V2 ()
    }
    catch ( Exception e )
    {
+	  e.printStackTrace(); 
       fail( "IOException: " + e );
    }
 }
@@ -751,6 +752,7 @@ public void test_operate_blocks_V1 ()
    }
    catch ( Exception e )
    {
+	  e.printStackTrace(); 
       fail( "IOException: " + e );
    }
 }

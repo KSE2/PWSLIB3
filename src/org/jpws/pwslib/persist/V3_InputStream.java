@@ -39,24 +39,25 @@ import org.jpws.pwslib.global.Util;
  * occurrence).
  * <p>Note: This has some unsupported operations.
  * 
- * @since 2-0-0
  */
 public class V3_InputStream extends FilterInputStream
 {
-
    private byte[] hmac;
    private boolean eof;
+   
 
 public V3_InputStream ( InputStream in )
 {
    super( in );
 }
 
+@Override
 public int available () throws IOException
 {
    return eof ? 0 : super.available();
 }
 
+@Override
 public void close () throws IOException
 {
    super.close();
@@ -66,6 +67,7 @@ public void close () throws IOException
 /**
  * Unsupported operation.
  */
+@Override
 public int read () throws IOException
 {
    throw new UnsupportedOperationException();
@@ -84,6 +86,7 @@ public int read () throws IOException
  *             the stream has been reached.
  * @exception  IOException  if an I/O error occurs.
  */
+@Override
 public int read ( byte[] b, int off, int len ) throws IOException
 {
    byte[] buf;
@@ -94,18 +97,16 @@ public int read ( byte[] b, int off, int len ) throws IOException
       throw new IllegalArgumentException( "illegal data block length, must be multiple of 16" );
    
    // our homespun EOF condition
-   if ( eof )
-      return -1;
+   if ( eof ) return -1;
    
    // read requested amount into buffer
    rlen = super.read( b, off, len );
    
    // control if V3-EOF marker is inside
    // if yes shorten resulting data block and mark stream for EOF
-   for ( i = 0; i < rlen; i+=16 )
-   {
-      if ( Util.equalArrays( Global.FIELDSTREAM_ENDBLOCK_V3, b, off+i ) )
-      {
+   for ( i = 0; i < rlen; i+=16 ) {
+
+	   if ( Util.equalArrays( Global.FIELDSTREAM_ENDBLOCK_V3, b, off+i ) ) {
          // try read hmac from input if available
          buf = new byte[ 32 ];
          
@@ -120,7 +121,6 @@ public int read ( byte[] b, int off, int len ) throws IOException
          // modifications to represent EOF of this stream
          rlen = i == 0 ? -1 : i;
          eof = true;
-
          break;
       }
    }
@@ -143,6 +143,7 @@ public boolean isEOF ()
 /**
  * Unsupported operation.
  */
+@Override
 public long skip ( long n ) throws IOException
 {
    throw new UnsupportedOperationException();
@@ -151,9 +152,11 @@ public long skip ( long n ) throws IOException
 /**
  * Returns the hash function verification code encountered at the end
  * of stream and which serves to verify data integrity of the file. 
- * This information can only be available after the V3-inputstream has terminated. 
+ * This information can only be available after the V3-inputstream has 
+ * terminated. 
  *  
- * @return byte[] hmac of length 32 or <b>null</b> if this information is unavailable
+ * @return byte[] hmac of length 32 or <b>null</b> if this information is 
+ *         unavailable
  */
 public byte[] getHashMac()
 {

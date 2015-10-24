@@ -43,7 +43,7 @@ import org.jpws.pwslib.global.Log;
  * and reproduces them in wrapping classes for the purposes of the backend 
  * library. It will not cause a functional error to address application
  * streams directly at the adapter, but for systematic reasons and tracing and 
- * performance benefits, it is preferrable to use <code>StreamFactory</code>
+ * performance benefits, it is preferable to use <code>StreamFactory</code>
  * instead.  
  */
 public class StreamFactory
@@ -144,18 +144,15 @@ public class StreamFactory
       OutputStream out;
       String hstr;
       
-      if ( application == null || path == null || 
-            path.equals("") )
+      if ( application == null || path == null || path.isEmpty() )
           throw new IllegalArgumentException();
       
-      if ( !application.canWrite( path ) )
-      {
+      if ( !application.canWrite( path ) ) {
          hstr = "adapter not qualified for output: [" + path + "] <- " + application.getName();
          throw new ApplicationFailureException( hstr );
       }
       
-      if ( (out = application.getOutputStream( path )) == null )
-      {
+      if ( (out = application.getOutputStream( path )) == null ) {
          hstr = "void output stream [" + path + "] <- " + application.getName();
          throw new ApplicationFailureException( hstr );
       }
@@ -183,6 +180,7 @@ private static class SFInputStream extends BufferedInputStream
    }  // constructor
    
    
+   @Override
    public void close () throws IOException
    {
       super.close();
@@ -193,22 +191,20 @@ private static class SFInputStream extends BufferedInputStream
    /**
     * This read modification performs multiple read attempts until
     * the requested data length or -1 if received.
-    * (This was necessitated by a possible (miss-)behaviour of IP
+    * (This was necessitated by a possible (mis-)behaviour of IP
     * transfer handling causing a transmission error.)
     *  
-    * @since 2-1-0 
     */
-   public int read ( byte[] b, int off, int len ) throws IOException
+   @Override
+   public synchronized int read ( byte[] b, int off, int len ) throws IOException
    {
       int rlen, r;
       
       r = rlen = super.read( b, off, len );
-      while ( r > -1 && rlen < len )
-      {
+      while ( r > -1 && rlen < len ) {
          // second attempt
          r = super.read( b, off+rlen, len-rlen );
-         if ( r > 0 )
-         {
+         if ( r > 0 ) {
             rlen += r;
          }
       }
@@ -235,14 +231,14 @@ private static class SFOutputStream extends BufferedOutputStream
    }  // constructor
    
    
-   public void close () throws IOException
+   @Override
+public void close () throws IOException
    {
-      if ( isClosed )
-         return;
+      if ( isClosed ) return;
       
-      try { super.flush(); }
-      finally
-      {
+      try { 
+    	  super.flush(); 
+      } finally {
          super.close();
          isClosed = true;
          

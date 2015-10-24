@@ -29,7 +29,7 @@ package org.jpws.pwslib.data;
 import java.io.IOException;
 
 /**
- * Interface defines a low-level streaming device for data blocks
+ * Interface defines a low-level write streaming device for data blocks
  * of a fixed length. Depending on the technology used in the linked
  * PWS file, blocksize may vary. 
  * 
@@ -37,8 +37,6 @@ import java.io.IOException;
  * process executed for a target PWS file. The blocks written are the
  * data segments defined by the underlying encryption algorithm valid for
  * a target PWS file. 
- * 
- * @since 2-0-0
  */
 
 public interface PwsBlockOutputStream
@@ -58,7 +56,6 @@ public boolean isClosed ();
 
 /**
  * The data blocksize of this stream.
- * @return int
  */
 public int getBlockSize ();
 

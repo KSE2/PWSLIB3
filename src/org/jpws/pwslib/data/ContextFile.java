@@ -40,13 +40,12 @@ import org.jpws.pwslib.persist.StreamFactory;
 
 /**
  * A ContextFile is the combination of <code>ApplicationAdapter</code> and
- * a filepath. This two-tuple is meant to define an unequivocal file in the context
- * of a program using the PWSLIB, giving the freedom to abstract from discriminating
+ * a filepath. This two-tuple is meant to define an unequivocal file in the 
+ * context of a program using the PWSLIB, giving the freedom to abstract from 
  * different resource media.
- * <p>A ContextFile always has meaningful settings for adapter and filepath. These 
- * values cannot be modified after creation of an instance. 
+ * <p>A ContextFile always has meaningful settings for adapter and filepath. 
+ * These values cannot be modified after creation of an instance. 
  *  
- *  @since 2-1-0 
  */
 public class ContextFile
 {
@@ -59,7 +58,7 @@ public class ContextFile
    private boolean               hasRefreshed;
 
 
-   /** Creates a context file definition from a local system file definition.
+   /** Creates a context file from a local file system definition.
     * 
     * @param file <code>File</code>
     * @return <code>ContextFile</code>
@@ -70,17 +69,18 @@ public class ContextFile
    }
    
 /**
- *  Creates a database file object with the given IO-context and file name.
+ *  Creates a context file with the given IO-context and file name.
  *  
  *  @param adapter <code>ApplicationAdapter</code> IO-context adapter
  *  @param filepath <code>String</code> file identifying expression in <code>adapter</code>
+ *  @throws NullPointerException
  */
 public ContextFile ( ApplicationAdapter adapter, String filepath )
 {
    if ( adapter == null | filepath == null )
       throw new NullPointerException();
 
-   if ( filepath.length() == 0 )
+   if ( filepath.isEmpty() )
       throw new IllegalArgumentException( "filepath is empty" );
    
    this.adapter = adapter;
@@ -90,7 +90,7 @@ public ContextFile ( ApplicationAdapter adapter, String filepath )
 /**
  * Refreshes file related information (like modify time and length) from
  * the persistent state resource (external medium). This should be expected
- * to be an expensive operation. 
+ * to be a moderately expensive operation. 
  */
 public void refresh () throws IOException
 {
@@ -108,12 +108,11 @@ public void refresh () throws IOException
 public long modifyTime ()
 {
    try {
-      if ( !hasRefreshed )
+      if ( !hasRefreshed ) {
          refresh();
+      }
+   } catch ( IOException e ) {
    }
-   catch ( IOException e )
-   {}
-
    return fileTime;
 }
 
@@ -126,24 +125,25 @@ public long modifyTime ()
 public long length ()
 {
    try {
-      if ( !hasRefreshed )
+      if ( !hasRefreshed ) {
          refresh();
+      }
+   } catch ( IOException e ) {
    }
-   catch ( IOException e )
-   {}
-
    return fileLength;
 }
 
-/** <code>ContextFile</code> equals if <code>adapter</code> and <code>filepath</code> are equal. */
+/** Two <code>ContextFile</code> objects are equal if their <code>adapter</code>
+ * and <code>filepath</code> settings are equal.
+ * 
+ * @return boolean
+ */
 public boolean equals ( Object obj )
 {
-   ContextFile f;
-   
-   if ( obj == null )
-      return false;
-   f = (ContextFile) obj;
-   return this.adapter.equals( f.adapter ) && this.filepath.equals( f.filepath );
+   if ( obj == null ) return false;
+
+   ContextFile f = (ContextFile)obj;
+   return this.adapter.equals(f.adapter) && this.filepath.equals(f.filepath);
 }
 
 public int hashCode ()
@@ -168,15 +168,13 @@ public ApplicationAdapter getAdapter ()
  */  
 public URL getUrl () throws IOException
 {
-   if ( url == null )
-   {
+   if ( url == null ) {
       url = adapter.getUrl( filepath );
    }
    return url;
 }
 
-/** The text expression valid in IO-context identifying this
- * database file.
+/** The path expression valid in IO-context identifying this context file.
  * 
  * @return <code>String</code> file path 
  */  
@@ -186,24 +184,22 @@ public String getFilepath ()
 }
 
 /** 
- * Returns the file name part of the file path definition
- * of this context file.
+ * Returns the file name part of the file path definition of this context file.
  * 
  * @return <code>String</code> file name element 
  */  
 public String getFileName ()
 {
-   String hstr;
-   int i;
-   
-   hstr = getFilepath();
-   if ( (i = hstr.lastIndexOf( adapter.separator() )) > -1 )
+   String hstr = getFilepath();
+   int i = hstr.lastIndexOf( adapter.separator() );
+   if ( i > -1 ) {
       hstr = hstr.substring( i+1 );
+   }
    return hstr; 
 }
 
-/** Attempts to delete the persistent state of this file
- * on the external medium.
+/** Attempts to delete the persistent state of this context file on the 
+ * external file system.
  * 
  * @return boolean <b>true</b> if and only if the file does not exist after
  *         termination of this method
@@ -211,12 +207,19 @@ public String getFileName ()
  */ 
 public boolean delete () throws IOException
 {
-   return adapter.deleteFile( filepath );
+   boolean ok = adapter.deleteFile( filepath );
+   if ( ok ) {
+	   hasRefreshed = false;
+   }
+   return ok;
 }
 
-/** Attempts to rename this file into the given name expression.
+/** Attempts to rename this file to the given path expression. If the file
+ * does not exist or this operation is not permitted, <b>false</b> is returned.
+ * <p>The moving of this file to a different location may also be triggered by
+ * this method, if this operation is supported by the external file system. 
  * 
- * @param newpath new textual identifier of this file
+ * @param newpath String new identifier of this file on external file system
  * @return boolean <b>true</b> if and only if the operation was successful 
  * @throws IOException
  */ 
@@ -227,7 +230,7 @@ public boolean renameTo ( String newpath ) throws IOException
 
 /** Whether this file has a persistent state on the external medium. 
  * 
- * @return boolean <b>true</b> if and only if the file exists 
+ * @return boolean <b>true</b> if and only if the file exists external 
  * @throws IOException
  */
 public boolean exists () throws IOException
@@ -246,8 +249,8 @@ public InputStream getInputStream () throws IOException, ApplicationFailureExcep
    return StreamFactory.getInputStream( adapter, filepath );
 }
 
-/** Returns a buffered output stream for a new persistent state of this file (presumably
- *  overwriting existing content).
+/** Returns a buffered output stream for a new persistent state of this file 
+ * (overwriting a previously existing content).
  * 
  * @return <code>OutputStream</code>
  * @throws IOException
@@ -255,56 +258,61 @@ public InputStream getInputStream () throws IOException, ApplicationFailureExcep
  */
 public OutputStream getOutputStream () throws IOException, ApplicationFailureException
 {
-   return StreamFactory.getOutputStream( adapter, filepath );
+   OutputStream out = StreamFactory.getOutputStream( adapter, filepath );
+   hasRefreshed = false;
+   return out;
 }
 
-/** Whether this file can perform creation of a new persistent state. */
+/** Whether this file can perform creation of a new persistent state.
+ * 
+ *  @return boolean
+ */
 public boolean canWrite () throws IOException
 {
    return adapter.canWrite( filepath );
 }
 
-/** Whether this file can perform reading from its persistent state. */
+/** Whether this file can perform reading from its persistent state. 
+ * 
+ *  @return boolean
+ */
 public boolean canRead () throws IOException
 {
    return adapter.canRead( filepath );
 }
 
 /** Copies the content of this context file to the parameter context file. 
- * (This method attempts to delete the 
- * target file in case of an error condition after creating
- * the output stream.)
+ * (This method attempts to delete the target file in case of an error condition
+ *  after creating the output stream.)
  * 
  * @param target <code>ContextFile</code> file destination 
  * @throws IOException
  */
 public void copyTo ( ContextFile target ) throws IOException, ApplicationFailureException
 {
-   InputStream in;
    OutputStream out = null;
-   
-   in = getInputStream();
+   InputStream in = getInputStream();
    try {
       out = target.getOutputStream();
       Util.copyStream( in, out );
       out.close();
-   }
-   catch ( Exception e )
-   {
-      if ( out != null )
-      {
+      
+   } catch ( Exception e ) {
+      if ( out != null ) {
          out.close();
-         try { target.delete(); }
-         catch ( IOException e1 )
-         {}
+         try { 
+        	 target.delete(); 
+      	 } catch ( IOException e1 ) {
+      	 }
       }
       if (e instanceof IOException) 
          throw (IOException)e;
+      if (e instanceof ApplicationFailureException) 
+          throw (ApplicationFailureException)e;
       if (e instanceof RuntimeException) 
-         throw (RuntimeException)e;
-   }
-   finally 
-   {
+          throw (RuntimeException)e;
+
+   } finally {
       in.close();
    }
 }
@@ -314,7 +322,7 @@ public void copyTo ( ContextFile target ) throws IOException, ApplicationFailure
  * target file in case of an error condition after creating
  * the output stream.)
  * 
- * @param path target file identifier
+ * @param path String target file path
  * @throws IOException
  */
 public void copyTo ( String path ) throws IOException, ApplicationFailureException
@@ -323,6 +331,7 @@ public void copyTo ( String path ) throws IOException, ApplicationFailureExcepti
 }
 
 /** Attempts to set the modify time marker for this file on the persistent medium.
+ * 
  * @return boolean <b>true</b> if and only if this operation was successful
  * @throws IOException 
  */
@@ -330,7 +339,5 @@ public boolean setModifyTime ( long modifyTime ) throws IOException
 {
    return adapter.setModifiedTime( filepath, modifyTime );
 }
-
-
 
 }

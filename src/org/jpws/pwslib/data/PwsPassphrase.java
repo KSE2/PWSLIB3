@@ -33,13 +33,14 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.nio.charset.UnsupportedCharsetException;
 
 import org.jpws.pwslib.crypto.PwsCipher;
+import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.Util;
 
 /**
  * PwsPassphrase represents a sequence of characters which is especially
  * protected against uncoverage through attacking tools analysing the JVM memory.
- * By the design of the class, there is always a crptographic cipher defined
+ * By the design of this class, there is always a cryptographic cipher defined
  * for an instance, ensuring that at any time the passphrase value can be
  * both stored encrypted and retrieved decrypted.
  * <p>All functions are "waste clean", i.e. after retrieving a
@@ -50,92 +51,76 @@ import org.jpws.pwslib.global.Util;
  */
 public final class PwsPassphrase implements Cloneable
 {
-   /** The text blocksize required for operations with encrypted data blocks.
-    */
-   public static final int BLOCKSIZE = PwsFileFactory.PWF_BLOCKSIZE / 2;
-   
    private static final byte[] NULLVALUE = new byte[0];
-   //DataOutputStream out;
    
    /**  The cipher used to encrypt the passphrase content (sbuf is
     *   always encrypted)
     */
    private PwsCipher cipher;
    
-   /** Passphrase buffer; meant to store chars serialized by 2 bytes each.
+   /** Passphrase buffer; meant to store chars serialised by 2 bytes each.
     *  Must size as an int multiple of BLOCKSIZE * 2 
     */
    private byte[] sbuf;
    
-   /** Length in nr. of char; ranges 0..sbuf.length/2 
+   /** Length in number of chars; ranges 0..sbuf.length/2 
     */
    private int length;
    
+   /** The text blocksize required for operations with encrypted data blocks.
+    *  (i.e. half of the cipher blocksize)
+    */
+   private int blocksize;
+
+   /** Hash-value representing the cleartext value of this instance. 
+    *  Used by equals() and hashcode().
+    */
+   private long hashval;
    
-/** Constructor for an empty passphrase with default internal encryption cipher.
+   
+/** Constructor for an empty passphrase and the default cipher.
  */
 public PwsPassphrase ()
 {
    cipher = Global.getStandardCipher();
+   blocksize = cipher.getBlockSize() / 2;
    sbuf = NULLVALUE;
 }
 
-/** Constructor for an empty passphrase with a specified cipher for internal 
- *  encryption.
+/** Constructor for an empty passphrase with a special cipher. 
  * 
- * @param c a fully initialised <code>PwsCipher</code> 
+ * @param ci <code>PwsCipher</code> a fully initialised ECB mode cipher  
  */
-public PwsPassphrase ( PwsCipher c )
+public PwsPassphrase ( PwsCipher ci )
 {
-   cipher = c;
+   cipher = ci;
+   blocksize = cipher.getBlockSize() / 2;
    sbuf = NULLVALUE;
 }
 
 /** Constructor with char array as initial value.
  * 
- * @param passphrase an array of char forming the initial value for this passphrase.  
- *        (Parameter may be destroyed by the caller after construction.)
+ * @param passphrase an array of char forming the initial value for this 
+ *                   passphrase; may be null
  */
-public PwsPassphrase ( char[] passphrase )
+public PwsPassphrase ( char[] content )
 {
    cipher = Global.getStandardCipher();
-   setValue( passphrase );
+   blocksize = cipher.getBlockSize() / 2;
+   setValue( content );
 }
 
 /** Constructor with string as initial value.
  * 
- * @param passphrase an array of char forming the initial value for this passphrase.  
- *        (Parameter may be destroyed by the caller after construction.)
+ * @param passphrase String text string forming the initial value of this 
+ *                   passphrase; may be null
  */
-public PwsPassphrase ( String passphrase )
+public PwsPassphrase ( String content )
 {
    cipher = Global.getStandardCipher();
-   setValue( passphrase );
+   blocksize = cipher.getBlockSize() / 2;
+   setValue( content );
 }
-
-/** Constructor with byte array as initial value. The byte array is seen as a
- *  sequence of <code>short</code> integer i, each representing <code>(char)i</code>.
- *  The integers are, however, in opposition to the Java tradition, not read
- *  in big-endian but in little-endian manner! 
- * 
- * @param passphrase an array of byte as the initial value for this PP. The length 
- *        of the array must be a multiple of 2; 
- *        (Parameter may be destroyed by the caller after construction.)
-
-public PwsPassphrase ( byte[] passphrase )
-{
-   byte[] buffer;
-   
-   if ( passphrase.length % 2 > 0 )
-      throw new IllegalArgumentException("length out of range");
-   
-   buffer = Util.blockedBuffer( passphrase, BLOCKSIZE*2, 0 );
-   cipher = Global.getStandardCipher();
-   sbuf = cipher.encrypt( buffer );
-   Util.destroyBytes( buffer );
-   length = passphrase.length / 2;
-}
- */
 
 /** Constructor from an array containing a sequence of bytes, representing 
  *  characters as seen through the specified encoding.
@@ -151,210 +136,204 @@ public PwsPassphrase ( byte[] passphrase )
 public PwsPassphrase ( byte[] buffer, String enc )
 {
    cipher = Global.getStandardCipher();
+   blocksize = cipher.getBlockSize() / 2;
    setBytes( buffer, enc );
 }
 
-/** Sets the content of this passphrase from a byte array which is encoded along 
+/** Sets the content of this passphrase from a byte array which is encoded with 
  *  the specified character set.
  *  
  * @param buffer array of byte containing an encoded character sequence 
- * @param enc the encoding charset for the content of the buffer;
- *        <b>null</b> for VM default charset
+ * @param enc String name of charset for the content of the buffer;
+ *        <b>null</b> for VM default
  *  
  * @throws  IllegalCharsetNameException if the given charset name is illegal
  * @throws  UnsupportedCharsetException if no support for the named charset is 
- *          available in this instance of the Java virtual machine
+ *          available
  */
 public void setBytes ( byte[] buffer, String enc )
 {
-   CharBuffer cbuf;
-
-   if ( enc == null )
+   if ( enc == null ) {
       enc = Global.getDefaultCharset();
-   cbuf = Charset.forName( enc ).decode( ByteBuffer.wrap( buffer ) );
+   }
+   CharBuffer cbuf = Charset.forName( enc ).decode( ByteBuffer.wrap( buffer ) );
    setValue( cbuf.array(), cbuf.position(), cbuf.remaining() );
    Util.destroyChars( cbuf.array() );
 }
 
-/** A deep clone of this passphrase object.
+/** Returns a deep clone of this passphrase object.
+ * 
+ * @return Object 
  */
 public Object clone ()
 {
-   PwsPassphrase pp;
    try { 
-      pp = (PwsPassphrase) super.clone();
+	  PwsPassphrase pp = (PwsPassphrase) super.clone();
       pp.sbuf = (byte[])sbuf.clone();
       return pp;
-      }
-   catch ( CloneNotSupportedException e )
-   { 
+   } catch ( CloneNotSupportedException e ) { 
       return null; 
    }
 }
 
-/** Destroyes the contents of this PP in a secure way.
+/** Destroys the contents of this PP in a secure way and sets length to zero.
  */
 public void clear ()
 {
    length = 0;
    sbuf = NULLVALUE;
+   hashval = 0;
 }
 
 /** Sets the value of this instance from another passphrase object.
  * 
  * @param value <code>PwsPassphrase</code> to be copied or <b>null</b>
- * @since 2-1-0
  */
 public void setValue ( PwsPassphrase value )
 {
-   char[] buf;
-   
-   if ( value == null )
+   if ( value == null ) {
       clear();
-   else
-   {
-      buf = value.getValue();
+   } else {
+	  char[] buf = value.getValue();
       setValue( buf );
       Util.destroyChars( buf );
    }
 }
 
-/** Sets the value of this instance from the cleartext parameter string.
+/** Sets the value of this instance from the (cleartext) parameter string.
  * 
- * @param value the new value for this passphrase or <b>null</b>
+ * @param value the new value for this passphrase or <b>null</b> to clear
  */
 public void setValue ( String value )
 {
-   char[] buf;
-   
-   if ( value == null )
+   if ( value == null ) {
       clear();
-   else
-   {
-      buf = value.toCharArray();
+   } else {
+	  char[] buf = value.toCharArray();
       setValue( buf );
       Util.destroyChars( buf );
    }
 }
 
-/** Sets the value of this instance from the cleartext parameter char array.
+/** Sets the value of this instance from the (cleartext) parameter char array.
+ * A copy of the parameter is used.
  * 
- * @param value the new value for this PP or <b>null</b>
+ * @param value array of char, the new value for this PP or <b>null</b>
+ *              to clear
  */
 public void setValue ( char[] value )
 {
-   if ( value == null )
+   if ( value == null ) {
       clear();
-   else
+   } else {
       setValue( value, 0, value.length );
+   }
 }
 
 /** Sets the value of this instance from the cleartext parameter char array, 
  *  comprising <code>length</code> characters starting from index <code>start</code>.
+ *  A copy of the data section is used.
  * 
- * @param value defining source for the new value of this instance or <b>null</b>
- * @param start starting offset in value
- * @param length the activated length of <code>value</code>  
+ * @param buffer char array, source data for the new value or <b>null</b> 
+ *               to clear
+ * @param start int starting offset in buffer
+ * @param length int selected data length in buffer   
+ * @throws IllegalArgumentException if section settings are invalid
  */
-public void setValue ( char[] value, int start, int length )
+public void setValue ( char[] buffer, int start, int length )
 {
-   int blocks, i;
-   char ch;
-   byte[] buf;
-   
-   if ( value == null )
-   {
+   if ( buffer == null ) {
       clear();
       return;
    }
    
-   if ( length < 0 | start < 0 | start+length > value.length )
+   if ( length < 0 | start < 0 | start+length > buffer.length )
       throw new IllegalArgumentException("length out of range");
 
    // make a cipher conforming block
-   blocks = length / BLOCKSIZE;
-   if ( length % BLOCKSIZE > 0 )
+   int blocks = length / blocksize;
+   if ( length % blocksize > 0 ) {
       blocks++;
-   buf = new byte[ blocks * BLOCKSIZE * 2 ];
+   }
+   byte[] buf = new byte[ blocks * blocksize * 2 ];
    this.length = length;
 
    // transfer content to cipher buffer
-   for ( i = 0; i < length; i++ )
-   {
+   for ( int i = 0; i < length; i++ ) {
       // store in little-endian manner (C-compatible)
-      ch = value[ start + i ];
+      char ch = buffer[ start + i ];
       buf[ i*2 ] = (byte)ch;
       buf[ i*2+1 ] = (byte)(ch >>> 8);
    }
 
+   // create hash value
+   SHA1 sha = new SHA1();
+   sha.update(buf, 0, length*2);
+   sha.finalize();
+   hashval = Util.readLong( sha.getDigest(), 0 );
+   
    // encrypt content
    sbuf = cipher.encrypt( buf );
    Util.destroyBytes( buf );
 }  // setValue
 
-/** Sets the value of this PP from an encrypted byte buffer and a given cipher.
- * It is assumed that the contents of parameter <code>buffer</code> are encrypted
- * with the specified cipher <code>cph</code>. It is further assumed 
- * that the (decrypted) contents of the array are to be interpreted as as sequence
- * of Unicode-16 characters c, each represented by an integer <code>(short)c</code>, 
- * stored in Little-Endian (!) representation. 
- * 
- * @param buffer the new value for this passphrase as encrypted data block; 
- *        the length of the array must be a multiple of BLOCKSIZE * 2
- * @param length the active length of the intended character sequence; 
- *        0..buffer.length/2
- * @param cph PwsCipher that can be used to cryptograph this password's
- *        value  
- */
-protected void setEncrypted ( byte[] buffer, int length, PwsCipher cph )
-{
-   if ( buffer.length % (BLOCKSIZE *2) > 0 )
-      throw new IllegalArgumentException("illegal buffer block length");
-      
-   if ( cph == null )
-      throw new NullPointerException("cipher");
-      
-   if ( length < 0 | length > buffer.length/2 )
-      throw new IllegalArgumentException("length out of range");
-
-   sbuf = (byte[]) buffer.clone();
-   this.length = length;
-   this.cipher = cph;
-}  // setValue
-
+///** Sets the value of this PP from an encrypted byte buffer and a given cipher.
+// * It is assumed that the contents of parameter <code>buffer</code> are encrypted
+// * with the specified cipher <code>cph</code>. It is further assumed 
+// * that the (decrypted) contents of the array are to be interpreted as as sequence
+// * of Unicode-16 characters c, each represented by an integer <code>(short)c</code>, 
+// * stored in Little-Endian (!) representation.
+// * <p>This passphrase takes over both the value and the encryption cipher; a
+// * copy of the buffer is used.
+// * 
+// * @param buffer byte array, the new value for this passphrase as encrypted 
+// *        data block; the length of the array must be a multiple of the 
+// *        cipher's blocksize
+// * @param length the active length of the intended character sequence; 
+// *        0..buffer.length/2
+// * @param cph PwsCipher that is used to encrypt this password's value  
+// */
+//protected void setEncrypted ( byte[] buffer, int length, PwsCipher cph )
+//{
+//   if ( buffer.length % cph.getBlockSize() > 0 )
+//      throw new IllegalArgumentException("illegal buffer block length");
+//      
+//   if ( length < 0 | length > buffer.length/2 )
+//      throw new IllegalArgumentException("length out of range");
+//
+//   sbuf = (byte[]) buffer.clone();
+//   this.length = length;
+//   this.cipher = cph;
+//   this.blocksize = cipher.getBlockSize() / 2;
+//}  // setValue
+//
 
 
 /** Returns the decrypted value of this passphrase as an array of bytes.
- *  The conversion of the internal chars representaion to the sequence of
+ *  The conversion of the internal character representation to the sequence of
  *  bytes follows the encoding charset as specified by the parameter.
  * 
- * @param enc charset encoding standard; <b>null</b> for VM default charset  
+ * @param enc String charset name for encoding; <b>null</b> for VM default  
  * @return array of bytes containing the encoded sequence of characters 
  *         forming this passphrase
- * 
- * @throws  IllegalCharsetNameException
- *          if the given charset name is illegal
- * @throws  UnsupportedCharsetException
- *          if no support for the named charset is available
- *          in this instance of the Java virtual machine
+ * @throws  IllegalCharsetNameException if the given charset name is illegal
+ * @throws  UnsupportedCharsetException if no support for the given charset 
+ *          is available
  */
 public byte[] getBytes ( String enc )
 {
-   ByteBuffer bbuf;
-   byte[] buffer;
-   char cha[];
-
-   cha = getValue();
-   if ( enc == null )
+   if ( enc == null ) {
       enc = Global.getDefaultCharset();
-   bbuf = Charset.forName( enc ).encode( CharBuffer.wrap( cha ) );
-   buffer = new byte[ bbuf.remaining() ];
+   }
+
+   char[] cha = getValue();
+   ByteBuffer bbuf = Charset.forName( enc ).encode( CharBuffer.wrap( cha ) );
+   byte[] buffer = new byte[ bbuf.remaining() ];
    bbuf.get( buffer );
    
    // clean up the decrypted buffers
    Util.destroyChars( cha );
    Util.destroyBytes( bbuf.array() );
-   
    return buffer;
 }
 
@@ -366,90 +345,104 @@ public byte[] getBytes ( String enc )
  */
 public char[] getValue ()
 {
-   byte[] buffer;
-   char c[];
-   int i, ch;
-
-   buffer = getValueBuffer();
-   c = new char[ length ];
+   byte[] buffer = getValueBuffer();
+   char[] ca = new char[ length ];
 
    // store into output char array
-   for ( i = 0; i < length; i++ )
-   {
-      ch = (((int)buffer[ i*2 ] & 0xff) | (((int)buffer[ i*2+1 ] & 0xff) << 8));
-      c[ i ] = (char)ch;
+   for ( int i = 0; i < length; i++ ) {
+      int ch = (((int)buffer[i*2] & 0xff) | (((int)buffer[i*2+1] & 0xff) << 8));
+      ca[ i ] = (char)ch;
    }
    
    // clean up the decrypted buffer
    Util.destroyBytes( buffer );
-   
-   return c;
+   return ca;
 }  // getValue
 
 /** Returns the value of this passphrase as a decrypted version of the 
  *  internal stored buffer. The content reflects only the active length of 
  *  passphrase (so the resulting length should be <code>getLength() * 2</code>).
+ *  
+ *  @return array of bytes
  */
 protected byte[] getValueBuffer ()
 {
-   byte[] buffer, result;
-
-   buffer = cipher.decrypt( sbuf );
-   result = new byte[ length*2 ];
-   System.arraycopy( buffer, 0, result, 0, length*2 );
-   Util.destroyBytes( buffer );
+   byte[] result, buffer = cipher.decrypt( sbuf );
+   int buflen = length*2;
+   
+   if ( buffer.length > buflen ) {
+	   result = Util.arraycopy(buffer, buflen);
+	   Util.destroyBytes( buffer );
+   } else {
+	   result = buffer;
+   }
    return result;
 }
 
 /** Returns the encrypted data block of this passphrase as an array of bytes,
- *  encrypted along the cipher as specified by the parameter <code>PwsCipher</code>
- *  or by the internal cipher.
- *  The resulting array object is always separate from the internal value.
+ *  encrypted by the cipher given with the parameter or by the internal cipher
+ *  if the parameter is null.
+ *  <p>The resulting array object is always separate from the internal value.
  * 
- * @param cph PwsCipher along which the return block will be encrypted; this
- *        may differ from the cipher used for storing this value. If <b>null</b>
- *        the internal cipher is used instead. 
- * @return encrypted array of bytes; length is a multiple of BLOCKSIZE * 2
+ * @param cph <code>PwsCipher</code> by which the returned block will be 
+ *        encrypted; this may differ from the cipher used for storing this value.
+ *        If <b>null</b> the internal cipher is used instead. 
+ * @return encrypted array of bytes
  */
 public byte[] getEncryptedBlock ( PwsCipher cph )
 {
-   byte[] buffer, buf2;
-
-   buffer = (byte[]) sbuf.clone();
+   byte[] buffer;
    
-   if ( cph != null && !cph.equals( cipher ) )
-   {
-      buf2 = cipher.decrypt( buffer );
+   if ( cph != null && !cph.equals( cipher ) ) {
+	  buffer = sbuf;
+	   
+	   // correct buffer size if cipher lengths mismatch
+	  int cbl = cph.getBlockSize();
+	  if ( sbuf.length % cbl > 0 ) {
+		  int newSize = (sbuf.length / cbl + 1) * cbl;
+		  buffer = Util.arraycopy(sbuf, newSize);
+	  }
+
+	  // decrypt local + encrypt external cipher
+      byte[] buf2 = cipher.decrypt( buffer );
       buffer = cph.encrypt( buf2 );
       Util.destroyBytes( buf2 );
+      
+   } else {
+	   buffer = (byte[]) sbuf.clone();
    }
    return buffer;
 }
 
-/** The length of the stored value in number of characters. */
+/** The length of the stored value in number of characters.
+ * 
+ *  @return int length of text value
+ */
 public int getLength ()
 {
    return length;
 }
 
 /** Returns the decrypted value of this passphrase as a <code>StringBuffer</code>.
+ * 
+ * @return <code>StringBuffer</code>
  */
 public StringBuffer getStringBuffer ()
 {
    StringBuffer sb = new StringBuffer();
    char[] value = getValue();
    sb.append( value );
-
-   // clean up the decrypted buffer
    Util.destroyChars( value );
    return  sb;
 }
 
 /** Returns the decrypted value of this passphrase as a <code>String</code>.
  *  If this value is void, an empty string is returned.
- *  <p>!!WARNING!! this undestoyable uncovered password value constitutes a
- *  security threat! It might not be ultimately avoidable though in certain 
- *  environments, but it should be used as sparing as possible.
+ *  <p><b>!!WARNING!!</b> Returned undestoyable, uncovered password value 
+ *  constitutes a security threat! It might not be ultimately avoidable though 
+ *  in certain environments, but it should be used as sparingly as possible.
+ *  
+ *  @return String decrypted text value
  */
 public String getString ()
 {
@@ -461,14 +454,24 @@ public String getString ()
    return s; 
 }
 
-/** Whether this object does not store a value (equivalent to 
- *  <code>getLength()==0</code>). */
+/** Whether the value of this passphrase is empty.
+ * 
+ * @return boolean
+ */
 public boolean isEmpty ()
 {
    return length == 0;
 }
 
-/** Whether the parameter passphrase object equals this instance.
+/** Returns the encryption cipher used by this passphrase.
+ * 
+ * @return <code>PwsCipher</code>
+ */
+protected PwsCipher getCipher () {
+	return cipher;
+}
+
+/** Whether the parameter object equals this instance.
  *  Two <code>PwsPassphrase</code> objects are equal if and only if their 
  *  cleartext values are equal.
  * 
@@ -476,40 +479,43 @@ public boolean isEmpty ()
  *  @return <b>true</b> if and only if <code>obj</code> is not <b>null</b>,
  *          of type <code>PwsPassphrase</code> and its cleartext value is 
  *          identical with the corresponding value of this instance
- *  @throws ClassCastException if <code>obj</code> is not of same type     
  */
 public boolean equals ( Object obj )
 {
-   byte[] b1, b2;
-   boolean result;
+   if ( obj == null || !(obj instanceof PwsPassphrase)) return false;
+   PwsPassphrase pass = (PwsPassphrase)obj;
    
-   if ( obj == null )
-      return false;
+   return hashval == pass.hashval;
    
-   b1 = ((PwsPassphrase) obj).getValueBuffer();
-   b2 = this.getValueBuffer();
-   result = Util.equalArrays( b1, b2 );
-   Util.destroyBytes( b1 );
-   Util.destroyBytes( b2 );
-   return result;
+//   byte[] b1 = pass.getValueBuffer();
+//   byte[] b2 = this.getValueBuffer();
+//   boolean result = Util.equalArrays( b1, b2 );
+//   Util.destroyBytes( b1 );
+//   Util.destroyBytes( b2 );
+//   return result;
 }
 
 /** 
  * Returns a hashcode value coherent with <code>equals()</code> for this
  * passphrase, based on its cleartext value. 
+ * 
+ * @return int hashcode
  */
 public int hashCode ()
 {
-//   byte[] buffer;
-   int result;
-   
-//   buffer = getValueBuffer();
-   result = Util.arrayHashcode( sbuf );
-//   Util.destroyBytes( buffer );
-   return result;
+	return (int)hashval;
+	
+//   byte[] buf = this.getValueBuffer();
+//   int result = Util.arrayHashcode( buf );
+//   Util.destroyBytes(buf);
+//   return result;
 }
 
-/** Returns a textual representation of the <u>encrypted</u> stored value. */
+/** Returns a hexadecimal text representation of the <u>encrypted</u> 
+ *  stored value. For an empty value the empty string is returned.
+ * 
+ *  @return String
+ */
 public String toString ()
 {
    return Util.bytesToHex( sbuf, 0, length*2 );

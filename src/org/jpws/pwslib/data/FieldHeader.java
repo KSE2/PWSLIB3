@@ -5,7 +5,6 @@ import org.jpws.pwslib.global.Util;
 
 /**
  * Package class to represent a HEADERBLOCK of the database format description.
- * @since 2-0-0
  */
 class FieldHeader
 {
@@ -32,23 +31,24 @@ class FieldHeader
       
       long v = Util.readLongLittle( block, 0 );
       length = (int)v;
-      if ( length < 0 )
+      if ( length < 0 ) {
          length = Integer.MAX_VALUE;
+      }
       type = (int)(v >>> 32) & 0xff;
       segLen = block.length - 5;
       
-      if ( format == Global.FILEVERSION_3 )
-      {
+      if ( format == Global.FILEVERSION_3 ) {
          data = Util.arraycopy( block, 5, Math.min( segLen, length ) );
          remLength = Math.max( 0, length - segLen );
-      }
-      else
+      } else {
          remLength = length;
+      }
       
       blocks = remLength / block.length;
       if ( remLength % block.length > 0 ||
-           (format < Global.FILEVERSION_3 & remLength == 0) )
+           (format < Global.FILEVERSION_3 & remLength == 0) ) {
          blocks++;
+      }
    }  // constructor
    
    /** Erases all data from this header and reset its values to zero/null. */

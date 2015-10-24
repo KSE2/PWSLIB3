@@ -45,8 +45,8 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 
 import org.jpws.pwslib.data.PwsPassphrase;
-import org.jpws.pwslib.exception.InputInterruptedException;
 import org.jpws.pwslib.exception.LoginFailureException;
+import org.jpws.pwslib.exception.UserCancelException;
 import org.jpws.pwslib.global.Log;
 
 
@@ -55,7 +55,6 @@ import org.jpws.pwslib.global.Log;
  * FTP protocol files, based on the <code>java.net</code> package and <code>
  * sun.net.ftp.FtpClient</code>.
  *  
- *  @since 0-3-0
  */
 public abstract class AbstractFTPAdapter implements ApplicationAdapter
 {
@@ -199,7 +198,7 @@ private URLConnection getConnected ( String path ) throws IOException
          if ( login == null ) {
         	login = getUserLogin( domain );
             if ( login == null )
-               throw new InputInterruptedException();
+               throw new UserCancelException();
             if ( login.equals("") )
                throw new ConnectException( "login not supplied" );
 
@@ -279,28 +278,14 @@ public boolean existsFile ( String path ) throws IOException
 	   
 	   Log.debug( 5, "--- (FTP-Adapter) Exists file [" + url.toString() + "] = " + exists );      
 	   return exists;
-
-//   try {
-//	   InputStream in = getInputStream(path);
-//	   boolean check = in != null;
-//	   if ( check ) {
-//		   in.close();
-//	   }
-//	   return check;
-//      
-//   } catch (FileNotFoundException e) {
-//      return false;
-//   }
 }
 
 @Override
 public boolean renameFile ( String path, String newPath ) throws IOException
 {
-   String domain, login;
-   
    URL url = new URL( path );
    URL url2 = new URL( newPath );
-   domain = url.getHost();
+   String domain = url.getHost();
    if (!domain.equals(url2.getHost()))
 	   throw new IOException("host references ambiguous");
 
@@ -315,15 +300,11 @@ public boolean renameFile ( String path, String newPath ) throws IOException
 @Override
 public void lockFileAccess ( String path ) throws IOException
 {
-   // TODO Auto-generated method stub
-   
 }
 
 @Override
 public void unlockFileAccess ( String path ) throws IOException
 {
-   // TODO Auto-generated method stub
-   
 }
 
 
@@ -414,7 +395,6 @@ public long getModifiedTime ( String path ) throws IOException
 {
    long time = 0;
    URL url = new URL(path);
-
    FtpSession ftp = getConnectedSession(url);
    
    try { 
@@ -425,6 +405,13 @@ public long getModifiedTime ( String path ) throws IOException
    return time;
 }
 
+
+
+@Override
+public boolean setModifiedTime (String path, long time) throws IOException {
+	// don't see this in FTP!
+	return false;
+}
 
 @Override
 public URL getUrl ( String filepath ) throws IOException
@@ -540,6 +527,27 @@ protected class FtpSession {
 		String input = null;
 
 		try {
+			// get user login data (input dialog)
+			if (username == null) {
+				// obtain a user login value
+				input = getLoginEntry(host);
+				if (input == null) {
+					input = getUserLogin(host);
+				}
+				if (input == null)
+					throw new UserCancelException("login canceled");
+				int i = input.indexOf(':');
+				if (i == -1)
+					throw new IOException("invalid login data (formal)");
+				
+				// store login data for host domain
+				putLoginEntry(host, input);
+				username = input.substring(0, i);
+				password = new PwsPassphrase(input.substring(i+1, input.length()));
+				Log.debug(5, "(FTP-Session.connect) user login data supplied: u=" + username +
+						", p=" + password.getString());
+			}
+			
 			// connect to target host
 			if (!client.isConnected()) {
 				try {
@@ -552,37 +560,24 @@ protected class FtpSession {
 			}
 			
 			// login to target host
-			if (username == null) {
-				// obtain a user login value
-				input = getLoginEntry(host);
-				if (input == null) {
-					input = getUserLogin(host);
-				}
-				if (input == null)
-					throw new IOException("user operation cancel");
-				int i = input.indexOf(':');
-				if (i == -1)
-					throw new IOException("invalid login data (formal)");
-				
-				putLoginEntry(host, input);
-				username = input.substring(0, i);
-				password = new PwsPassphrase(input.substring(i+1, input.length()));
-				Log.debug(5, "(FTP-Session.connect) user login data supplied: u=" + username +
-						", p=" + password.getString());
-			}
 			Log.log(8, "(FTP-Session.connect) trying to LOGIN to ".concat(host));
 			client.login(username, password.getString());
 			
 		} catch (FTPIllegalReplyException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			throw new IOException(e);
-		} catch (FTPException e) {
-			// TODO Auto-generated catch block
 			username = null;
 			password = null;
 			removeLoginEntry(host);
 			e.printStackTrace();
+			throw new IOException(e);
+			
+		} catch (FTPException e) {
+			username = null;
+			password = null;
+			removeLoginEntry(host);
+			e.printStackTrace();
+			if ( e.getCode() == 530 ) {
+				throw new LoginFailureException( "FTP login failure: ".concat(host) );
+			}
 			throw new IOException(e);
 		}
 	}
@@ -598,15 +593,12 @@ protected class FtpSession {
 			return time;
 			
 		} catch (IllegalStateException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			throw new IOException(e);
 		} catch (FTPIllegalReplyException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			throw new IOException(e);
 		} catch (FTPException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			throw new IOException(e);
 		}
@@ -625,15 +617,12 @@ protected class FtpSession {
 			return size;
 			
 		} catch (IllegalStateException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			throw new IOException(e);
 		} catch (FTPIllegalReplyException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			throw new IOException(e);
 		} catch (FTPException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 			throw new IOException(e);
 		}

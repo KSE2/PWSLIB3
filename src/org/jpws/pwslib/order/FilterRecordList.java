@@ -37,10 +37,10 @@ import org.jpws.pwslib.data.PwsRecordList;
  *  OrderedRecordList</code> itself and thus is capable of substituting the
  *  role of <code>OrderedRecordList</code> for its listeners. It is, however,
  *  notably not a <code>PwsFileListener</code> (although it formally say so)!
+ *  
  *  <p>The filtering function is performed over a callback function <code>
- *  acceptEntry(PwsRecord)</code>. This method is to be implemented by a concrete
- *  filter class.  
- *  @since 0-3-0
+ *  acceptEntry(PwsRecord)</code>. This method is to be implemented by a 
+ *  subclass.  
  */
 public abstract class FilterRecordList extends OrderedRecordList 
                               implements OrderedListListener
@@ -50,24 +50,29 @@ public abstract class FilterRecordList extends OrderedRecordList
 /**
  *  Constructor.
  * 
- * @param list ordered list that is the data reference base for this instance
+ * @param list <code>OrderedRecordList</code> list that is the database 
+ *        reference for this instance
  */
 public FilterRecordList ( OrderedRecordList list )
 {
    super( list.getLocale() );
    orderList = list;
-   ;
    orderList.addOrderedListListener( this );
 }
 
 
 /** This method is not supported in this class. The formal interface <code>
- *  PwsFileListener</code> is not operative in this class. */
+ *  PwsFileListener</code> is not operative in this class.
+ *  
+ *  @param evt <code>PwsFileEvent</code>
+ */
+@Override
 public void fileStateChanged ( PwsFileEvent evt )
 {
    throw new UnsupportedOperationException("disabled parent function in this class");
 }
 
+@Override
 public void loadDatabase ( PwsRecordList list, long expireScope )
 {
    orderList.loadDatabase( list, expireScope );
@@ -82,15 +87,17 @@ public void loadDatabase ( PwsRecordList list, long expireScope )
  *  @param wrapper <code>DefaultRecordWrapper</code> of record to be inserted
  *  @throws IllegalArgumentException if the record fails to conform
  */
+@Override
 public void insertItem ( DefaultRecordWrapper wrapper )
 {
-   orderList.clearBondage( wrapper.getRecord() );
+   orderList.verifyBondage( wrapper.getRecord() );
    insertRecordIntern( wrapper );
    fireOrderedListEvent( OrderedListEvent.ITEM_ADDED, wrapper.getIndex(), wrapper );
 }
 
-/** Resorts the items contained in this list. (This will issue a LIST_RELOADED
- *  event.) 
+/** Reloads the items contained in this list. This is to be called when the
+ * functionality of <code>acceptEntry()</code> has been changed. 
+ * (Issues a LIST_RELOADED event.) 
  */
 public void refresh ()
 {
@@ -98,13 +105,14 @@ public void refresh ()
          0, null ));
 }
 
+@Override
 public void setExpireScope ( long time )
 {
    orderList.setExpireScope( time );
 }
 
-/** Performs the filtering criterion for this list based on a <code>PwsRecord</code>
- *  value.
+/** Performs the filtering criterion for this list based on a 
+ *  <code>PwsRecord</code> value.
  * 
  *  @param rec a entry candidate for this list
  *  @return <b>true</b> if this candidate has to be included into this list 
@@ -113,43 +121,39 @@ public abstract boolean acceptEntry ( DefaultRecordWrapper rec );
 
 //  ***********  IMPLEMENTATION OF OrderedListListener  ***************
 
+@Override
 public void orderedListPerformed ( OrderedListEvent evt )
 {
-   DefaultRecordWrapper wrap;
-   int eventType, index, i;
+   int eventType = evt.getType();
+   DefaultRecordWrapper wrap = evt.getRecord();
    
-   eventType = evt.getType();
-   wrap = evt.getRecord();
-   
-   if ( eventType == OrderedListEvent.LIST_RELOADED )
-   {
+   if ( eventType == OrderedListEvent.LIST_RELOADED ) {
       list.clear();
-      for ( i = 0; i < orderList.size(); i++ )
-      {
+      for ( int i = 0; i < orderList.size(); i++ ) {
          wrap = orderList.getItemAt( i );
-         if ( acceptEntry( wrap ) )
+         if ( acceptEntry( wrap ) ) {
             insertRecordIntern( wrap );
+         }
       }
       fireOrderedListEvent( OrderedListEvent.LIST_RELOADED, -1, null );
    }
    
-   else if ( eventType == OrderedListEvent.LIST_CLEARED )
-   {
+   else if ( eventType == OrderedListEvent.LIST_CLEARED ) {
       clear();
    }
    
-   else if ( eventType == OrderedListEvent.ITEM_REMOVED )
-   {
-      if ( (index = indexOf( wrap )) > -1 )
+   else if ( eventType == OrderedListEvent.ITEM_REMOVED ) {
+	  int index  = indexOf( wrap );
+      if ( index > -1 ) {
          removeItem( index );
+      }
    }
    
-   else if ( eventType == OrderedListEvent.ITEM_ADDED )
-   {
-      if ( acceptEntry( wrap ) )
-         insertItem( wrap );
+   else if ( eventType == OrderedListEvent.ITEM_ADDED ) {
+      if ( acceptEntry( wrap ) ) {
+          insertItem( wrap );
+      }
    }
-   
 }
    
 }

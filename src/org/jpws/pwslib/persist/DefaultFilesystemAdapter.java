@@ -53,7 +53,7 @@ public class DefaultFilesystemAdapter implements ApplicationAdapter
    protected static int classID = 11;
    protected static DefaultFilesystemAdapter instance = new DefaultFilesystemAdapter();
 
-   private HashMap filesMap = new HashMap(); 
+   private HashMap<String, FileInputStream> filesMap = new HashMap<String, FileInputStream>(); 
    
 /**
  * Constructs an instance.
@@ -68,88 +68,69 @@ public static DefaultFilesystemAdapter get ()
    return instance;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getInputStream(java.lang.String)
- */
+@Override
 public InputStream getInputStream ( String path ) throws IOException
 {
    return new FileInputStream( path );
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getOutputStream(java.lang.String)
- */
+@Override
 public OutputStream getOutputStream ( String path ) throws IOException
 {
    return new OurOutputStream( path, isLockedFile( path ) );
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getName()
- */
+@Override
 public String getName ()
 {
    return "Local Files";
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#getType()
- */
+@Override
 public int getType ()
 {
    return FILESYSTEM;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#deleteFile(java.lang.String)
- */
+@Override
 public boolean deleteFile ( String path ) throws IOException
 {
    return new File( path ).delete();
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#existsFile(java.lang.String)
- */
+@Override
 public boolean existsFile ( String path ) throws IOException
 {
    return new File( path ).isFile();
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#renameFile(java.lang.String,java.lang.String)
- */
+@Override
 public boolean renameFile ( String path, String newPath ) throws IOException
 {
 //   return false;
    return new File( path ).renameTo( new File( newPath) );
 }
 
-
-
+@Override
 public void lockFileAccess ( String path ) throws IOException
 {
-   FileInputStream input;
-   
    // look if file is already listed
-   if ( filesMap.containsKey( path ) )
-      return;
+   if ( filesMap.containsKey( path ) ) return;
    
    // insert entry in files registry
-   input = new FileInputStream( path );
+   FileInputStream input = new FileInputStream( path );
    input.getChannel().lock( 0L, Long.MAX_VALUE, true );
    filesMap.put( path, input );
 
    Log.log( 7, "(DefaultFilesystemAdapter) OS-locking file: ".concat( path ) );
 }
 
+@Override
 public void unlockFileAccess ( String path ) throws IOException
 {
-   FileInputStream input;
-   
    // look if file is already listed
-   if ( (input = (FileInputStream)filesMap.get( path )) == null )
-      return;
+   FileInputStream input = (FileInputStream)filesMap.get( path );
+   if ( input == null ) return;
    
    // unlock and remove entry
    input.close();
@@ -163,6 +144,7 @@ public boolean isLockedFile ( String path )
    return filesMap.containsKey( path );
 }
 
+@Override
 public String separator ()
 {
    return File.separator;
@@ -174,50 +156,50 @@ public String separator ()
  *   
  * @param path file path in IO-context
  * @return directory name
- * @since 2-1-0 
  */
 private String directoryPart ( String path )
 {
-   String sep, result;
-   int index;
+   if ( path == null ) return null;
    
-   if ( path == null )
-      return null;
-   
-   sep = separator();
-   index = path.lastIndexOf( sep );
-   result = index == -1 ? "" : path.substring( 0, index+1 ); 
+   String sep = separator();
+   int index = path.lastIndexOf( sep );
+   String result = index == -1 ? "" : path.substring( 0, index+1 ); 
    return result;
 }
 
+@Override
 public String[] list ( String trunk, String trail, boolean recurse ) throws IOException
 {
 //   return null;
    
-   List list = new ArrayList();
+   List<String> list = new ArrayList<String>();
    String dir, result[];
    
 //   System.out.println( "-- FileSystemAdapter: listing files: [" + trunk + "]" );
-   if ( separator().equals("\\") )
-   {
+   if ( separator().equals("\\") ) {
       trunk = Util.substituteText( trunk, "/", "\\" );
       trail = Util.substituteText( trail, "/", "\\" );
    }
    
-   if ( trunk == null )
+   if ( trunk == null ) {
       throw new NullPointerException();
-   if ( trail == null )
-      trail = "";
+   }
    
-   if ( trunk.length() == 0 )
+   if ( trail == null ) {
+      trail = "";
+   }
+   
+   if ( trunk.length() == 0 ) {
       return new String[0];
+   }
 
-   if ( (dir = directoryPart( trunk )).length() == 0 )
+   if ( (dir = directoryPart( trunk )).length() == 0 ) {
       dir = System.getProperty( "user.dir" );
+   }
    
    analyseDirectory( dir, list, trunk, trail, recurse );
    
-   result = (String[]) list.toArray( new String[ list.size() ] );
+   result = list.toArray( new String[list.size()] );
    return result;
 }
 
@@ -230,82 +212,72 @@ public String[] list ( String trunk, String trail, boolean recurse ) throws IOEx
  * @param trunk criterion (leading)
  * @param trail criterion (trailing)
  * @param recurse whether subdirectories are recursed
- * @since 2-1-0 
  */
-private void analyseDirectory ( String dir, List resulting, 
+private void analyseDirectory ( String dir, List<String> resulting, 
       String trunk, String trail, boolean recurse )
 {
-   ArrayList subDirs;
+   ArrayList<String> subDirs = new ArrayList<String>();
    String file, files[], sep;
-   Iterator it;
-   int i;
    
 //   System.out.println( "-- FileSystemAdapter: analysing directory: [" + dir + "]" );
 
    if ( dir == null || (files = new File( dir ).list()) == null || files.length == 0 )
       return;
    
-   subDirs = new ArrayList();
    sep = separator();
-   if ( !dir.endsWith( sep ) )
+   if ( !dir.endsWith( sep ) ) {
       dir = dir.concat( sep );
+   }
    
    // investigate parameter directory (to results)
    // take note of subdirectories
-   for ( i = 0; i < files.length; i++ )
-   {
+   for ( int i = 0; i < files.length; i++ ) {
       file = dir + files[ i ];
-      if ( new File( file ).isDirectory() )
+      if ( new File( file ).isDirectory() ) {
          subDirs.add( file );
-      else if ( file.startsWith( trunk ) && file.endsWith( trail ) )
-      {
+      } else if ( file.startsWith( trunk ) && file.endsWith( trail ) ) {
          resulting.add( Util.substituteText( file, "\\", "/" ) );
 //         System.out.println( "-- FileSystemAdapter: listed matching file:  [" + file + "]" );
       }
    }
    
    // recurse into subdirectories
-   if ( recurse )
-   for ( it = subDirs.iterator(); it.hasNext(); )
-      analyseDirectory( (String)it.next(), resulting, trunk, trail, true );
+   if ( recurse ) {
+	  for ( Iterator<String> it = subDirs.iterator(); it.hasNext(); ) {
+         analyseDirectory( (String)it.next(), resulting, trunk, trail, true );
+	  }
+   }
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canWrite()
- */
+@Override
 public boolean canWrite ( String path )
 {
-   File f;
-   
    // default value for this medium 
-   if ( path == null )
-      return true;
+   if ( path == null ) return true;
    
-   f = new File( path );
+   File f = new File( path );
    return f.exists() ? f.canWrite() : true;
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canRead()
- */
+@Override
 public boolean canRead ( String path ) throws IOException
 {
    return new File( path ).canRead();
 }
 
-/* (non-Javadoc)
- * @see org.jpws.pwslib.global.ApplicationAdapter#canDelete()
- */
+@Override
 public boolean canDelete ( String path )
 {
    return canWrite( path );
 }
 
+@Override
 public long getFileLength ( String path )
 {
    return new File( path ).length();
 }
 
+@Override
 public long getModifiedTime ( String path ) throws IOException
 {
    return new File( path ).lastModified();
@@ -313,26 +285,25 @@ public long getModifiedTime ( String path ) throws IOException
 
 /** An object equals this adapter if it is an instance of 
  *  <code>DefaultFilesystemAdapter</code>.
- *  @since 0-3-0
  */
+@Override
 public boolean equals ( Object obj )
 {
    return obj != null && obj instanceof DefaultFilesystemAdapter;
 }
 
 /** Hashcode complying to <code>equals()</code>.
- * @since 0-3-0
  */
+@Override
 public int hashCode ()
 {
    return classID;
 }
 
+@Override
 public URL getUrl ( String filepath ) throws IOException
 {
-   URL url;
-   
-   url = Util.makeFileURL( filepath );
+   URL url = Util.makeFileURL( filepath );
    return url;
 }
 
@@ -357,17 +328,17 @@ private static class OurOutputStream extends FileOutputStream
          instance.unlockFileAccess( path );
    }
 
+   @Override
    public void close () throws IOException
    {
       super.close();
-      
+
       if ( afterLock )
          instance.lockFileAccess( filepath );
    }
-
-   
 }
 
+@Override
 public boolean setModifiedTime ( String path, long time ) throws IOException
 {
    return new File( path ).setLastModified( time );

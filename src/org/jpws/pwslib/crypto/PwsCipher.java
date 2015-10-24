@@ -80,4 +80,11 @@ public interface PwsCipher
    /** Returns the blocksize of this cipher or 0 if this cipher is not a 
     *  block-cipher. */
    public int getBlockSize ();
+   
+   /** The name expression for this cipher for human information.
+    * 
+    * @return String cipher name
+    */
+   public String getName ();
+   
 }

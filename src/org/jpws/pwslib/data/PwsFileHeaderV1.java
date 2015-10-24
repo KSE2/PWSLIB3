@@ -43,15 +43,19 @@ import org.jpws.pwslib.global.Util;
 
 
 /**
- * This class represents the header fields of a <b>PasswordSafe V1</b> database
- * (persistent state) and allows to obtain objects enabling to read the
- * remainder of the file in a decrypted fashion or to save the header to a new 
+ * This class represents the technical header data of a <b>PasswordSafe V1</b> 
+ * database (persistent state) and allows to obtain objects enabling to read the
+ * remainder of the file decrypted or to save the header to a new 
  * persistent state. 
+ * <p>V1 is a format based on SHA1 and the  Blowfish cipher; it does not supply 
+ * generic header data for the user. The use of this format is historical and 
+ * deprecated for productive data files!
  *   
- * <p>The original format definition of V1 files is available under document name: ??   
+ * <p>The original format definition as of the Password Safe project is 
+ * available under document name "formatV1.txt" in the document folder of the 
+ * developer package of this library.      
  * 
  * @author Wolfgang Keller
- * @since 2-0-0
  */
 class PwsFileHeaderV1
 {
@@ -70,27 +74,28 @@ class PwsFileHeaderV1
     private BlockInputStream    blockStream; 
     
 	/**
-	 * Writing constructor. Creates an empty file header usable to create a new PWS database
-     * (persistent state).
+	 * Writing constructor. Creates an empty file header usable to create 
+	 * a new PWS database (persistent state).
 	 */
-	PwsFileHeaderV1()
-	{
-	}
+	PwsFileHeaderV1 ()
+	{}
 
 	/**
-	 * Reading constructor. Creates a value-assigned file header by reading the data 
-    * from the parameter inputstream which contains the persistent state of a file. 
-    * (This is the mandatory constructor to perform passphrase verification on a header.) 
+	 * Reading constructor. Creates a file header by reading data from the 
+	 * parameter input stream which contains the persistent state of a PWS file. 
+    * (This is the mandatory constructor to perform passphrase verification on 
+    * a file.) 
 	 * 
-	 * @param input <code>BufferedInputStream</code> positioned at the beginning of a PWS file
+	 * @param input <code>BufferedInputStream</code> positioned at the beginning
+	 *              of a PWS file
 	 * @throws IOException  if an error occurs during reading
+	 * @throws NullPointerException if parameter is <b>null</b>
 	 */
 	public PwsFileHeaderV1( BufferedInputStream input )  throws IOException
 	{
-       DataInputStream in;
-
-       this.input = new BufferedInputStream( input );
-       in = new DataInputStream( input );
+       this.input = input instanceof BufferedInputStream ?
+    		        (BufferedInputStream)input : new BufferedInputStream(input);
+       DataInputStream in = new DataInputStream( input );
 
        // read the core header values
        in.readFully( randStuff );
@@ -106,29 +111,23 @@ class PwsFileHeaderV1
 
 	/**
 	 * Writes the header part to the file. Constructs and returns a cipher for 
-     * the encryption of the succeeding parts of the file.
+     * the encryption of the following parts of the file.
 	 * 
-	 * @param output an open OutputStream to which the file is written
-     * @param passphrase the file access passphrase
-     *  
+	 * @param output OutputStream, an open stream to which the file is written
+     * @param passphrase PwsPassphrase, the file access passphrase
      * @return the <code>PwsCipher</code> with which the remainder of the file 
-     *         has to be encrypted
-	 * 
+     *         is to be encrypted
 	 * @throws IOException if an IO error occurs
      * @throws NullPointerException on any missing parameter
 	 */
 	public PwsCipher save( OutputStream output, 
-                     PwsPassphrase passphrase ) 
-                     throws IOException
+                           PwsPassphrase passphrase ) throws IOException
 	{
-      PwsCipher  cipher;
-      DataOutputStream out;
-      
       if ( output == null )
          throw new NullPointerException();
       
-      cipher = update( passphrase );
-      out = new DataOutputStream( output );
+      PwsCipher cipher = update( passphrase );
+      DataOutputStream out = new DataOutputStream( output );
 
       // write the core header part
       out.write( randStuff );
@@ -142,23 +141,22 @@ class PwsFileHeaderV1
 	}
 
 	/**
-	 * Prepares the header for saving. Places new random values into all fields
+	* Prepares the header for saving. Places new random values into all fields
     * of the file header. Creates and returns the PwsCipher which is used for
     * encrypting the remainder of the file. 
-	 * 
-	 * @param passphrase the passphrase to be used to encrypt the database.
+	* 
+	* @param passphrase PwsPassphrase, the passphrase to be used to encrypt 
+	*                   the database.
     * 
-    * @throws NullPointerException if passphrase is undefined
-	 */
+    * @throws NullPointerException if passphrase is null
+	*/
 	private PwsCipher update( PwsPassphrase passphrase )
 	{
-       CryptoRandom cra;
-       
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
 
       // create the passphrase control value
-      cra = Util.getCryptoRand();
+      CryptoRandom cra = Util.getCryptoRand();
       randStuff = cra.nextBytes( randStuff.length );
       randHash	= PwsFileHeaderV1.genRandHash( passphrase, randStuff );
 
@@ -171,60 +169,53 @@ class PwsFileHeaderV1
 	}
    
    /** Verifies whether the file trailing this header can be read with the 
-    * passphrase submitted as parameter. In the positive case returns
-    * the <code>PwsBlockInputStream</code> which is to be used for reading the
-    * decrypted remainder of the file. This method also verifies the correct 
-    * file version (V1).
+    * given passphrase. If yes, this returns the <code>PwsBlockInputStream</code> 
+    * which is to be used for reading the decrypted remainder of the file. 
+    * This method also verifies the correct file version V1.
     * 
-    * @param passphrase PwsPassphrase a candidate file access key 
-    * @return <code>PwsBlockInputStream</code> not <b>null</b> if and only if the 
-    *         file of this header is accessible with the 
+    * @param passphrase PwsPassphrase, a candidate file access key 
+    * @return <code>PwsBlockInputStream</code> not <b>null</b> if and only if 
+    *         the file of this header is accessible with the 
     *         specified passphrase and is a version V1 file
-    * 
-    * @throws NullPointerException if passphrase is undefined
-    * @throws IllegalStateException if the header is unprepared (not read from file)
+    * @throws NullPointerException if passphrase is null
+    * @throws IllegalStateException if the header is unprepared 
+    *         (not read from file)
     * @throws WrongFileVersionException if a V2 file format was encountered
     */ 
    public PwsBlockInputStream verifyPass ( PwsPassphrase passphrase ) 
       throws IOException, WrongFileVersionException
    {
-      PwsCipher cipher;
-      PwsRawField raw;
-      String idText;
-      byte[] result;
-      
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
       if ( !isRead )
          throw new IllegalStateException("header not initialized");
+      if ( blockStream != null )
+          throw new IllegalStateException("cipher already verified!");
 
       // verify correct passphrase
-      result = PwsFileHeaderV1.genRandHash( passphrase, randStuff );
-      if ( Util.equalArrays( randHash, result ) )
-      {
+      byte[] result = PwsFileHeaderV1.genRandHash( passphrase, randStuff );
+      if ( Util.equalArrays( randHash, result ) ) {
+    	  
          // we have the correct passphrase here
-         cipher = makeFileCipher( passphrase );
+    	  PwsCipher cipher = makeFileCipher( passphrase );
        
          // now try to read first field to discriminate V2 files
          input.reset();
          blockStream = new BlockInputStream( input, cipher );
          try {
             // read possible version ID field
-            raw = new PwsRawField( blockStream, Global.FILEVERSION_1 ); 
-            idText = raw.getString( "US-ASCII" );
+        	PwsRawField raw = new PwsRawField( blockStream, Global.FILEVERSION_1 ); 
+            String idText = raw.getString( "US-ASCII" );
          
             // look for V2 file version  
-            if ( idText.equals( V2_IDENTTEXT ) )
-            {
+            if ( idText.equals( V2_IDENTTEXT ) ) {
                throw new WrongFileVersionException();
             }
-         }
-         catch ( EOFException e )
-         {
+
+         } catch ( EOFException e ) {
             // nothing because we likely encountered an empty V1 file 
-         }
-         finally 
-         {
+
+         } finally {
             // need to reconstruct CBC cipher and blockstream after data reset
             cipher = makeFileCipher( passphrase );
             input.reset();
@@ -243,10 +234,11 @@ class PwsFileHeaderV1
    
    /**
     * Returns the input block stream that is valid to read the remainder of 
-    * the file (available only when reading constructor was used).
+    * the file. This is available only when the reading constructor was used
+    * and <code>verifyPass()</code> returned with success.
     * The stream is positioned to the first data element after the file header.
     * 
-    * @return BufferedInputStream
+    * @return <code>PwsBlockInputStream</code> or null
     */
    public PwsBlockInputStream getBlockStream ()
    {
@@ -258,30 +250,27 @@ class PwsFileHeaderV1
     *  cipher in CBC mode; it should be used only in one direction
     *  (encryption or decryption).
     * 
-    * @param passphrase
+    * @param passphrase <code>PwsPassphrase</code>
     * @return PwsCipher the file cipher
-    * 
-    * @throws NullPointerException if passphrase is undefined
-    * @throws IllegalStateException if the header is unprepared (not read from file)
+    * @throws NullPointerException if passphrase is null
+    * @throws IllegalStateException if the header is unprepared 
+    *         (not read from file)
     */
    private PwsCipher makeFileCipher ( PwsPassphrase passphrase )
    {
-      SHA1 sha = new SHA1();
-      PwsCipher cipher;
-      byte[] pass;
-
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
       if ( !isRead )
          throw new IllegalStateException("header not initialized");
       
-      pass = passphrase.getBytes( PwsFileFactory.DEFAULT_CHARSET );
+      SHA1 sha = new SHA1();
+      byte[] pass = passphrase.getBytes( PwsFileFactory.DEFAULT_CHARSET );
       sha.update( pass );
       Util.destroyBytes( pass );
       sha.update( salt );
       sha.finalize();
       
-      cipher = new BlowfishCipher( sha.getDigest(), ipThing );
+      PwsCipher cipher = new BlowfishCipher( sha.getDigest(), ipThing );
 //      Log.debug( 10, "(PwsFileHeaderV2.makeFileCipher) digest = " + Util.bytesToHex( sha.getDigest() ));
 //      Log.debug( 10, "(PwsFileHeaderV2.makeFileCipher) IP = " + Util.bytesToHex( ipThing ));
 
@@ -289,19 +278,19 @@ class PwsFileHeaderV1
       return cipher;
    }
 
-   /** Returns a cryptographic hash value for a given data block and a passphrase.
-    *  This follows a special procedure defined for PWS V1 files.
+   /** Returns a cryptographic hash value for a given data block and a 
+    * passphrase. This follows a special procedure defined for PWS V1 files.
     * 
+    *  @param passphrase PwsPassphrase access key 
+    *  @param randStuff byte[] random data block (min length 10)
     *  @return cryptographic hash value on the parameters
     */
    public static byte[] genRandHash ( PwsPassphrase passphrase, byte[] randStuff )
    {
-      PwsCipher ciph;
-      SHA1 sha = new SHA1();
       byte[] pass, rnd, tempSalt, buf;
-      int i;
       
       // create tempSalt as encryption key for randomStuff
+      SHA1 sha = new SHA1();
       pass = passphrase.getBytes( PwsFileFactory.DEFAULT_CHARSET );
       rnd = Util.arraycopy( randStuff, 10 );
       sha.update( rnd );
@@ -312,12 +301,13 @@ class PwsFileHeaderV1
       Log.debug( 10, "(PwsFileHeaderV2.genRandHash) digest = " + Util.bytesToHex( tempSalt ));
       
       // create RandHash
-      ciph = new BlowfishCipher( tempSalt );
+      PwsCipher ciph = new BlowfishCipher( tempSalt );
       rnd = Util.arraycopy( randStuff, 8 ); 
       Log.debug( 10, "(PwsFileHeaderV2.genRandHash) rnd = " + Util.bytesToHex( rnd ));
    
-      for ( i = 0; i < 1000; i++ )
+      for ( int i = 0; i < 1000; i++ ) {
          rnd = ciph.encrypt( rnd );
+      }
       Log.debug( 10, "(PwsFileHeaderV2.genRandHash) rnd encrypted = " + Util.bytesToHex( rnd ));
       
       buf = Util.arraycopy( rnd, 10 );

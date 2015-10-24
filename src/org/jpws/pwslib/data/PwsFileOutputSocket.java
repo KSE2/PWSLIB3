@@ -38,7 +38,7 @@ import org.jpws.pwslib.global.Util;
 
 
 /**
- *  PwsFileOutputSocket organises data output to a simple 
+ *  PwsFileOutputSocket organises data output to a single
  *  underlying data stream for the purposes of creating a persistent state
  *  of a PWS file. 
  *  This includes realization of different file format versions and
@@ -46,7 +46,6 @@ import org.jpws.pwslib.global.Util;
  *  creation of an encryption cipher and its application to a 
  *  block-segmented data stream. 
  *  
- *  @since 2-0-0
  *  @see org.jpws.pwslib.data.PwsBlockOutputStream
  *  @see org.jpws.pwslib.data.PwsFileOutputSocket.RawFieldWriter
  */
@@ -68,13 +67,12 @@ public class PwsFileOutputSocket
    /**
     * Interface defining a device designed to write objects of type {@link
     * PwsRawField} to an encrypted output stream. This writer organises
-    * the appropriate block stream of the cipher depending on previously defined
-    * file parameters.  
+    * the appropriate block stream of the cipher depending on previously 
+    * defined file parameters.  
     * 
     * <p>Closing the writer is possible to avoid further use, but does not
     * close the underlying data stream.
     * 
-    * @since 2-0-0
     */
    public interface RawFieldWriter 
    {
@@ -82,14 +80,17 @@ public class PwsFileOutputSocket
    /**
     * Closes this writer and flushes data. Does not close the underlying
     * output stream. 
-    *
     */
    public void close () throws IOException;
 
-   /** The blocksize of the underlying encryption cipher. */
+   /** The blocksize of the underlying encryption cipher. 
+    */
    public int getBlockSize ();
 
-   /** The file format version for which this writer was defined. */
+   /** The file format version for which this writer was defined. 
+    * 
+    * @return int format version
+    */
    public int getFormat ();
    
    
@@ -108,11 +109,11 @@ public class PwsFileOutputSocket
     */
    public int getCount ();
    
-   /** Returns the blockstream on which this writer operates.
-    * 
-    * @return <code>PwsBlockOutputStream</code>
-   public PwsBlockOutputStream getBlockStream ();
-    */
+//   /** Returns the blockstream on which this writer operates.
+//    * 
+//    * @return <code>PwsBlockOutputStream</code>
+//    */
+//   public PwsBlockOutputStream getBlockStream ();
    }  // interface RawFieldWriter
 
 
@@ -172,9 +173,8 @@ public PwsFileOutputSocket ( OutputStream output,
 }  // constructor
 
 /**
- * Destroys any sensible data in this object and renders it unusable.
+ * Destroys all sensible data in this object and renders it unusable.
  * (This can be called without prior call to <code>close()</code>.)
- *
  */
 public void destroy ()
 {
@@ -191,8 +191,9 @@ public void destroy ()
  */
 public void close ()  throws IOException
 {
-   if ( writer != null )
+   if ( writer != null ) {
       writer.close();
+   }
 
    destroy();
    Log.debug( 2, "(PwsFileOutputSocket) closing output blockstream, HMAC = " + 
@@ -201,9 +202,6 @@ public void close ()  throws IOException
 
 private void initOutput () throws IOException
 {
-   PwsFileHeaderV3 hd3;
-   String options;
-   
    // create file header
    Log.log( 5, "(PwsFileOutputSocket) initOutput, 0" );
    switch ( version )
@@ -213,12 +211,13 @@ private void initOutput () throws IOException
       break;
 
    case Global.FILEVERSION_2:
-      options = headerFields == null ? "" : headerFields.getStringValue( PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
+      String options = headerFields == null ? "" : headerFields.getStringValue(
+    		           PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
       cipher = new PwsFileHeaderV2().save( output, key, options );
       break;
       
    case Global.FILEVERSION_3:
-      hd3 = new PwsFileHeaderV3( headerFields );
+	   PwsFileHeaderV3 hd3 = new PwsFileHeaderV3( headerFields );
       Log.log( 5, "(PwsFileOutputSocket) initOutput, 1" );
       hd3.setIterations( iterations );
       Log.log( 5, "(PwsFileOutputSocket) initOutput, 2" );
@@ -227,7 +226,7 @@ private void initOutput () throws IOException
       hmac = hd3.getWriteHmac();
       break;
       
-   default: throw new IllegalArgumentException( "unknown file version" );   
+   default: throw new IllegalArgumentException( "unknown file format version: " + version );   
    }
 }  // initOutput
 
@@ -235,7 +234,7 @@ private void initOutput () throws IOException
  * Returns the file identifier UUID or <b>null</b> if it is not
  * available. (Available only for V3 files)
  * 
- * @return UUID file identifier value
+ * @return <code>UUID</code> file identifier value
  */
 public UUID getFileID ()
 {
@@ -245,21 +244,18 @@ public UUID getFileID ()
 /** The number of security iterations of key calculation
  * during file authentication or file-save.
  * 
- * @return number of calculation iterations
- * @since 2-1-0
+ * @return int number of calculation iterations
  */
 public int getIterations ()
 {
    return iterations;
 }
 
-/** Sets the number of security iterations of key calculation
+/** Sets the number of security loops of key calculation
  * occurring during file authentication or file-save.
- * The parameter value is corrected to comply 
- * with a minimum of 2048.  
+ * The parameter value is corrected to comply to a minimum of 2048.  
  * 
- * @param iterations number of calculation iterations
- * @since 2-1-0
+ * @param iterations int number of calculation loops
  */
 public void setIterations ( int iterations )
 {
@@ -272,6 +268,7 @@ public void setIterations ( int iterations )
  * PWS file in the output stream.  
  *  
  * @return <code>RawFieldWriter</code>
+ * @throws IOException
  */
 public RawFieldWriter getRawFieldWriter () throws IOException
 {
@@ -280,11 +277,12 @@ public RawFieldWriter getRawFieldWriter () throws IOException
 
 
 /**
- * Returns a data-block oriented output stream designed to realize the contents
+ * Returns a data-block oriented output stream designed to realise the contents
  * of a PWS data file to the underlying output stream. Calling this will 
  * initially create the header of the new PWS file in the output stream.  
  *  
  * @return <code>PwsBlockOutputStream</code>
+ * @throws IOException
  */
 public PwsBlockOutputStream getBlockOutputStream () throws IOException
 {
@@ -330,48 +328,51 @@ private class BlockWriter implements PwsBlockOutputStream, RawFieldWriter
       fileVersion = format;
    }
    
+   @Override
    public int getCount ()
    {
       return blockCount;
    }
 
+   @Override
    public int getFormat ()
    {
       return fileVersion;
    }
    
+   @Override
    public int getBlockSize ()
    {
       return blocksize;
    }
 
+   @Override
    public boolean isClosed ()
    {
       return out == null;
    }
    
+   @Override
    public void writeBlocks ( byte[] data, int offset, int length ) throws IOException
    {
       byte[] buf, buf2;
-      int blocks;
 
       if ( out == null )
          throw new IllegalStateException( "outputstream closed" );
       
       // prepare data (ensure correct block length)
-      blocks = length / blocksize;
-      if ( length - blocks * blocksize > 0 )
-      {
+      int blocks = length / blocksize;
+      if ( length - blocks * blocksize > 0 ) {
+    	 // "enrich" block space 
          blocks++;
          buf = Util.arraycopy( data, offset, blocks * blocksize );
          buf2 = cipher.encrypt( buf );
          hmac.update(buf);
          Util.destroyBytes(buf);
-      }
-      else
-      {
-          buf2 = cipher.encrypt( data, offset, length );
-          hmac.update(data, offset, length);
+      } else  {
+    	 // fitting block space 
+         buf2 = cipher.encrypt( data, offset, length );
+         hmac.update(data, offset, length);
       }
 
       // create and write encrypted data
@@ -379,6 +380,7 @@ private class BlockWriter implements PwsBlockOutputStream, RawFieldWriter
       blockCount += blocks;
    }
 
+   @Override
    public void writeBlocks ( byte[] data ) throws IOException
    {
       if ( out == null )
@@ -387,15 +389,16 @@ private class BlockWriter implements PwsBlockOutputStream, RawFieldWriter
       writeBlocks( data, 0, data.length );
    }
    
+   @Override
    public void writeRawField ( PwsRawField rawField ) throws IOException
    {
       rawField.writeEncrypted( out, cipher, fileVersion, hmac );
    }  
 
+   @Override
    public void close () throws IOException
    {
-      if ( fileVersion == Global.FILEVERSION_3 & out != null )
-      {
+      if ( fileVersion == Global.FILEVERSION_3 & out != null ) {
          // write V3 appendix
          out.write( Global.FIELDSTREAM_ENDBLOCK_V3 );
          out.write( hmac.digest() );
@@ -403,10 +406,10 @@ private class BlockWriter implements PwsBlockOutputStream, RawFieldWriter
       out = null;
    }
 
-   public PwsBlockOutputStream getBlockStream ()
-   {
-      return this;
-   }
+//   public PwsBlockOutputStream getBlockStream ()
+//   {
+//      return this;
+//   }
 }  // class BlockWriter
 
 }

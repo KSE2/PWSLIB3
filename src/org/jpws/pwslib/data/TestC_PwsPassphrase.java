@@ -37,10 +37,14 @@ import org.jpws.pwslib.global.Util;
 /**
  *  TestC_PwsPassphrase in org.jpws.pwslib.data
  */
-class TestC_PwsPassphrase extends TestCase
+public class TestC_PwsPassphrase extends TestCase
 {
    
-   
+   public TestC_PwsPassphrase () 
+   {
+	   
+   }
+	
 public void test_Construct_00 ()
 {
    PwsPassphrase pp;
