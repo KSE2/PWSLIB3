@@ -52,19 +52,6 @@ public class Log
    
    private static ArrayList<String> excludeList = new ArrayList<String>(); 
 
-   static {
-      excludeList.add( "(PwsRecord." );
-      excludeList.add( "(PwsRecord)" );
-      excludeList.add( "(CryptoRandom" );
-      excludeList.add( "(PwsFileFactory" );
-//      excludeList.add( "(PwsRecList" );
-//      excludeList.add( "(MenuHandler" );
-      excludeList.add( "(DisplayManager" );
-      excludeList.add( "(ButtonBarDialog" );
-      excludeList.add( "(DialogButtonBar" );
-      excludeList.add( "(PwsFile." );
-      excludeList.add( "(PwsFile)" );
-   }
 /**
  * 
  */
@@ -131,6 +118,18 @@ public static void error ( int level, String str ) {
    error( level, (Object)str );
 }
 
+/** Defines a list of strings as exclude criteria for logging events.
+ * A logging event is suppressed if its message contains one of the exclude
+ * list elements.
+ *  
+ * @param arr String[] array of exclude criteria
+ */
+public static void setExcludeList ( String[] arr ) {
+	excludeList.clear();
+	for ( String hstr : arr ) {
+		excludeList.add(hstr);
+	}
+}
 
 private static boolean excluded ( String msg ) {
    for ( String token : excludeList ) {

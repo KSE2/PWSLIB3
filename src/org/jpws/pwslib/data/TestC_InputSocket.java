@@ -190,10 +190,10 @@ public void test_OpenAttempt ()
          si = new  PwsFileInputSocket( input );
    
          ok = si.attemptOpen( new PwsPassphrase() );
-         assertFalse( "socket open fails on wrong password, 1", ok );
+         assertFalse( "socket open fails on wrong password", ok );
          
          ok = si.attemptOpen( new PwsPassphrase( "Hound of Baskerville" ) );
-         assertFalse( "socket open fails on wrong password, 1a", ok );
+         assertFalse( "socket open fails on wrong password", ok );
          
          ok = si.attemptOpen( new PwsPassphrase( "abc" ) );
          assertTrue( "socket open succeeds on good password, 1", ok );

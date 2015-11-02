@@ -30,6 +30,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
 import org.jpws.pwslib.crypto.BlowfishCipher;
@@ -91,10 +92,9 @@ class PwsFileHeaderV1
 	 * @throws IOException  if an error occurs during reading
 	 * @throws NullPointerException if parameter is <b>null</b>
 	 */
-	public PwsFileHeaderV1( BufferedInputStream input )  throws IOException
+	public PwsFileHeaderV1( InputStream input )  throws IOException
 	{
-       this.input = input instanceof BufferedInputStream ?
-    		        (BufferedInputStream)input : new BufferedInputStream(input);
+       this.input = new BufferedInputStream(input);
        DataInputStream in = new DataInputStream( input );
 
        // read the core header values

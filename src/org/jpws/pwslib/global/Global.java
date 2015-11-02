@@ -142,7 +142,7 @@ public static void setStandardApplication ( ApplicationAdapter adp )
    
    String hstr = haveApplications ? "Standard Application: " + adp.getName() 
           : "Standard Application cleared";
-   Log.log( 1, "(Global) " + hstr );
+   Log.log( 1, "(PWSLIB) " + hstr );
 }
 
 /** The currently active standard application adapter (IO-context) of this 
@@ -232,7 +232,7 @@ public static void init ()
 		  standardCipher = new BlowfishCipher();
 	  }
       isInitialized = true;
-      Log.log( 1, "(Global) Global initialized");
+      Log.log( 1, LIBRARY_IDENT.concat(" initialized"));
    }
 }
 
@@ -246,10 +246,10 @@ private static boolean securityTest ()
    ok3 = TwofishCipher.self_test();
    ok = ok1 & ok2 & ok3 & ok4;
    
-   Log.debug( 1, "SHA1 Test : " + ok1 );
-   Log.debug( 1, "SHA256 Test : " + ok4 );
-   Log.debug( 1, "Blowfish Test : " + ok2 );
-   Log.debug( 1, "Twofish Test : " + ok3 );
+   Log.debug( 6, "SHA1 Test : " + ok1 );
+   Log.debug( 6, "SHA256 Test : " + ok4 );
+   Log.debug( 6, "Blowfish Test : " + ok2 );
+   Log.debug( 6, "Twofish Test : " + ok3 );
 
    String text = ok ? "PWSLIB selftest passed" :
 	   "** PWSLIB encryption module corruption!! **\r\n** Do not use this library!! **";
@@ -268,8 +268,8 @@ private Global ()
  */   
 public static void main ( String[] args )
 {
-   Log.setLogLevel(1);
-   Log.log(0, getProgramName());
+   Log.setLogLevel(10);
+//   Log.log(0, getProgramName());
    Log.log(0, "Default Charset: ".concat(getDefaultCharset()));
    Log.log(0, "Standard Cipher: ".concat(getStandardCipher().getName()));
    Dimension ver = getImplicitFileVersion();

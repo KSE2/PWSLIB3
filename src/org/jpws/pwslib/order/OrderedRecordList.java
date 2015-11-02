@@ -30,8 +30,7 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Locale;
-
-import javax.swing.ListModel;
+import java.util.TreeMap;
 
 import org.jpws.pwslib.data.PwsFile;
 import org.jpws.pwslib.data.PwsFileEvent;
@@ -65,6 +64,12 @@ import org.jpws.pwslib.data.PwsRecordList;
  *  list - it listens to modifications of this database and aligns the elements 
  *  of this list accordingly. This design allows to update even complex display 
  *  component arrangements by simply modifying the underlying record database. 
+ *  
+ *  <p>A facility for list filtering is available. The user has to set up a
+ *  class to implement the <code>RecordSelector</code> interface where 
+ *  acceptance of records is defined.The selector is activated through method
+ *  <code>setRecordSelector()</code>; for each new selection criterion <code>
+ *  reload()</code> must be called to recreate the list content. 
  * 
  */
 public class OrderedRecordList implements PwsFileListener
@@ -75,10 +80,19 @@ public class OrderedRecordList implements PwsFileListener
    /** The PWS record database to which this ordered list is related. */ 
    protected PwsRecordList loadedDbf;
    
-   /** The <code>java.util.List</code> holding <code>DefaultRecordWrapper</code>
-    * objects representing the content of <code>loadedDbf</code> in sorted order.
+   /** Index capable structure holding <code>DefaultRecordWrapper</code>
+    * objects representing the currently filtered content of this record list 
+    * in a sorted order.
     */ 
    protected ArrayList<DefaultRecordWrapper> list = new ArrayList<DefaultRecordWrapper>();
+   
+   /** Map structure to hold <code>DefaultRecordWrapper</code> objects
+    *  representing the content of this record list in a sorted order.
+    */ 
+   protected TreeMap<DefaultRecordWrapper, Object> sortMap 
+                                  = new TreeMap<DefaultRecordWrapper, Object>();
+   
+   protected RecordSelector selector;
    
    private Locale locale = Locale.getDefault();
    private ArrayList<OrderedListListener> listeners = new ArrayList<OrderedListListener>();
@@ -149,16 +163,17 @@ public OrderedRecordList ( PwsRecordList f, Locale locale )
  *  @param rec record to be evaluated
  *  @throws IllegalArgumentException ("unrelated record") if bondage violation
  */
-protected void verifyBondage ( PwsRecord rec )
+protected void verifyBondage ( DefaultRecordWrapper wrap )
 {
+   PwsRecord rec = wrap.getRecord();	
    if ( boundDbf != null && !boundDbf.contains( rec ) )
-      throw new IllegalArgumentException( "unrelated record" );
+      throw new IllegalArgumentException( "unrelated record: ".concat(rec.toString()) );
 }
 
 /** Inserts an element into this list. If this list is bound to a
  *  <code>PwsRecordList</code> object, the record must be an element of it. 
  *  <p>WARNING!! Applying this when this list has bondage may lead to 
- *  de-synchronization of list and database. This method does not insert a 
+ *  de-synchronisation of list and database. This method does not insert a 
  *  record into the database!
  * 
  *  @param record DefaultRecordWrapper record to be inserted
@@ -167,17 +182,21 @@ protected void verifyBondage ( PwsRecord rec )
 public void insertItem ( DefaultRecordWrapper record )
 {
    DefaultRecordWrapper wrap = record;
-   verifyBondage( wrap.getRecord() );
-   insertRecordIntern( wrap );
-   fireOrderedListEvent( OrderedListEvent.ITEM_ADDED, wrap.getIndex(), wrap );
+   verifyBondage( wrap );
+   sortMap.put(wrap, null);
+   
+   if ( acceptEntry( wrap ) ) {
+	   insertRecordIndex( wrap );
+	   fireOrderedListEvent( OrderedListEvent.ITEM_ADDED, wrap.getIndex(), wrap );
+   }
 }
 
-/** Inserts a record representation into the sorted list without verifying 
- *  file bondage and without issuing <code>OrderedListEvent</code>.
+/** Inserts a record representation into the sorted and filtered index without 
+ *  without issuing <code>OrderedListEvent</code>. This does not verify bondage.
  * 
- *  @param wrap record representation object
+ *  @param wrap <code>DefaultRecordWrapper</code> record representation
  */  
-protected void insertRecordIntern ( DefaultRecordWrapper wrap )
+protected void insertRecordIndex ( DefaultRecordWrapper wrap )
 {
    int index = list.size();
    for ( int i = 0; i < list.size(); i++ ) {
@@ -202,8 +221,8 @@ protected void insertRecordIntern ( DefaultRecordWrapper wrap )
  *  content change events.
  * 
  *  @param rlist database to be loaded
- *  @param expireScope time span in milliseconds for expire-soon status of 
- *         records; 0 for ignore
+ *  @param expireScope time period in milliseconds for expire-soon status of 
+ *         record wrappers; 0 for ignore
  * 
  *  @throws IllegalArgumentException if the parameter does not fit the bound dbf
  */   
@@ -214,14 +233,42 @@ public void loadDatabase ( PwsRecordList rlist, long expireScope )
       throw new IllegalArgumentException( "unrelated database: " + 
             ((PwsFile)rlist).getFilePath() );
    
+   // update references
    loadedDbf = rlist;
    this.expireScope = expireScope;
    rlist.addFileListener( this );
-   clearIntern();
+   
+   // clear all content and rebuild from parameter record list (sorted map)
+   sortMap.clear();
    for ( Iterator<PwsRecord> it = rlist.iterator(); it.hasNext(); ) {
 	  DefaultRecordWrapper wrap = makeRecordWrapper( it.next(), locale );
-      insertRecordIntern( wrap ); 
+	  sortMap.put(wrap, null);
    }
+
+   // use sorted map to create filtered index + issue "reloaded" or "cleared" event
+   refresh();
+}
+
+/** Recreates the list index according to current filter settings.
+ */
+protected void reindex () {
+   list.clear();
+   for ( Iterator<DefaultRecordWrapper> it = sortMap.keySet().iterator(); it.hasNext();) {
+	   DefaultRecordWrapper wrap = it.next();
+	   if ( acceptEntry( wrap ) ) {
+		   list.add(wrap); 
+	   }
+	}
+}
+
+/** Refreshes the list index according to current filter settings. This issues
+ * an <code>OrderedListEvent</code>.
+ * <p>This has to be performed when a filtering agent has been modified
+ * which was added by the user through  <code>setRecordSelector()</code>.
+ */
+public void refresh () {
+   reindex();
+	   
    // issue either LIST_CLEARED or LIST_RELOADED depending on resulting list size
    int evt = size() == 0 ? OrderedListEvent.LIST_CLEARED : OrderedListEvent.LIST_RELOADED;
    fireOrderedListEvent( evt, -1, null );
@@ -231,13 +278,27 @@ public void loadDatabase ( PwsRecordList rlist, long expireScope )
  * Reloads (resorts) the content of the record list (which was last loaded
  * by use of <code>loadDatabase()</code>. This is an expensive operation 
  * and will cause a LIST_RELOADED event. Does nothing if there was no list
- * loaded.
+ * loaded. 
  */
 public void reload ()
 {
    if ( loadedDbf != null ) {
       loadDatabase( loadedDbf, expireScope );
    }
+}
+
+/** Performs the filtering criterion for this list based on a 
+ *  <code>PwsRecord</code> value. In <code>OrderedRecordList</code> this refers 
+ *  to a <code>RecordSelector</code> which can be supplied by the user through 
+ *  <code>setRecordSelector()</code>. By overriding this method in a subclass, 
+ *  the user could organise a filter criterion in an alternate way. 
+ * 
+ *  @param rec <code>DefaultRecordWrapper</code> a entry candidate for this list
+ *  @return <b>true</b> if this candidate has to be included into this list 
+ */
+protected boolean acceptEntry ( DefaultRecordWrapper rec ) 
+{
+	return selector == null || selector.acceptEntry(rec);
 }
 
 /** The default function used by this class to create wrappers for records. 
@@ -277,11 +338,13 @@ public DefaultRecordWrapper getItemAt ( int index )
 }
 
 /**
- * Returns the set of records that belong to the specified GROUP value.
- * (returns original listed wrapper objects.)
+ * Returns the subset of records from the index which belong to the specified 
+ * GROUP value.
  *  
- * @param group selective group value; if <b>null</b> an empty array is returned
- * @param exact whether select value must be a complete existing group name
+ * @param group String selective group value; if <b>null</b> an empty array 
+ *        is returned
+ * @param exact boolean whether select value must be a complete existing 
+ *        group name
  * @return array of <code>DefaultRecordWrapper</code>
  */
 public DefaultRecordWrapper[] getGroup ( String group, boolean exact )
@@ -320,7 +383,7 @@ public final Locale getLocale ()
 /** Returns the index position of the parameter record in this list.
  * 
  *  @param rec the <code>PwsRecord</code> to be searched
- *  @return index position or -1 of the record is unknown
+ *  @return index position or -1 if the record is unknown
  */ 
 public int indexOf ( PwsRecord rec )
 {
@@ -329,9 +392,9 @@ public int indexOf ( PwsRecord rec )
 
 /** Returns the index position of the parameter record in this list.
  * 
- *  @param rec the record to be searched, represented by 
- *         <code>DefaultRecordWrapper</code>
- *  @return index position or -1 of the record is unknown
+ *  @param rec <code>DefaultRecordWrapper</code> the record to be searched;
+ *         may be null
+ *  @return index position or -1 if the record is unknown
  */ 
 public int indexOf ( DefaultRecordWrapper rec )
 {
@@ -341,31 +404,53 @@ public int indexOf ( DefaultRecordWrapper rec )
 /** Removes the element at a specified index position from this list.
  *  Does nothing if index is out of range.
  *  <p>WARNING!! Applying this method when this list has bondage may lead to 
- *  de-synchronization of list and database. This method does not remove a 
- *  record from the database.
+ *  de-synchronisation of list and database. This method does not remove a 
+ *  record from the database!
  */
 public void removeItem ( int index )
 {
    if ( index > -1 && index < list.size() ) {
-	  DefaultRecordWrapper item = (DefaultRecordWrapper)list.get( index );
+	  DefaultRecordWrapper item = list.get( index );
       list.remove( index );
+      sortMap.remove(item);
       fireOrderedListEvent( OrderedListEvent.ITEM_REMOVED, index, item );
    }
 }
 
-/** Removes all elements from this list. */
+/** Removes the specified record representation from this list.
+ *  <p>WARNING!! Applying this method when this list has bondage may lead to 
+ *  de-synchronisation of list and database. This method does not remove a 
+ *  record from the database!
+ * 
+ * @param wrap <code>DefaultRecordWrapper</code> record to remove; may be null
+ */
+public void removeItem ( DefaultRecordWrapper wrap ) 
+{
+   int index = indexOf( wrap );
+   if ( index > -1 ) {
+	   removeItem( index );
+   } else {
+	   sortMap.remove( wrap );
+   }
+}
+
+/** Removes all elements from this list. 
+ */
 public void clear ()
 {
+   sortMap.clear();	
    if ( size() > 0 ) {
-      clearIntern();
+      list.clear();
       fireOrderedListEvent( OrderedListEvent.LIST_CLEARED, -1, null );
    }
 }
 
-/** Removes all elements from this list without issuing a list event. */
+/** Removes all elements from this list without issuing a list event. 
+ */
 protected void clearIntern ()
 {
    list.clear();
+   sortMap.clear();
 }
 
 /** Sets the time scope for which level EXPIRE_SOON of wrapper records EXPIRY 
@@ -376,12 +461,24 @@ protected void clearIntern ()
  */
 public void setExpireScope ( long time )
 {
-   if ( size() > 0 ) {
-      for ( Iterator<DefaultRecordWrapper> it = list.iterator(); it.hasNext(); ) {
+   if ( sortMap.size() > 0 ) {
+      for ( Iterator<DefaultRecordWrapper> it = sortMap.keySet().iterator(); it.hasNext(); ) {
          it.next().refreshExpiry( time );
       }
       fireOrderedListEvent( OrderedListEvent.LIST_RELOADED, -1, null );
    }
+}
+
+/** Sets the record selector to be active as filter criterion for this
+ * ordered record list. By default this value is <b>null</b> and permits all
+ * records. <code>refresh()</code> or <code>reload()</code> has to 
+ * be performed on this list when the filter criterion was modified.
+ * 
+ * @param selector <code>RecordSelector</code>, may be null
+ */
+public void setRecordSelector ( RecordSelector selector )
+{
+	this.selector = selector; 
 }
 
 /** Adds a listener to the <code>OrderedListEvent</code>s that this list
@@ -483,4 +580,16 @@ public void printout ( PrintStream out )
          clear();
       }
    }
+   
+   // --------- INNER CLASSES ----------
+   
+public static interface RecordSelector {
+	
+  /** Performs the filtering criterion for accepting a record into a list. 
+   * 
+   *  @param rec <code>DefaultRecordWrapper</code> candidate record
+   *  @return <b>true</b> if this candidate is to be included into this list 
+   */
+   public boolean acceptEntry ( DefaultRecordWrapper rec ); 
+}
 }

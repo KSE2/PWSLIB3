@@ -6,7 +6,7 @@
  *  Created 07.08.2005
  *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
  This program is not freeware software but copyright protected to the author(s)
  stated above. However, you can use, redistribute and/or modify it under the terms 

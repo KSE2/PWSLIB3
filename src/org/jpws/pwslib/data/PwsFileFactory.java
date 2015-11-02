@@ -61,7 +61,7 @@ import org.jpws.pwslib.persist.StreamFactory;
  * the default version number 0 or the default methods without version 
  * reference.
  * 
- * <p>The file format undergoes minor enhancements through time, which consist
+ * <p>The file format undergoes minor enhancements over time, which consist
  * mostly in added data fields and are reflected by the "minor" file format 
  * number. Backward compatibility is always sought. The
  * PWS database format additionally seeks forward compatibility by asking 
@@ -94,8 +94,6 @@ import org.jpws.pwslib.persist.StreamFactory;
  * @see HeaderFieldList
  * @see org.jpws.pwslib.persist.ApplicationAdapter
  * @see PwsPassphrase
- * 
- * @author Wolfgang Keller
  */
 public final class PwsFileFactory
 {
@@ -239,8 +237,8 @@ public final class PwsFileFactory
      * persistent state is of a different format.)
      * 
      * @param file <code>ContextFile</code> the file in an application context   
-     * @param passphrase the user passphrase for the file
-     * @param format the file format version (values of <code>Global</code>),
+     * @param passphrase <code>PwsPassphrase</code> the user passphrase 
+     * @param format int the file format version (values of <code>Global</code>),
      *        0 for a generic open request (any version)
      * 
      * @return the opened, fully operable <code>PwsFile</code> object 
@@ -251,7 +249,7 @@ public final class PwsFileFactory
      *         access was denied
      * @throws InvalidPassphraseException
      * @throws WrongFileVersionException if a specific format was requested
-     *         and not found to match the file
+     *         and not found to match that of the file
      * @throws UnsupportedFileVersionException if the requested format is unknown
      * @throws ApplicationFailureException if the specified IO-context does not
      *         render an input stream
@@ -279,18 +277,15 @@ public final class PwsFileFactory
      * <code>ContextFile</code> parameter. 
      * 
      * @param file <code>ContextFile</code> the file in an application context   
-     * @param passphrase the user passphrase for the file
-     * 
-     * @return the opened, fully operable <code>PwsFile</code> object 
-     *
+     * @param passphrase <code>PwsPassphrase</code> the user passphrase 
+     * @return <code>PwsFile</code> open, fully operable  PWS file 
      * @throws NullPointerException if any param is undefined 
      * @throws FileNotFoundException if the specified file was not found or
      *         access was denied
-     * @throws InvalidPassphraseException if file could not be opened with passphrase
+     * @throws InvalidPassphraseException 
      * @throws ApplicationFailureException if the specified IO-context does not
      *         render an input stream
      * @throws IOException if an IO-error occurred
-     * @since 2-1-0
      */
    public static final PwsFile loadFile(
           ContextFile file,
@@ -305,14 +300,12 @@ public final class PwsFileFactory
  * (If a format other than 0 is specified, loading will fail if the referred
  * pesistent state is of a different format.)
  * 
- * @param application the IO-context of the file   
- * @param filepath   the pathname of the file to open
- * @param passphrase the user passphrase for the file
- * @param format the file format version (values of <code>Global</code>),
+ * @param application <code>ApplicationAdapter</code> the IO-context of the file   
+ * @param filepath <code>String</code> the pathname of the file to open
+ * @param passphrase <code>PwsPassphrase</code> the user passphrase
+ * @param format int the file format version (values of <code>Global</code>),
  *        0 for a generic open request (any version)
- * 
- * @return the opened, fully operable <code>PwsFile</code> object 
- *
+ * @return <code>PwsFile</code> open, fully operable  PWS file 
  * @throws NullPointerException if any param is undefined 
  * @throws IllegalArgumentException if filepath is empty 
  * @throws FileNotFoundException if the specified file was not found or
@@ -348,15 +341,13 @@ throws IOException, PasswordSafeException
     * Loads a PWS file of a specific format from a user input stream.
     * Note that persistent state definition is void in returned object.
     * (If a format other than 0 is specified, loading will fail if the 
-    * pesistent state is of a different format.)
+    * persistent state is of a different format.)
 	* 
-	* @param in InputStream containing persistent state of the file    
-	* @param passphrase the user passphrase for the file
-    * @param format the file format version (values of <code>Global</code>),
+	* @param in <code>InputStream</code> containing persistent state of the file    
+	* @param passphrase <code>PwsPassphrase</code> the user passphrase
+    * @param format int the file format version (values of <code>Global</code>),
     *        0 for a generic open request (any version)
-	* 
-    * @return the opened, fully operable <code>PwsFile</code> object 
-	*
+    * @return <code>PwsFile</code> open, fully operable PWS file 
     * @throws NullPointerException if any param is undefined 
     * @throws InvalidPassphraseException
     * @throws WrongFileVersionException if a specific format was requested
@@ -405,7 +396,7 @@ throws IOException, PasswordSafeException
          Log.debug( 10, "LOADFILE, resulting PWS file format: " + file.getSourceFormat() );
          
          // determine active charset
-         charset = (version == Global.FILEVERSION_3 | options.indexOf( "B 24 1" ) > -1)  ? 
+         charset = (version == Global.FILEVERSION_3 || options.indexOf( "B 24 1" ) > -1)  ? 
                    UTF_CHARSET : DEFAULT_CHARSET;
          Log.debug( 10, "LOADFILE, PWS file charset: " + charset );
       
@@ -452,15 +443,20 @@ throws IOException, PasswordSafeException
    
    
 
-   /** Attempts to read the remainder of the file as records in the V2 or V3 blend.
+   /** Attempts to read the remainder of the file as records in the V2 or V3 
+    *  format.
     *  This algorithm tolerates the occurrence of unknown field types as well as
     *  missing fields. The only requirement for a read record is the presence
     *  of a record ENDBLOCK and the uniqueness of the Record-ID, if present. 
-    *  Missing or not qualifying UUIDs (Record-IDs) are replaced by newly generated.
-    *  Double records are silently ignored, but an error log is written to the 
-    *  LOG.err device and the file is marked for conservation as ".old" store 
-    *  version.
-    *     
+    *  Missing or not qualifying UUIDs (Record-IDs) are replaced by newly 
+    *  generated. Double records are silently ignored, but an error log is 
+    *  written to the LOG.err device and the file is marked for conservation as 
+    *  ".old" store version.
+    *  
+    *  @param file <code>PwsFile</code> record storage
+    *  @param reader <code>PwsRawFieldReader</code> field stream (input Stream)
+    *  @param charset String character set used to read text
+    *  @param version int file format version
     *  @throws IOException
     */
    private static void readRecordsV23 ( PwsFile file, PwsRawFieldReader reader, 
@@ -506,7 +502,7 @@ throws IOException, PasswordSafeException
                   }
                   try {
                      rec.setPassPolicy( intermediatePolicy );
-                     if ( Log.getDebugLevel() >= 9 )
+                     if ( Log.getDebugLevel() > 8 )
                         Log.debug( 9, "(PwsFileFactory.readRecordsV2) - adding intermediate POLICY to record " + rec );
                   } catch ( InvalidPassphrasePolicy e ) {
                      System.err.println( "(PwsFileFactory.readRecordsV2) *** invalid intermediate passphrase policy! " + rec );
@@ -596,7 +592,7 @@ throws IOException, PasswordSafeException
             if ( intermediatePolicy == null ) {
                data = raw.getData();
                intermediatePolicy = new PwsPassphrasePolicy(Util.readIntLittle( data, 0 ));
-               if ( Log.getDebugLevel() >= 9 )
+               if ( Log.getDebugLevel() > 8 )
                   Log.debug( 9, "(PwsFileFactory.readRecordsV2) - receiving OLD POLICY for record " + rec );
             }
             break;
@@ -604,14 +600,14 @@ throws IOException, PasswordSafeException
          case MODERN_POLICYTYPE:
             hstr = raw.getString( charset );
             intermediatePolicy = new PwsPassphrasePolicy( hstr );
-            if ( Log.getDebugLevel() >= 9 )
+            if ( Log.getDebugLevel() > 8 )
                Log.debug( 9, "(PwsFileFactory.readRecordsV2) - receiving MODERN POLICY for record " + rec );
             break;
             
          case OWNSYMBOLSTYPE:
             hstr = raw.getString( charset );
             symbols = hstr.toCharArray();
-            if ( Log.getDebugLevel() >= 9 )
+            if ( Log.getDebugLevel() > 8 )
                Log.debug( 9, "(PwsFileFactory.readRecordsV2) - receiving OWN SYMBOLS for POLICY: " + 
                           new String( symbols ) + ", record = " + rec );
             break;
@@ -676,6 +672,12 @@ throws IOException, PasswordSafeException
       } // while loop
    }  // readRecordsV23
    
+   /** Reads a <code>KeyStroke</code> from a chunk of file record data.
+    * The key-stroke is defined along key-code and modifiers values.
+    * 
+    * @param data byte[] buffer containing key info
+    * @return <code>KeyStroke</code> 
+    */
    private static KeyStroke readKeyStroke ( byte[] data ) {
   	 int code = data[0];
   	 int mods = 0;
@@ -689,16 +691,16 @@ throws IOException, PasswordSafeException
   	 return ks;
    }
    
-   /** Attempts to read the remainder of the file as records in the V1 blend.
+   /** Attempts to read the remainder of the file as records in the V1 format.
     *  This algorithm expects a fixed implicit pattern of fields for each record,
     *  as it is typical for the V1 format.
     * 
-    * @param file PwsFile, the target PwsFile
-    * @param reader RawFieldReader, the reader object functioning as data source
+    * @param file <code>PwsFile</code> the target file
+    * @param reader <code>RawFieldReader</code> the reader object functioning 
+    *        as data source
     * @throws IOException
     */
-   private static void readRecordsV1 ( PwsFile file, 
-                                       PwsRawFieldReader reader )
+   private static void readRecordsV1 ( PwsFile file, PwsRawFieldReader reader )
    {
       PwsRecord     rec;
       PwsPassphrase passphrase;
@@ -762,20 +764,22 @@ throws IOException, PasswordSafeException
       }
    }  // readRecordsV1
    
-   /** Creates an empty PWS file of the latest format at the given context file
-    * destination. The user's file access key is passed in through a 
-    * <code>PwsPassphrase</code>.
-    * <p><small>If the file exists prior to writing, overwriting only occurs 
-    * after an intermediary copy of the output has been created successfully. 
-    * This safety copy has the ending ".temp" trailing the parameter filepath.
-    * </small>
+   /** Creates an empty PWS file of the latest format at the destination given 
+    * by the context file. The proper <code>PwsPassphrase</code> to decrypt the
+    * file has to be specified.
+    * <p><small>Security: If the file exists prior to writing, overwriting only 
+    * occurs after an intermediary copy of the output has been created 
+    * successfully. This safety copy has the ending ".temp" trailing the 
+    * parameter filepath. Upon regular termination the temp-file is removed.
+    * It remains existent if the regular named file cannot be realised.</small>
     *  
-    * @param file <code>ContextFile</code> the target file in an application context   
-    * @param passphrase the user's file access key (secret key)
-    * @param iterations number of security key calculation iterations
-    * @return UUID the file identifier value of the saved file or <b>null</b> if unavailable
-    * @throws NullPointerException if any essential parameter is not defined
-    * @throws IllegalArgumentException if <code>file</code> is empty
+    * @param file <code>ContextFile</code> the target file 
+    * @param passphrase <code>PwsPassphrase</code> the user's file access key 
+    * @param iterations int number of security key calculation loops
+    *        (this is meant to slow guessing attacks); a minimum is assumed
+    * @return <code>UUID</code> file identifier value of the saved file 
+    *         or <b>null</b> if unavailable
+    * @throws NullPointerException if any parameter is not defined
     * @throws ApplicationFailureException if the specified IO-context does not
     *         render an output stream
     * @throws IOException if an IO error occurs
@@ -796,18 +800,22 @@ throws IOException, PasswordSafeException
  *  The user's file access key is passed in through a <code>PwsPassphrase</code>.
  *  <p>If the file exists prior to writing, overwriting only occurs after an
  *  intermediary copy of the output has been created successfully. (This 
- *  safety copy has the ending ".temp" trailing the parameter filepath.)
+ *  safety copy has the ending ".temp" trailing the parameter filepath. Upon 
+ *  regular termination the temp-file is removed. It remains existent if the 
+ *  regular named file cannot be realised.)
  *  
- * @param records Iterator with element type <code>PwsRecord</code> or <b>null</b>
+ * @param records <code>Iterator&lt;PwsRecord&gt;</code> or <b>null</b>
  *        for empty database
- * @param filepath the target file path valid in the standard IO-context
+ * @param filepath String target file path valid in the standard IO-context
  *        (by default the local file system)
- * @param pass the user's file access passphrase (secret key)
- * @param headerFields header field list to be included in the file or <b>null</b>
- * @param iterations number of security key calculation iterations
- * @param format the file format version (values of <code>Global</code>)
+ * @param pass <code>PwsPassphrase</code> file access passphrase
+ * @param headerFields <code>HeaderFieldList</code> field list to be 
+ *        included as header in the file or <b>null</b>
+ * @param iterations int number of security key calculation loops
+ * @param format int file format version (values of <code>Global</code>)
  *        (0 defaults to latest version)
- * @return UUID the file identifier value of the saved file or <b>null</b> if unavailable
+ * @return <code>UUID</code> file identifier value of the saved file 
+ *         or <b>null</b> if unavailable
  * @throws NullPointerException if any essential parameter is not defined
  * @throws IllegalArgumentException if <code>filepath</code> is empty
  * @throws ApplicationFailureException if the IO-context does not
@@ -826,25 +834,27 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
 }
 
 /** Creates a persistent state of a PWS file of a specified format version 
-  *  from a record list defined through an iterator whose elements are of type <code>PwsRecord</code>.
-  *  The destination of the file is determined by an <code>ApplicationAdapter</code> 
-  *  and a filepath. The user's file access key is passed in through a <code>PwsPassphrase</code>.
-  *  <p>If the file exists prior to writing, overwriting only occurs after an
-  *  intermediary copy of the output has been created successfully. (This 
-  *  safety copy has the ending ".temp" trailing the parameter filepath.)
+  *  from a record list defined through an iterator whose elements are of type 
+  *  <code>PwsRecord</code>. The destination of the file is determined by 
+  *  <code>ApplicationAdapter</code> and a filepath. 
+ *  <p>If the file exists prior to writing, overwriting only occurs after an
+ *  intermediary copy of the output has been created successfully. (This 
+ *  safety copy has the ending ".temp" trailing the parameter filepath. Upon 
+ *  regular termination the temp-file is removed. It remains existent if the 
+ *  regular named file cannot be realised.)
   *  
-  * @param records Iterator with element type <code>PwsRecord</code> or <b>null</b>
+  * @param records <code>Iterator&lt;PwsRecord&gt;</code> or <b>null</b>
   *        for empty database
-  * @param app the <code>ApplicationAdapter</code> IO-context
-  * @param filepath the target file path valid in IO-context
-  * @param passphrase the user's file access key (secret key)
-  * @param headerFields header field list to be included in the file or <b>null</b>
-  * @param iterations number of security key calculation iterations
-  * @param format the file format version (values of <code>Global</code>)
+  * @param app <code>ApplicationAdapter</code> IO-context
+  * @param filepath String the target file path valid in IO-context
+  * @param passphrase <code>PwsPassphrase</code> user's file access key
+  * @param headerFields <code>HeaderFieldList</code> header field list to be 
+  *        included in the file or <b>null</b>
+  * @param iterations int number of security key calculation loops
+  * @param format int file format version (values of <code>Global</code>)
   *        (0 defaults to latest version)
-  * 
-  * @return UUID the file identifier value of the saved file or <b>null</b> if unavailable
-  * 
+  * @return <code>UUID</code> file identifier value of the saved file 
+  *         or <b>null</b> if unavailable
   * @throws NullPointerException if any essential parameter is not defined
   * @throws IllegalArgumentException if <code>filepath</code> is empty
   * @throws ApplicationFailureException if the specified IO-context does not
@@ -865,23 +875,27 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
    }  // saveFile
 
 /** Creates a persistent state of a PWS file of a specified format version 
-    *  from a record list defined through an iterator whose elements are of type <code>PwsRecord</code>.
-    *  The destination of the file is determined by a <code>ContextFile</code> 
-    *  parameter. The user's file access key is passed in through a <code>PwsPassphrase</code>.
+    *  from a record list defined through an iterator of element type 
+    *  <code>PwsRecord</code>. The destination of the file is determined by a 
+    *  <code>ContextFile</code> parameter. The user's file access key is given
+    *  by a <code>PwsPassphrase</code>.
     *  <p>If the file exists prior to writing, overwriting only occurs after an
-    *  intermediary copy of the output has been created successfully. (This 
-    *  safety copy has the ending ".temp" trailing the parameter filepath.)
+ 	*  intermediary copy of the output has been created successfully. (This 
+ 	*  safety copy has the ending ".temp" trailing the parameter filepath. Upon 
+ 	*  regular termination the temp-file is removed. It remains existent if the 
+ 	*  regular named file cannot be realised.)
     *  
-    * @param records Iterator with element type <code>PwsRecord</code> or <b>null</b>
+    * @param records <code>Iterator&lt;PwsRecord&gt;</code> or <b>null</b>
     *        for empty database
-    * @param file <code>ContextFile</code> the target file in an application context   
-    * @param passphrase the user's file access key (secret key)
-    * @param headerFields header field list to be included in the file or <b>null</b>
-    * @param iterations number of security key calculation iterations
-    * @param format the file format version (values of <code>Global</code>)
+    * @param file <code>ContextFile</code> the target file in an IO-context   
+    * @param passphrase <code>PwsPassphrase</code> file access key
+    * @param headerFields <code>HeaderFieldList</code> header field list to be 
+    *        included in the file or <b>null</b>
+    * @param iterations int number of security key calculation loops
+    * @param format int file format version (values of <code>Global</code>)
     *        (0 defaults to latest version)
-    * @return UUID the file identifier value of the saved file or <b>null</b> if unavailable
-    * 
+    * @return <code>UUID</code> file identifier value of the saved file 
+    *         or <b>null</b> if unavailable
     * @throws NullPointerException if any essential parameter is not defined
     * @throws IllegalArgumentException if <code>filepath</code> is empty
     * @throws ApplicationFailureException if the specified IO-context does not
@@ -897,7 +911,6 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
       throws IOException, ApplicationFailureException
 {
       UUID fid;
-      String swapPath = null;
     
       Log.log( 5, "(PwsFileFactory) saveFile mark A0" );
       if ( file == null | passphrase == null )
@@ -917,6 +930,7 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
       boolean swap = app.existsFile( filepath ) && 
     		         app.canDelete( filepath ) &&
     		         app.getFileLength( filepath ) > 0;
+      String swapPath = null;
       if ( swap ) {
          Log.log( 5, "(PwsFileFactory) saveFile mark A2 (decided for swapping)" );
          swapPath = filepath + ".temp";
@@ -964,21 +978,22 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
 }  // saveFile
 
 /** Creates a persistent state of a PWS file of a specified format version 
- *  from a record list defined through an iterator whose elements are of 
- *  type <code>PwsRecord</code>. 
- *  The destination of the file is the parameter output stream, which is
- *  <i>not</i> closed upon termination of this operation!
- *  The user's file access key is passed in through a <code>PwsPassphrase</code>.
+ *  from a record list defined through an iterator of element type 
+ *  <code>PwsRecord</code>. The destination of the file is the parameter output 
+ *  stream, which is <i>not</i> closed upon termination of this operation!
+ *  The user's file access key is given by a <code>PwsPassphrase</code>.
  *  
- * @param records Iterator with element type <code>PwsRecord</code> or <b>null</b>
+ * @param records <code>Iterator&lt;PwsRecord&gt;</code> or <b>null</b>
  *        for empty database
- * @param out a target output stream
- * @param passphrase the user's file access key (secret key)
- * @param headerFields <code>RawFieldList</code> with file specific data (e.g. user options) or <b>null</b>
- * @param iterations number of security key calculation iterations
- * @param format the file format version (values of <code>Global</code>)
+ * @param out <code>OutputStream</code> target output stream
+ * @param passphrase <code>PwsPassphrase</code>  user's file access key
+ * @param headerFields <code>HeaderFieldList</code> header field list to be 
+ *        included in the file or <b>null</b>
+ * @param iterations int number of security key calculation loops
+ * @param format int file format version (values of <code>Global</code>)
  *        (0 defaults to latest version)
- * @return UUID the file identifier value of the saved file or <b>null</b> if unavailable
+ * @return <code>UUID</code> file identifier value of the saved file 
+ *         or <b>null</b> if unavailable
  * @throws NullPointerException if <code>out</code> or <code>passphrase</code> 
  *         is not defined
  * @throws IOException if an IO error occurs
@@ -1044,11 +1059,12 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
    return socket.getFileID();
 }  // saveFile
 
-/** Stores a list of records to an output stream represented by 
- *  the <code>PwsFileOutputSocket.RawFieldWriter</code> in the format version V2. 
- *  Invalid records are silently ignored. 
+/** Stores a list of records to an output stream of raw fields in the file 
+ * format version V2. This does not check for record validity.
  * 
- *  @param charset the character set used to encode text data of the record
+ *  @param records <code>Iterator&lt;PwsRecord&gt;</code>
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
+ *  @param charset String character set used to encode text data
  *  @throws IOException
  */ 
 private static void saveRecordsV2 ( Iterator<PwsRecord> records, 
@@ -1092,10 +1108,11 @@ private static void saveRecordsV2 ( Iterator<PwsRecord> records,
    }
 }  // saveRecordsV2
 
-/** Stores a list of records to an output stream represented by 
- *  the <code>PwsFileOutputSocket.RawFieldWriter</code> in the format version V3. 
- *  Invalid records are silently ignored. 
+/** Stores a list of records to an output stream of raw fields in the file 
+ *  format version V3. This does not check for record validity.
  * 
+ *  @param records <code>Iterator&lt;PwsRecord&gt;</code>
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  */ 
 private static void saveRecordsV3 ( Iterator<PwsRecord> records, 
@@ -1167,6 +1184,12 @@ private static void saveRecordsV3 ( Iterator<PwsRecord> records,
    }
 }  // saveRecordsV3
 
+/** Converts a <code>KeyStroke</code> into a byte block defined for the file 
+ * format V3.
+ * 
+ * @param ks <code>KeyStroke</code
+ * @return byte[]
+ */
 private static byte[] convertKeyStroke( KeyStroke ks ) {
 	byte[] data = new byte[4];
 	data[0] = (byte)ks.getKeyCode();
@@ -1181,11 +1204,11 @@ private static byte[] convertKeyStroke( KeyStroke ks ) {
 	return data;
 }
 
-/** Saves a basic raw-field to the writer.
- * Does nothing if raw is <b>null</b> or the content is empty.
+/** Saves a basic raw-field to the writer.  
+ * Does nothing if "raw" is <b>null</b> or its content is empty.
  * 
- * @param raw <code>PwsRawField</code>
- * @param writer <code>PwsFileOutputSocket.RawFieldWriter</code>
+ * @param raw <code>PwsRawField</code> field to store, may be null
+ * @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  * @throws IOException
  */
 private static void saveRawField ( PwsRawField raw, 
@@ -1198,11 +1221,11 @@ private static void saveRawField ( PwsRawField raw,
 }
 
 /**
- * Saves an unknown field list of a record, applying field type validity 
- * controls and log reports.
+ * Saves an "unknown field list" of a record to the given raw-field writer. 
+ * This applies field type validity controls and log reports. 
  * 
- * @param rec PwsRecord
- * @param writer PwsFileOutputSocket.RawFieldWriter
+ * @param rec <code>PwsRecord</code> record data source
+ * @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  * @throws IOException
  */
 private static void saveUnknownFields ( PwsRecord rec, PwsFileOutputSocket.RawFieldWriter writer )
@@ -1231,10 +1254,11 @@ private static void saveUnknownFields ( PwsRecord rec, PwsFileOutputSocket.RawFi
    }
 }  // saveUnknownFields
 
-/** Stores a list of records to an output stream represented by 
- *  the <code>PwsFileOutputSocket.RawFieldWriter</code> in the format version V1. 
- *  Invalid records are silently ignored. 
+/** Stores a list of records to an output stream of raw fields 
+ *  in the file format version V1. This does not check for record validity.
  * 
+ *  @param records <code>Iterator&lt;PwsRecord&gt;</code>
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  */ 
 private static void saveRecordsV1 ( Iterator<PwsRecord> records, 
@@ -1266,8 +1290,8 @@ private static void saveRecordsV1 ( Iterator<PwsRecord> records,
 /** Whether the parameter field type is a canonical field
  *  (conventional meaning) in the context of the given file format.
  *  
- *  @param type the field type in question
- *  @param format the reference file format or 0 for default
+ *  @param type int the field type in question
+ *  @param format int reference file format or 0 for default
  */
 public static boolean isCanonicalField (int type, int format)
 {
@@ -1277,11 +1301,15 @@ public static boolean isCanonicalField (int type, int format)
 }
 
 /** Stores the content of a <code>PwsPassphrase</code> as a data field of the 
- *  specified type into an output stream represented by <code>BlockWriter</code>. 
- *  The underlying cleartext string is represented as a sequence of bytes 
- *  depending on the specified charset. 
- *  This always stores a field and if it is empty.
+ *  specified type into a V2 output stream represented by 
+ *  <code>BlockWriter</code>. The text string is represented as a sequence of 
+ *  bytes in the specified character set. This always stores a field even when
+ *  it is empty.
  *  
+ *  @param type int target field type
+ *  @param pass <code>PwsPassphrase</code>, may be null
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code>
+ *  @param charset String name of character set
  *  @throws IOException
  *  @throws IllegalStateException if <code>charset</code> is not supported
  *          by the running JVM
@@ -1302,11 +1330,15 @@ private static void savePasswordFieldV2 ( int type,
 }
 
 /** Stores the content of a <code>PwsPassphrase</code> as a data field of the 
- *  specified type into an output stream represented by <code>BlockWriter</code>. 
- *  The underlying cleartext string is represented as a sequence of bytes 
- *  depending on the specified charset. 
- *  <p>Returns undone if the passphrase is <b>null</b> or its length is 0!
+ *  specified type into a V3 output stream represented by 
+ *  <code>BlockWriter</code>. The underlying cleartext string is represented as 
+ *  a sequence of bytes depending on the specified charset. 
+ *  <p>Does nothing if the passphrase is <b>null</b> or its data length is 0!
  *  
+ *  @param type int target field type
+ *  @param pass <code>PwsPassphrase</code>, may be null
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code>
+ *  @param charset String name of character set
  *  @throws IOException
  *  @throws IllegalStateException if <code>charset</code> is not supported
  *          by the running JVM
@@ -1322,13 +1354,18 @@ private static void savePasswordFieldV3 ( int type,
 }
 
 /** Stores a text <code>String</code> as a data field of the specified type into  
- *  a data sink represented by <code>PwsFileOutputSocket.RawFieldWriter</code>. 
- *  The string is represented as a sequence of bytes encoded for the specified charset. 
+ *  a V2 <code>PwsFileOutputSocket.RawFieldWriter</code>. 
+ *  The string is represented as a sequence of bytes encoded in the specified 
+ *  character set.
  *  <p>Stores as empty field if <code>text</code> is <b>null</b>!
  *  
+ *  @param type int target field type
+ *  @param text <code>String</code>, may be null
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code>
+ *  @param charset String name of applied character set
  *  @throws IOException
  *  @throws IllegalStateException if <code>charset</code> is not supported
- *          by the running JVM
+ *          by JVM
  */
 private static void saveTextFieldV2 ( int type, String text, 
             PwsFileOutputSocket.RawFieldWriter writer, String charset )
@@ -1352,10 +1389,13 @@ private static void saveTextFieldV2 ( int type, String text,
 }  // saveTextFieldV2
 
 /** Stores a text <code>String</code> as a data field of the specified type into  
- *  an output stream represented by <code>PwsFileOutputSocket.RawFieldWriter</code>. The string is
- *  represented as a sequence of bytes encoded for the specified charset. 
+ *  an V3 output stream represented by <code>PwsFileOutputSocket.RawFieldWriter
+ *  </code>. The string is encoded with UTF-8 character set.
  *  <p>Returns undone if <code>text</code> is <b>null</b> or empty!
  *  
+ *  @param type int target field type
+ *  @param text <code>String</code>, may be null
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  *  @throws IllegalStateException if <code>charset</code> is not supported
  *          by the running JVM
@@ -1364,18 +1404,18 @@ private static void saveTextFieldV3 (int type, String text,
             PwsFileOutputSocket.RawFieldWriter writer)
             throws IOException
 {
-   if ( text == null || text.isEmpty() )
-      return;
+   if ( text == null || text.isEmpty() ) return;
 
    saveTextFieldV2(type, text, writer, UTF_CHARSET);
 }  // saveTextFieldV3
 
 /** Stores a time value as a data field of the specified type into  
- *  an output stream represented by <code>PwsFileOutputSocket.RawFieldWriter</code>. 
- *  <p>Returns undone if <code>time</code> is zero!
+ *  a <code>PwsFileOutputSocket.RawFieldWriter</code> output stream. 
+ *  Does nothing if <code>time</code> is zero!
  * 
- *  @param type the target field type
- *  @param time a long value describing milliseconds since epoch
+ *  @param type int target field type
+ *  @param time long value to store in epoch milliseconds
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  */
 private static void saveTimeField (int type, 
@@ -1400,8 +1440,9 @@ private static void saveTimeField (int type,
  * <code>PwsFileOutputSocket.RawFieldWriter</code>. 
  *  Does nothing if <code>value</code> is zero!
  * 
- *  @param type the target field type
- *  @param value <b>int</b> value to be stored
+ *  @param type int target field type
+ *  @param value int signed integer value to be stored
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  */
 private static void saveIntegerField ( int type, int value, 
@@ -1415,13 +1456,12 @@ private static void saveIntegerField ( int type, int value,
    writer.writeRawField( new PwsRawField( type, barr ) );
 }  // saveTextField
 
-/** Stores a boolean value in a data field. A Boolean is stored
- * in one byte with the convention that zero is <b>false</b>
- * and <b>true</b> otherwise. 
+/** Stores a boolean value in a data field. 
  *  Does nothing if <code>value</code> is <b>false</b>!
  * 
- *  @param type the target field type
- *  @param value boolean 
+ *  @param type int target field type
+ *  @param value boolean value to store 
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  */
 private static void saveBooleanField (int type, boolean value, 
@@ -1462,7 +1502,9 @@ private static long readIntegerField ( PwsRawField raw, PwsRecord rec )
 /** Extracts a time value from a rawfield. (The record reference is for error
  *  logging only.)
  * 
- *  @return milliseconds after epoch
+ *  @param raw <code>PwsRawField</code> to read from
+ *  @param rec <code>PwsRecord</code>
+ *  @return long time in epoch milliseconds
  */
 private static long readTimeField ( PwsRawField raw, PwsRecord rec )
 {
@@ -1476,9 +1518,12 @@ private static long readTimeField ( PwsRawField raw, PwsRecord rec )
 }
 
 /** Stores a byte array as a raw data field of the specified type into  
- *  an data sink represented by <code>PwsFileOutputSocket.RawFieldWriter</code>. 
- *  <p>Returns undone if <code>data</code> is <b>null</b>!
+ *  a data sink represented by <code>PwsFileOutputSocket.RawFieldWriter</code>. 
+ *  <p>Does nothing if <code>data</code> is <b>null</b>!
  *  
+ *  @param type int target field type
+ *  @param data byte[] data block to be stored
+ *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  *  @throws IOException
  */
 private static void saveByteArray ( int type, byte[] data, 

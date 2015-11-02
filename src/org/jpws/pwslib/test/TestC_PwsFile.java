@@ -16,6 +16,7 @@ import javax.swing.KeyStroke;
 
 import org.jpws.pwslib.data.ContextFile;
 import org.jpws.pwslib.data.PwsFile;
+import org.jpws.pwslib.data.PwsFileFactory;
 import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
@@ -30,10 +31,9 @@ import org.junit.Test;
 public class TestC_PwsFile {
 
 public TestC_PwsFile() {
-	// TODO Auto-generated constructor stub
 }
 
-private PwsRecord createRecord (int type) {
+private PwsRecord createRecord (int type, int format ) {
 	PwsRecord rec = new PwsRecord();
 	
     switch ( type % 3 ) {
@@ -43,49 +43,55 @@ private PwsRecord createRecord (int type) {
         rec.setUsername( "Hasimaus" );
         rec.setNotes( "Zugang zum Tresor, muß man sich verschaffen!" );
         rec.setAccessTime(789000012);
-        rec.setKeyboardShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_W, 0));
+        if ( format > 2 ) {
+           rec.setKeyboardShortcut(KeyStroke.getKeyStroke(KeyEvent.VK_W, 0));
+        }
         break;
     case 1:
         rec.setTitle( "Maria Brenner" );
         rec.setPassword( new PwsPassphrase( "brezensieb" ) );
         rec.setUsername( "Brennermausi" );
         rec.setNotes( "Vor der Sieggötter Söhnen, tat ich Gesichte nun kund" );
-        rec.setEmail("untersbacher.semmelbrot@cans.com");
-        rec.setProtectedEntry(true);
-        rec.setExtraField(30, rec.getSignature(), 0);
+        if ( format > 2 ) {
+	        rec.setEmail("untersbacher.semmelbrot@cans.com");
+	        rec.setProtectedEntry(true);
+	        rec.setExtraField(30, rec.getSignature(), 0);
+        }
         break;
     case 2:
         rec.setTitle( "Ursav Dominikus" );
         rec.setPassword( new PwsPassphrase( "llks092j3#" ) );
         rec.setUsername( "Segelboot" );
         rec.setNotes( "Unterdessen jedoch hatten auch die Robotschiffe Fahrt aufgenommen." );
-        rec.setUrl("http://brezenbacher.sumpfkuchel/homemade.com");
-        rec.setAutotype("starte weisnichtwas");
+        if ( format > 2 ) {
+	        rec.setUrl("http://brezenbacher.sumpfkuchel/homemade.com");
+	        rec.setAutotype("starte weisnichtwas");
+        }
         break;
     default: return null; 
     }
     return rec;
 }
 
-private Collection<PwsRecord> getRecordCollection (int size) 
+private Collection<PwsRecord> getRecordCollection ( int size, int format ) 
 {
 	ArrayList<PwsRecord> list = new ArrayList<PwsRecord>();
 	for ( int i = 0; i < size; i++ ) {
       // create data records if opted
-      PwsRecord rec = createRecord(i % 3);
+      PwsRecord rec = createRecord(i, format);
       list.add( rec );
 	}
 	return list;
 }
 
-private Collection<PwsRecord> getDuplicateCollection(int size, int pos) {
+private Collection<PwsRecord> getDuplicateCollection(int size, int pos, int format) {
 	if (size < 2 || pos > size-1 || pos < 0) 
 		throw new IllegalArgumentException("improper argument setting");
 	
 	ArrayList<PwsRecord> list = new ArrayList<PwsRecord>();
 	// add healthy records
 	for (int i = 0; i < size-1; i++) {
-		list.add(createRecord(i));
+		list.add(createRecord(i, format));
 	}
 	PwsRecord rec = list.get(pos);
 	list.add(pos, rec);
@@ -127,7 +133,7 @@ public void test_initialisation () throws IOException, DuplicateEntryException {
 	test_init(f1, 0, true);
 	
 	// collection constructor
-	col1 = getRecordCollection(5);
+	col1 = getRecordCollection(5, 3);
 	f1 = new PwsFile(col1);
 	test_init(f1, 5, false);
 	
@@ -142,7 +148,7 @@ public void test_initialisation () throws IOException, DuplicateEntryException {
 	test_init(f1, 5, false);
 
 	// duplicate entry initialisation
-	col1 = getDuplicateCollection(10, 5);
+	col1 = getDuplicateCollection(10, 5, 3);
 	try {
 		new PwsFile(col1);
 		fail("missing exception on duplicate entry initialisation");
@@ -202,14 +208,22 @@ private void test_init (PwsFile f1, int size, boolean persist) throws IOExceptio
 }	
 
 @Test
-public void test_peristent_iostream_V3 () throws IOException, PasswordSafeException {
+public void test_peristent_iostreams () throws IOException, PasswordSafeException {
+	test_iostream(3);
+	test_iostream(2);
+	test_iostream(1);
+}
+
+private void test_iostream ( int format ) throws IOException, PasswordSafeException {
 	PwsFile f1, f2;
 	Collection<PwsRecord> col1;
-	PwsPassphrase pass1;
+	PwsPassphrase pass1, key1;
+	PwsRecord rec, rec2;
 	byte[] sig1, data;
 	
-	col1 = getRecordCollection(20);
+	col1 = getRecordCollection(20, format);
 	f1 = new PwsFile(col1);
+	f1.setFormatVersion(format);
 	sig1 = f1.getDataSignature();
 	data = null;
 	
@@ -217,7 +231,7 @@ public void test_peristent_iostream_V3 () throws IOException, PasswordSafeExcept
 	ByteArrayOutputStreamPws out = new ByteArrayOutputStreamPws();
 	try {
 		f1.write(out);
-		fail("no exception on missing passphrase");
+		fail("no exception on missing passphrase, format "+format);
 	} catch (IllegalStateException e) {
 	}
 
@@ -237,18 +251,43 @@ public void test_peristent_iostream_V3 () throws IOException, PasswordSafeExcept
 
 	// read
 	ByteArrayInputStream input = new ByteArrayInputStream(data);
-	f2 = PwsFile.read(input, pass1);
-	assertTrue("io-test: UUID mismatch", f1.getUUID().equals(f2.getUUID()));
-	assertTrue("io-test: content not identical", sameContentLists(f1, f2));
-	boolean ok = true;
-	int count = 0;
-	for ( Iterator<PwsRecord> it = f1.iterator(); it.hasNext(); ) {
-		PwsRecord rec = it.next();
-		PwsRecord rec2 = f2.getRecord(rec);
-		ok &= Util.equalArrays(rec.getSignature(), rec2.getSignature());
-		assertTrue("io-test: record content mismatch: " + count, ok);
-		count++;
+	f2 = PwsFileFactory.loadFile(input, pass1, format);
+	// format 1
+	if ( format == 1 ) {
+		assertTrue("io-test: size mismatch, fo=1", f2.size() == f1.size());
+
+		// searching for a title string in read database
+		String search = f1.iterator().next().getTitle();
+		key1 = f1.iterator().next().getPassword();
+		boolean ok = false, passOk = false;
+		for ( Iterator<PwsRecord> it = f2.iterator(); it.hasNext(); ) {
+			rec = it.next();
+			String hstr = rec.getTitle();
+			PwsPassphrase key2 = rec.getPassword(); 
+			assertNotNull(hstr);
+			assertNotNull(key2);
+			ok |= search.equals(hstr);
+			passOk |= key1.equals(key2);
+		}
+		assertTrue("io-test: data mismatch (title not found in db), fo=1", ok);
+		assertTrue("io-test: data mismatch (password not found in db), fo=1", passOk);
+
+	// formats 2 + 3
+	} else {
+		if ( format > 2 ) {
+			assertTrue("io-test: UUID mismatch, fo=" + format, f1.getUUID().equals(f2.getUUID()));
+		}
+		assertTrue("io-test: content not identical, fo=" + format, sameContentLists(f1, f2));
+		boolean ok = true;
+		int count = 0;
+		for ( Iterator<PwsRecord> it = f1.iterator(); it.hasNext(); ) {
+			rec = it.next();
+			rec2 = f2.getRecord(rec);
+			ok &= Util.equalArrays(rec.getSignature(), rec2.getSignature());
+			assertTrue("io-test: record content mismatch (fo=" + format +"): " + count, ok);
+			count++;
+		}
+		assertTrue("io-test: signature mismatch, fo=" + format, Util.equalArrays(sig1, f2.getDataSignature()));
 	}
-	assertTrue("io-test: signature mismatch", Util.equalArrays(sig1, f2.getDataSignature()));
 }
 }

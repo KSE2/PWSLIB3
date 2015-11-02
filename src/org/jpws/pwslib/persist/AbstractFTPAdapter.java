@@ -51,9 +51,12 @@ import org.jpws.pwslib.global.Log;
 
 
 /**
- * Implements a straight forward <code>ApplicationAdapter</code> for addressing
+ * Implements an <code>ApplicationAdapter</code> for addressing
  * FTP protocol files, based on the <code>java.net</code> package and <code>
- * sun.net.ftp.FtpClient</code>.
+ * it.sauronsoftware.ftp4j</code> package. The user needs to implement a single
+ * method <code>String getUserLogin( String domain )</code> to supply the
+ * class with domain login data. Logins are remembered for the duration of a
+ * program session and must be supplied only once. 
  *  
  */
 public abstract class AbstractFTPAdapter implements ApplicationAdapter
@@ -234,8 +237,8 @@ private URLConnection getConnected ( String path ) throws IOException
  *  string is an empty data operation request (which will lead to a connection
  *  exception thrown).
  * 
- * @param domain
- * @return String formatted user login data
+ * @param domain String addressed Internet domain
+ * @return String formatted user login data "user:password"
  */
 public abstract String getUserLogin ( String domain );
 
@@ -313,7 +316,7 @@ public String[] list ( String trunk, String trail, boolean recurse ) throws IOEx
 {
    FtpSession ftp;
    URL url;
-   String domain, path, prot;
+   String path;
    
    // cannot perform recurse into subdirs
 //   if ( recurse )
@@ -321,9 +324,9 @@ public String[] list ( String trunk, String trail, boolean recurse ) throws IOEx
 
    // assemble
    url = new URL( trunk );
-   domain = url.getHost();
    path = url.getPath();
-   prot = trunk.substring( 0, trunk.indexOf( domain ) );
+//   domain = url.getHost();
+//   prot = trunk.substring( 0, trunk.indexOf( domain ) );
 //   base = trunk.substring( 0, trunk.indexOf( domain ) + domain.length() );
    
    // connect to host
