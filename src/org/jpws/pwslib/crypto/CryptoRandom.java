@@ -1,32 +1,26 @@
 /*
- *  CryptoRandom in org.jpws.pwslib.crypto
- *  file: CryptoRandom.java
+ *  File: CryptoRandom.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 02.09.2005
- *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.crypto;
 
 import java.awt.Dimension;
+import java.awt.MouseInfo;
+import java.awt.Point;
 import java.awt.Toolkit;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -71,7 +65,7 @@ public class CryptoRandom
 
 /**
  * Constructs a random generator under standard values for refresh cycle 
- * and random seed. The standard cycle period is 16.
+ * and random seed. The default cycle period is 8.
  */
 public CryptoRandom ()
 {
@@ -83,7 +77,7 @@ public CryptoRandom ()
  * loops. Higher values of <code>cycle</code> reduce execution cost but
  * also might reduce long-term random quality.
  * 
- * @param cycle number of loops to use a single data pool incarnation
+ * @param cycle int number of loops to use a single data pool incarnation
  */
 public CryptoRandom ( int cycle )
 {
@@ -92,9 +86,9 @@ public CryptoRandom ( int cycle )
 
 /**
  * Constructs a random generator under taking into calculation user random 
- * seed data.
+ * seed data. The default cycle period is 8.
  * 
- * @param init initial random seed data (may be <b>null</b>
+ * @param init byte[] initial random seed data, may be <b>null</b>
  */
 public CryptoRandom ( byte[] init )
 {
@@ -103,11 +97,11 @@ public CryptoRandom ( byte[] init )
 
 /**
  * Constructs a random generator with initial seed data and a definition of the 
- * pool refresh cycle loops. Higher values of <code>cycle</code> reduce execution 
- * cost but also might reduce long-term random quality.
+ * pool refresh cycle loops. Higher values of <code>cycle</code> reduce 
+ * execution cost but also might reduce long-term random quality.
  * 
- * @param cycle number of loops to use a single pool incarnation
- * @param init initial random seed data (may be <b>null</b>
+ * @param cycle int number of loops to use a single pool incarnation
+ * @param init byte[] initial random seed data (may be <b>null</b>)
  */
 public CryptoRandom ( int cycle, byte[] init )
 {
@@ -157,17 +151,17 @@ private void collectPool ( byte[] init )
       dout.write( buf );
       
       // user seed if available 
-      if ( init == null )
-      {
+      if ( init == null ) {
          init = getUserSeed();
-         if ( init != null & Log.getDebugLevel() >= 9 )
+         if ( init != null & Log.getDebugLevel() >= 9 ) {
             Log.debug( 9, "(CryptoRandom) [" + instanceID + "] received user pool data, fingerprint: " 
                   + Util.bytesToHex( Util.fingerPrint( init )));
+         }
       }
-      if ( init == null )
+      if ( init == null ) {
          init = userInit;
-      if ( init != null )
-      {
+      }
+      if ( init != null ) {
          dout.write( init );
          userInit = init;
       }
@@ -183,15 +177,21 @@ private void collectPool ( byte[] init )
       
       // screen related
       try {
-      tk = Toolkit.getDefaultToolkit();
-      dim = tk.getScreenSize();
-      dout.writeInt( tk.hashCode() );
-      dout.writeInt( dim.height );
-      dout.writeInt( dim.width );
-      dout.writeInt( tk.getScreenResolution() );
+    	  // screen dimension data
+	      tk = Toolkit.getDefaultToolkit();
+	      dim = tk.getScreenSize();
+	      dout.writeInt( tk.hashCode() );
+	      dout.writeInt( dim.height );
+	      dout.writeInt( dim.width );
+	      dout.writeInt( tk.getScreenResolution() );
+	      
+	      // mouse position
+	      Point p = MouseInfo.getPointerInfo().getLocation();
+	      dout.writeInt(p.x);
+	      dout.writeInt(p.y);
+	      
+      } catch ( Exception e ) {
       }
-      catch ( Exception e )
-      {}
       
       // this instance 
       dout.writeInt( this.hashCode() );
@@ -211,22 +211,20 @@ private void collectPool ( byte[] init )
       if ( Log.getDebugLevel() >= 9 )
       Log.debug( 9, "(CryptoRandom) [" + instanceID + "] pool data fingerprint: " 
             + Util.bytesToHex( Util.fingerPrint( pool )));
-   }
-   catch ( IOException e )
-   {
+
+   } catch ( IOException e ) {
       System.err.println( "*** SEVERE ERROR IN INIT CRYPTORANDOM : " + e );
    }
    
 }
 
 /**
- * Callback function to obtain the user's random seed data array in an actual
- * version. You can override this in a subclass to supply seed data to this
- * generator.
+ * Callback function to obtain the user's random seed data array in a subclass.
+ * You can override this to supply specific seed data to this generator.
  * <p>(This is an alternative method compared to <code>recollect()</code>.
  * This method updates the random pool data more reliably because it is a 
- * user-passive method, compared to  <code>recollect()</code> which is a user-active
- * method. However, frequent recollection may cost valuable time.)
+ * user-passive method, compared to  <code>recollect()</code> which is a 
+ * user-active method. However, frequent recollection may be expensive in time.)
  * 
  * @return byte[] random seeds
  */
@@ -238,7 +236,7 @@ public byte[] getUserSeed ()
 /** Causes this random generator to collect a new random data pool including
  *  the user's seed data as given by the parameter.
  * 
- *  @param init user seed data or <b>null</b>
+ *  @param init byte[] user seed data or <b>null</b>
  */
 public synchronized void recollect ( byte[] init )
 {
@@ -260,69 +258,79 @@ private void recalculate ()
    buf = new byte[8];
    Util.writeLong( counter++, buf, 0 );
    
-   if ( counter % loops == 0 )
+   if ( counter % loops == 0 ) {
       collectPool( null );
+   }
    
    prevData = Util.arraycopy( data );
    
    sha.update( pool );
    sha.update( buf );
-   sha.finalize();
    buf = sha.digest();
    System.arraycopy( buf, 0, data, 0, hashLen );
 
    sha.reset();
    sha.update( Util.XOR_buffers( data, prevData ));
-   sha.finalize();
    buf = sha.digest();
    System.arraycopy( buf, 0, data, hashLen, hashLen );
    pos = 0;
 
-   if ( Log.getDebugLevel() >= 9 )
-      Log.debug( 9, "(CryptoRandom) [" + instanceID + "] random data: " + 
-            Util.bytesToHex( data ));
+   if ( Log.getDebugLevel() >= 9 ) 
+   Log.debug( 9, "(CryptoRandom) [" + instanceID + "] random data: " + Util.bytesToHex( data ));
 }
 
-/** Returns a random <code>byte</code> value. */
+/** Returns a random <code>byte</code> value.
+ * 
+ *  @return byte
+ */
 public synchronized byte nextByte ()
 {
    return nextByteIntern();
 }
 
-/** Returns a random <code>byte</code> value. */
+/** Returns a random <code>byte</code> value. 
+ * 
+ *  @return byte
+ */
 private byte nextByteIntern ()
 {
-   if ( pos == data.length )
+   if ( pos == data.length ) {
       recalculate();
+   }
       
    return data[ pos++ ];
 }
 
 /** Returns a random integer value ranging from 0 including to n excluding. 
  *  n must be positive. 
+ *  
+ *  @param n int size of value range 
+ *  @return int random value
  */
 public synchronized int nextInt ( int n )
 {
-   int bits, val;
-
    if (n<=0)
       throw new IllegalArgumentException("n <= 0");
 
-   bits = nextIntIntern() & 0x7FFFFFFF;
-   val = bits % n;
-
+   int bits = nextIntIntern() & 0x7FFFFFFF;
+   int val = bits % n;
    return val;
 }
 
 /** Returns a random <code>int</code> value. The value ranges from 
  *  Integer.MINVALUE to Integer.MAXVALUE.
+ * 
+ *  @return int random value
  */
 public synchronized int nextInt ()
 {
    return nextIntIntern();
 }
 
-/** Returns a random <code>long</code> value. */
+/** Returns a random <code>long</code> value. 
+ * 
+ *  @return long random value
+ */
 public synchronized long nextLong ( )
 {
    return ((long)nextIntIntern()) << 32 | nextIntIntern() ;
@@ -331,25 +339,26 @@ public synchronized long nextLong ( )
 /**
  * Returns a random data byte array of the length as specified by the parameter.
  * 
- * @param num length of output byte array
- * @return random bytes
+ * @param num int length of output byte array
+ * @return byte[] random bytes
  */
 public synchronized byte[] nextBytes ( int num )
 {
-   byte[] buf;
-   int i;
-   
    if ( num < 0 )
       throw new IllegalArgumentException("num < 0");
    
-   buf = new byte[ num ];
-   for ( i = 0; i < num; i++ )
+   byte[] buf = new byte[ num ];
+   for ( int i = 0; i < num; i++ ) {
       buf[i] = nextByteIntern();
+   }
    
    return buf;
 }
 
-/** Returns a random <code>boolean</code> value. */
+/** Returns a random <code>boolean</code> value. 
+ * 
+ *  @return boolean random value
+ */
 public boolean nextBoolean ()
 {
    return nextByte() < 0;
@@ -357,6 +366,8 @@ public boolean nextBoolean ()
 
 /** Returns a random <code>int</code> value. The value ranges from 
  *  Integer.MINVALUE to Integer.MAXVALUE.
+ * 
+ *  @return int random value
  */
 private int nextIntIntern ()
 {

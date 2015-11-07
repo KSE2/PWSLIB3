@@ -1,27 +1,20 @@
 /*
- *  file: PwsRecordList.java
+ *  File: PwsRecordList.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 07.08.2005
- *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.data;
 
@@ -976,7 +969,7 @@ public class PwsRecordList implements Cloneable
 
       for ( Iterator<PwsRecord> it = getGroupedRecords( group, true ); it.hasNext(); ) {
          PwsRecord rec = it.next();
-         String oldGrp = rec.getGroup();
+         String oldGrp = rec.getGroup() == null ? "" : rec.getGroup();
          String newValue = newGroup == null ? "" : newGroup;
          // in case of subgroup, append subgroup text to new group name
          if ( oldGrp.length() > group.length() ) {
@@ -1377,7 +1370,7 @@ public class PwsRecordList implements Cloneable
       }
    }
    
-   /**
+      /**
     * Returns a shallow clone of this record list (PwsRecordList). 
     * UUID value is the same, File-ID number is modified to be unique and any 
     * registered listeners are removed from the clone. 
@@ -1438,9 +1431,8 @@ public class PwsRecordList implements Cloneable
    
    /**
     * This method replaces the entire content of this record list, including 
-    * private data members (except for the instance ID),
-    * by the content of the parameter record list. Note: This list takes over
-    * the other list's UUID value!
+    * its UUID value, with the content of the parameter record list.
+    *  Instance ID and file listeners are not replaced!
     *   
     * @param a <code>PwsRecordList</code> new content and identity for this list
     */
@@ -1448,7 +1440,7 @@ public class PwsRecordList implements Cloneable
    public void replaceFrom ( PwsRecordList a )
    {
       listUUID = a.listUUID;
-      listeners = (ArrayList<PwsFileListener>)a.getFileListeners();
+//      listeners = (ArrayList<PwsFileListener>)a.getFileListeners();
       recMap = (TreeMap<UUID, PwsRecord>)a.recMap.clone();
       setModified();
       fireFileEvent( PwsFileEvent.LIST_UPDATED, null );
@@ -1464,16 +1456,19 @@ public class PwsRecordList implements Cloneable
     */
    public void replaceContent ( PwsRecord[] recs ) throws DuplicateEntryException
    {
-	   clear();
-	   
-       if ( recs != null && recs.length > 0 ) {
+	   if ( recs == null || recs.length == 0 ) {
+		   // same as clear (list-cleared event)
+		   clear();
+	   } else {
+		  // replace content (list-updated event) 
     	  boolean oldPause = getEventPause();
     	  setEventPause(true);
+    	  clear();
 	      for ( PwsRecord rec : recs ) {
         	 addRecordIntern( rec, "replaceContent" ); 
 	      }
 	      setEventPause(oldPause);
-       }
+	   }
    }
    
 	/**

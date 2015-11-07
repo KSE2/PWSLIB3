@@ -1,33 +1,52 @@
-KSE PWSLIB 2-3-1
+KSE PWSLIB 2-4-0
 
-== KSE Password Safe Library (reads/writes PWS Formats 1, 2 and 3) ==
-== Supported file format: PWS V3.10 ==
-
-This package is a part of the JPasswords project (JPWS 0-6-0 M7) 
-but may be used independently
+== KSE Password Safe Library  
+== Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 20. Feb. 2013
+Text Date: 07. Nov. 2015
 
-Actual Release 2-3-1, Date: 20 Feb. 2013
+
+Actual Release 2-4-0, Date: 07 Nov. 2015
 ----------------------------------------
+
+- all parts were overhauled for standardised coding style and improved
+  Javadoc descriptions
+- PwsRecordList was particularly overhauled for increased efficiency and
+  performance
+- added methods and constructors in PwsRecordList, PwsFile and ContextFile
+  to improve usability
+- OrderedRecordList restructured and now features a record filtering tool
+- FilterRecordList removed (functionality replaced by OrderedRecordList)
+- FTP application adapter rewritten for use of external library ftp4j-1.7.2.jar
+  by Sauron Software, Italy. FTP functionality is offered under LGPL license as
+  supplement
+- introduced JUnit testing for PwsRecordList and PwsFile
+- Log now has an opening for definiing expressions to suppress messages
+
+
+Release 2-3-1, Date: 20 Feb. 2013
+---------------------------------
 
 - PwsFile.setPersistentFile(ContextFile) now allows for the null parameter 
   which is equivalent to PwsFile.setFilePath(null).
 - new exception  LoginFailureException has been created to replace 
   sun.net.ftp.FtpLoginException outwardly. 
-- security update for the encryption/decryption process. With thorough memory testing
-  some spreading of decrypted content garbage onto the VM (temporary!) data heap have 
+- security update for the encryption/decryption process. With thorough memory
+  testing
+  some spreading of decrypted content garbage onto the VM (temporary!) data 
+  heap have 
   been removed. VM memory should now be clean from decrypted database content
   after reading or writing, except for Title and User-Name.
-- CryptoRandom cryptographical random generator now runs on SHA512 instead of SHA1.   
+- CryptoRandom cryptographical random generator now runs on SHA512 instead of
+  SHA1.   
 
 
 Release 2-3-0, Date: 15 Nov. 2012
 ---------------------------------
 
-- compatibility to PWS file format 3.10; this format interpretation relies on the format 
-  definition of PasswordSafe program version 3.29
+- compatibility to PWS file format 3.10; this format interpretation relies on 
+  the format definition of PasswordSafe program version 3.29
 - interface supported new record fields:
      . autotype String, character sequence for autotype command
      . passPolicyName String, name of listed password policy used in record
@@ -37,9 +56,11 @@ Release 2-3-0, Date: 15 Nov. 2012
      . runCommand String
      . dclickAction String
      . shiftDclickAction String
-- Password Policy is stored in a new format definition; we use an extended version which in rare cases 
+- Password Policy is stored in a new format definition; we use an extended 
+  version which in rare cases 
   currently is not recognised by the PasswordSafe program!!
-- slight modification of the file-event dispatch behaviour (in favour of single record modifications)
+- slight modification of the file-event dispatch behaviour (in favour of single
+  record modifications)
 
 
 Release 2-2-1, Date: 03 May 2012
@@ -64,29 +85,30 @@ Corrected Bugs:
 - PwsFile: data signature value now also reflects file header fields
 - improved compatibility with PWS V3 definition by storing time fields as 4-byte
   unsigned integers (8 bytes before)
-- the quality of the list signature value (PwsRecordList) is improved and now based 
-  on a defined order of records
+- the quality of the list signature value (PwsRecordList) is improved and now
+  based on a defined order of records
 
 Enhancements
 - support of latest PasswordSafe file format version 3.2
-- new header fields (PWS canon): logical database name, database description (free text), 
-  last save time, last save application name
+- new header fields (PWS canon): logical database name, database description
+  (free text), last save time, last save application name
 - new class "ContextFile" combines application adapter and filepath into a single
   file reference, which eases handling and some file related operations
-- some new designs to load() and saveFile() methods in PwsFileFactory (parameter lists)
-  (you might have to check your application!)
+- some new designs to load() and saveFile() methods in PwsFileFactory 
+  (parameter lists; you might have to check your application!)
 - Global: possibility to set application name (value stored in PWS file header)
 - PwsRecordList: create shallow and deep clones
 - PwsRecordList: move a set of records (assign group value)
-- PwsRecordList: new merge conflict option "MERGE_INCLUDE" (includes conflicting records)
+- PwsRecordList: new merge conflict option "MERGE_INCLUDE" (includes 
+  conflicting records)
 - PwsRecordList: new method to create cut set record lists
 - ApplicationAdapter: new file handling functions (list paths, get file length)
 - PwsFile: create shallow and deep clones
 - PwsFile: setting and retrieving of encryption security loops
 - PwsFile: modifications to header field list now cause file update events
 - file sockets: get and set encryption security loops
-- introduced class "ContextFile" as means to abstract file handling from different 
-  application contexts
+- introduced class "ContextFile" as means to abstract file handling from 
+  different application contexts
 - ANT build.xml supplied
 
 
@@ -123,8 +145,8 @@ Corrected Bugs:
   and reported "UnsupportedFileVersionException"
 
 Enhancements:
-- new file event type "CONTENT_ALTERED" issued when file option string has changed
-  (intended for all data changes not covered by other event types)
+- new file event type "CONTENT_ALTERED" issued when file option string has
+  changed (intended for all data changes not covered by other event types)
 
 
 Release 0-4-0, Date: 26 Feb. 2006

@@ -1,27 +1,20 @@
 /*
- *  file: PwsFileFactory.java
+ *  File: PwsFileFactory.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 07.08.2005
- *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.data;
 
@@ -1007,7 +1000,7 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
    throws IOException
 {
    PwsFileOutputSocket socket;
-   PwsFileOutputSocket.RawFieldWriter writer;
+   PwsRawFieldWriter writer;
  
    Log.log( 5, "(PwsFileFactory) saveFile mark B0 - open socket to output stream" );
    if ( passphrase == null | out == null )
@@ -1068,7 +1061,7 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
  *  @throws IOException
  */ 
 private static void saveRecordsV2 ( Iterator<PwsRecord> records, 
-                                    PwsFileOutputSocket.RawFieldWriter writer, 
+                                    PwsRawFieldWriter writer, 
                                     String charset )   throws IOException
 {
    while ( records.hasNext() ) {
@@ -1116,7 +1109,7 @@ private static void saveRecordsV2 ( Iterator<PwsRecord> records,
  *  @throws IOException
  */ 
 private static void saveRecordsV3 ( Iterator<PwsRecord> records, 
-		                            PwsFileOutputSocket.RawFieldWriter writer )
+		                            PwsRawFieldWriter writer )
             throws IOException
 {
    while ( records.hasNext() ) {
@@ -1212,7 +1205,7 @@ private static byte[] convertKeyStroke( KeyStroke ks ) {
  * @throws IOException
  */
 private static void saveRawField ( PwsRawField raw, 
-		                           PwsFileOutputSocket.RawFieldWriter writer )
+		                           PwsRawFieldWriter writer )
                throws IOException
 {
    if ( raw != null && raw.data != null ) {
@@ -1228,7 +1221,7 @@ private static void saveRawField ( PwsRawField raw,
  * @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
  * @throws IOException
  */
-private static void saveUnknownFields ( PwsRecord rec, PwsFileOutputSocket.RawFieldWriter writer )
+private static void saveUnknownFields ( PwsRecord rec, PwsRawFieldWriter writer )
    throws IOException
 {
    Iterator<PwsRawField> it = rec.getUnknownFields();
@@ -1262,7 +1255,7 @@ private static void saveUnknownFields ( PwsRecord rec, PwsFileOutputSocket.RawFi
  *  @throws IOException
  */ 
 private static void saveRecordsV1 ( Iterator<PwsRecord> records, 
-		                            PwsFileOutputSocket.RawFieldWriter writer )
+		                            PwsRawFieldWriter writer )
             throws IOException
 {
    String charset = DEFAULT_CHARSET;
@@ -1316,7 +1309,7 @@ public static boolean isCanonicalField (int type, int format)
  */
 private static void savePasswordFieldV2 ( int type, 
 		                           PwsPassphrase pass, 
-                                   PwsFileOutputSocket.RawFieldWriter writer, 
+                                   PwsRawFieldWriter writer, 
                                    String charset)
       throws IOException
 {
@@ -1345,7 +1338,7 @@ private static void savePasswordFieldV2 ( int type,
  */
 private static void savePasswordFieldV3 ( int type, 
 		                       PwsPassphrase pass, 
-                               PwsFileOutputSocket.RawFieldWriter writer )
+                               PwsRawFieldWriter writer )
       throws IOException
 {
    if ( pass == null || pass.getLength() == 0 ) return;
@@ -1368,7 +1361,7 @@ private static void savePasswordFieldV3 ( int type,
  *          by JVM
  */
 private static void saveTextFieldV2 ( int type, String text, 
-            PwsFileOutputSocket.RawFieldWriter writer, String charset )
+            PwsRawFieldWriter writer, String charset )
             throws IOException
 {
    if ( text == null ) {
@@ -1401,7 +1394,7 @@ private static void saveTextFieldV2 ( int type, String text,
  *          by the running JVM
  */
 private static void saveTextFieldV3 (int type, String text, 
-            PwsFileOutputSocket.RawFieldWriter writer)
+            PwsRawFieldWriter writer)
             throws IOException
 {
    if ( text == null || text.isEmpty() ) return;
@@ -1420,7 +1413,7 @@ private static void saveTextFieldV3 (int type, String text,
  */
 private static void saveTimeField (int type, 
 		                           long time, 
-		                           PwsFileOutputSocket.RawFieldWriter writer)
+		                           PwsRawFieldWriter writer)
                throws IOException
 {
    if ( time == 0 ) return;
@@ -1446,7 +1439,7 @@ private static void saveTimeField (int type,
  *  @throws IOException
  */
 private static void saveIntegerField ( int type, int value, 
-		                         PwsFileOutputSocket.RawFieldWriter writer )
+		                         PwsRawFieldWriter writer )
                throws IOException
 {
    if ( value == 0 ) return;
@@ -1465,7 +1458,7 @@ private static void saveIntegerField ( int type, int value,
  *  @throws IOException
  */
 private static void saveBooleanField (int type, boolean value, 
-               PwsFileOutputSocket.RawFieldWriter writer) 
+               PwsRawFieldWriter writer) 
                throws IOException
 {
    if ( !value ) return;
@@ -1527,7 +1520,7 @@ private static long readTimeField ( PwsRawField raw, PwsRecord rec )
  *  @throws IOException
  */
 private static void saveByteArray ( int type, byte[] data, 
-		                            PwsFileOutputSocket.RawFieldWriter writer )
+		                            PwsRawFieldWriter writer )
          throws IOException
 {
    if ( data == null ) return;

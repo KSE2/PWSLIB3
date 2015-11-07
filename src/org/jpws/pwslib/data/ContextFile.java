@@ -1,28 +1,20 @@
 /*
- *  ContextFile in org.jpws.data
- *  file: ContextFile.java
+ *  File: ContextFile.java
  * 
- *  Project Jpws-0-4-0
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 13.02.2007
- *  Version
  * 
- *  Copyright (c) 2007 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.data;
 
@@ -33,6 +25,7 @@ import java.io.OutputStream;
 import java.net.URL;
 
 import org.jpws.pwslib.exception.ApplicationFailureException;
+import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
@@ -42,7 +35,9 @@ import org.jpws.pwslib.persist.StreamFactory;
  * A ContextFile is the combination of <code>ApplicationAdapter</code> and
  * a filepath. This two-tuple is meant to define an unequivocal file in the 
  * context of a program using the PWSLIB, giving the freedom to abstract from 
- * different resource media.
+ * different resource media. Abbreviated constructors are available for 
+ * the local file system and the system's standard application adapter, for the
+ * case this should be different.
  * <p>A ContextFile always has meaningful settings for adapter and filepath. 
  * These values cannot be modified after creation of an instance. 
  *  
@@ -58,15 +53,25 @@ public class ContextFile
    private boolean               hasRefreshed;
 
 
-   /** Creates a context file from a local file system definition.
-    * 
-    * @param file <code>File</code>
-    * @return <code>ContextFile</code>
-    */
-   public static ContextFile getLocalSystemFile( File file ) 
-   {
-      return new ContextFile(DefaultFilesystemAdapter.get(), file.getAbsolutePath());
-   }
+/** Creates a context file from the local file system.
+ * 
+ * @param file <code>File</code>
+ */
+public ContextFile ( File file ) 
+{
+	this(DefaultFilesystemAdapter.get(), file.getAbsolutePath());
+}
+   
+/** Creates a context file from the system's standard application adapter.
+ * <p><small>The standard application adapter is defined in
+ *  org.jpws.pwslib.global.Global.</small>
+ * 
+ * @param filepath <code>String</code> file path
+ */
+public ContextFile ( String filepath ) 
+{
+	this(Global.getStandardApplication(), filepath);
+}
    
 /**
  *  Creates a context file with the given IO-context and file name.
@@ -138,6 +143,7 @@ public long length ()
  * 
  * @return boolean
  */
+@Override
 public boolean equals ( Object obj )
 {
    if ( obj == null ) return false;
@@ -146,6 +152,7 @@ public boolean equals ( Object obj )
    return this.adapter.equals(f.adapter) && this.filepath.equals(f.filepath);
 }
 
+@Override
 public int hashCode ()
 {
    return adapter.hashCode() ^ filepath.hashCode();

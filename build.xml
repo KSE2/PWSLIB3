@@ -4,25 +4,27 @@
 	<property name="src" value="${basedir}/src" />
 	<property name="dist" value="${basedir}/bin" />
 	<property name="doc" value="${basedir}/doc" />
-   <property name="lib" value="${basedir}/lib" />
+	<property name="suppl" value="${basedir}/suppl" />
+	<property name="lib" value="${basedir}/lib" />
 	<property name="apidoc" value="${basedir}/doc/api" />
 	<property name="build" value="${basedir}/build" />
+	<property name="build.suppl" value="${suppl}/build" />
 
 <!--   FILES                                                          -->
         <property name="junit" value="../Library/junit-4.jar"/>
         <property name="ftp4j" value="${lib}/ftp4j-1.7.2.jar" />
 
-        <property name="docfileset" value="License.txt Readme.txt Changelog.txt Format-V3-12.txt" />
-        <property name="rootfileset" value="build.xml MANIFEST.MF makejar.bat jartest.bat makeapi.bat makedist.bat .svnignore" />
+        <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt formatV2.txt formatV1.txt" />
+        <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
 
 <!--   TEXT                                                           -->
 	<property name="ver" value="2-4-0" />
-        <property name="apidoc wintitle" value="PasswordSafe V3 Library - PWSLIB API"/>
-        <property name="release date" value="?????? 2015"/>
+	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
+        <property name="release date" value="07 Nov. 2015"/>
         <property name="release year" value="2015"/>
-        <property name="release type" value="snapshot"/>
+        <property name="release type" value="full review"/>
         <property name="system format" value="3.13"/>
-        <property name="classpath" value="${junit};${ftp4j}"/>
+        <property name="classpath" value="${junit};${ftp4j};${build}"/>
 
 
 <target name="init">
@@ -35,27 +37,35 @@
 <target name="clear-c" description="remove class files from build area">
 <delete>
    <fileset dir="${build}" includes="**/*.class"/>
+   <fileset dir="${build.suppl}" includes="**/*.class"/>
 </delete>
 </target>
 
 <target name="comp" depends="init,clear-c" description="compile PWSLIB library">
    <javac srcdir="${src}"  destdir="${build}" includeantruntime="false"  
        classpath="${classpath}" encoding="iso-8859-1"/>
+   <javac srcdir="${suppl}/src"  destdir="${build.suppl}" includeantruntime="false"  
+       classpath="${classpath}" encoding="iso-8859-1"/>
 </target>
 
 <target name="api" depends="init" description="create Javadoc API for PWSLIB library">
 <javadoc packagenames="org.jpws.pwslib.*" encoding="iso-8859-1"
-           sourcepath="${src}"
-           excludepackagenames="org.jpws.pwslib.test it.sauronsoftware" 
+           excludepackagenames="org.jpws.pwslib.test" 
            defaultexcludes="yes"
            destdir="${apidoc}"
            classpath="${classpath}"
            author="true"
            version="true"
            windowtitle="${apidoc wintitle}">
-<bottom><![CDATA[<i>Copyright &#169; ${release year} Wolfgang Keller (KSE). All Rights Reserved. Contact kse@sourceforge.net</i>]]></bottom>
-<Header><![CDATA[<b>KSE PWSLIB ${ver}</b>]]></Header>
-<Doctitle><![CDATA[PasswordSafe V${system format} Library<br>(Project JPasswords)<p>KSE PWSLIB ${ver}
+  <fileset dir="${src}">
+    <exclude name="**/Test*.*"/>
+  </fileset>
+  <fileset dir="${suppl}/src">
+    <exclude name="**/Test*.*"/>
+  </fileset>
+  <bottom><![CDATA[<i>Copyright &#169; ${release year} Wolfgang Keller (KSE). All Rights Reserved. Contact kse@sourceforge.net</i>]]></bottom>
+  <Header><![CDATA[<b>KSE PWSLIB ${ver}</b>]]></Header>
+  <Doctitle><![CDATA[PasswordSafe V${system format} Library<p>KSE PWSLIB ${ver}
           <p>Release Date: ${release date}</p>]]></Doctitle>
 </javadoc>
 </target>
@@ -67,31 +77,48 @@
      manifest="MANIFEST.MF"
      includes="org/jpws/pwslib/**"
      excludes="**/Test*">
-   <zipfileset src="${ftp4j}"/>
+  <!--   <zipfileset src="${ftp4j}"/>-->
 </jar>
 </target>
 
-<target name="dist" depends="jar,api" description="create PWSLIB distribution packages">
+<target name="suppl" depends="comp" description="create PWSLIB supplementary libraries">
+   <property name="ftp-suppl" value="${dist}/pws-suppl-ftp.jar"/>
+   <delete file="${ftp-suppl}"/>
+   <jar destfile="${ftp-suppl}" 
+      basedir="${build.suppl}"
+      includes="org/jpws/pwslib/**"
+      excludes="**/Test*">
+      <zipfileset src="${ftp4j}"/>
+   </jar>
+</target>
+
+<target name="dist" depends="jar,suppl,api" description="create PWSLIB distribution packages">
 <copy file="${dist}/pws-engine-kse.jar" tofile="${dist}/pws-engine-kse-${ver}.jar"/>
+<copy file="${dist}/pws-suppl-ftp.jar" tofile="${dist}/pws-suppl-ftp-${ver}.jar"/>
 
 <zip destfile="${dist}/pws-engine-kse-${ver}.zip">
-    <zipfileset dir="${doc}" includes="${docfileset}" prefix="jpws/pwslib/doc" />
-    <zipfileset dir="${apidoc}" prefix="jpws/pwslib/doc/api"/>
-    <zipfileset dir="${dist}" includes="pws-engine-kse.jar pws-engine-kse.jar.sig pws-engine-kse-${ver}.jar" prefix="jpws/pwslib/bin"/>
+    <zipfileset dir="${doc}" includes="${docfileset}" prefix="pwslib/doc" />
+    <zipfileset dir="${suppl}/doc" prefix="pwslib/suppl/doc"/>
+    <zipfileset dir="${apidoc}" prefix="pwslib/doc/api"/>
+    <zipfileset dir="${dist}" includes="pws-engine-kse.jar pws-engine-kse-${ver}.jar pws-suppl-ftp.jar pws-suppl-ftp-${ver}.jar" prefix="pwslib/bin"/>
   </zip>
 <checksum file="${dist}/pws-engine-kse-${ver}.zip"/>
 
 <zip destfile="${dist}/pws-engine-source-${ver}.zip">
-    <zipfileset dir="." includes="${rootfileset}" prefix="jpws/pwslib" />
-    <zipfileset dir="${doc}" includes="${docfileset}" prefix="jpws/pwslib/doc" />
-    <zipfileset dir="${src}/org/jpws/pwslib" prefix="jpws/pwslib/src/org/jpws/pwslib"/>
+    <zipfileset dir="." includes="${rootfileset}" prefix="pwslib" />
+    <zipfileset dir="${src}/org/jpws/pwslib" prefix="pwslib/src/org/jpws/pwslib"/>
+    <zipfileset dir="${suppl}/src/org/jpws/pwslib" prefix="pwslib/suppl/src/org/jpws/pwslib"/>
+    <zipfileset file="${ftp4j}" prefix="pwslib/suppl/lib"/>
+    <zipfileset dir="${doc}" includes="${docfileset}" prefix="pwslib/doc" />
+    <zipfileset dir="${apidoc}" prefix="pwslib/doc/api"/>
+    <zipfileset dir="${suppl}/doc" prefix="pwslib/suppl/doc"/>
   </zip>
 <checksum file="${dist}/pws-engine-source-${ver}.zip"/>
 
-<copy file="${dist}/pws-engine-kse-${ver}.zip" 
+<!--<copy file="${dist}/pws-engine-kse-${ver}.zip" 
       tofile="${dist}/pws-engine-kse.zip" overwrite="yes"/>
 <copy file="${dist}/pws-engine-source-${ver}.zip" 
-      tofile="${dist}/pws-engine-kse-src.zip" overwrite="yes"/>
+tofile="${dist}/pws-engine-kse-src.zip" overwrite="yes"/> -->
 </target>
 
 <target name="help">

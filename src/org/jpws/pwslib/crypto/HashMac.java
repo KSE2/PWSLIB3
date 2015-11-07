@@ -1,16 +1,22 @@
-/* $Id: HashMac.java,v 1.3 2006/10/19 18:47:34 Besitzer Exp $
- *
- * Copyright (C) 1995-2000 The Cryptix Foundation Limited.
- * All rights reserved.
- *
- * Use, modification, copying and distribution of this software is subject to
- * the terms and conditions of the Cryptix General Licence. You should have
- * received a copy of the Cryptix General Licence along with this library;
- * if not, you can download a copy from http://www.cryptix.org/ .
- *
- * Modified: Wolfgang Keller, 2004 for the JQB project
- * Version 0.0.4
- */
+/*
+ *  File: HashMac.java
+ * 
+ *  Project PWSLIB3
+ *  @author Wolfgang Keller
+ *  @author Jeroen C. van Gelderen, Cryptix Foundation
+ *  Created 2004
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ *  Copyright (C) 1995-2000 The Cryptix Foundation Limited (modified)
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.crypto;
 
@@ -19,8 +25,8 @@ import java.security.DigestException;
 
 
 /**
- * This abstract class implements the MD4-like block/padding structure as it is
- * used by most hashes (MD4, MD5, SHA-0, SHA-1, RIPEMD-128, RIPEMD-160, Tiger).
+ * This abstract class implements the block/padding structure as it is
+ * used by sub-classing hashes.
  *
  * This class handles the message buffering, bit counting and padding.
  * Subclasses need implement only the three abstract functions to create a
@@ -32,8 +38,6 @@ import java.security.DigestException;
  * @version $Revision: 1.3 $
  * @author  Jeroen C. van Gelderen (gelderen@cryptix.org)
  *          <br>Modified by Wolfgang Keller, 2004
- * 
- * @since 2-0-0
  */
 public abstract class HashMac
 {
@@ -135,7 +139,8 @@ public abstract class HashMac
      * Cloning is organized by descendant classes through constructors.
      * (Required because of finals in member data.)
      */
-    protected Object clone() throws CloneNotSupportedException 
+    @Override
+	protected Object clone() throws CloneNotSupportedException 
     {
        throw new CloneNotSupportedException();
    }
@@ -164,8 +169,7 @@ public abstract class HashMac
 
         byteCount += 1;
         buf[bufOff++] = input;
-        if( bufOff==blockSize )
-        {
+        if( bufOff==blockSize ) {
             coreUpdate(buf, 0);
             bufOff = 0;
         }
@@ -355,7 +359,8 @@ public abstract class HashMac
     }
 
     /** Finalize of this class destroys a resulting digest value. */
-    public void finalize ()
+    @Override
+	public void finalize ()
     {
        if ( result != null )
           for ( int i = 0; i < result.length; i++ )

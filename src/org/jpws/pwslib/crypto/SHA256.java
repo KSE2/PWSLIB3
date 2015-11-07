@@ -1,15 +1,21 @@
-/* $Id: SHA256.java,v 1.2 2006/10/14 15:07:19 Besitzer Exp $
- *
- * Copyright (C) 2000 The Cryptix Foundation Limited. All rights reserved.
- *
- * Use, modification, copying and distribution of this software is subject to
- * the terms and conditions of the Cryptix General Licence. You should have
- * received a copy of the Cryptix General Licence along with this library;
- * if not, you can download a copy from http://www.cryptix.org/ .
- *
- * Modified: Wolfgang Keller, 2004 for the JQB project
- * Version 0.0.4
- */
+/*
+ *  File: SHA256.java
+ * 
+ *  Project PWSLIB3
+ *  @author Wolfgang Keller
+ *  Created 2004
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ *  Copyright (C) 2000 The Cryptix Foundation Limited (modified)
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.crypto;
 
@@ -21,8 +27,6 @@ import org.jpws.pwslib.global.Util;
  * @version $Revision: 1.2 $
  * @author  Jeroen C. van Gelderen (gelderen@cryptix.org)
  *          <br>Modified by Wolfgang Keller, 2004
- * 
- * @since 2-0-0
  */
 public class SHA256 extends HashMac implements Cloneable
 {
@@ -84,7 +88,8 @@ public class SHA256 extends HashMac implements Cloneable
     }
 
 
-    public Object clone() 
+    @Override
+	public Object clone() 
     {
        return new SHA256(this);
     }
@@ -93,9 +98,13 @@ public class SHA256 extends HashMac implements Cloneable
 // Concreteness
 //...........................................................................
 
-    /** Returns the resulting hash value in 32 bytes from offset.
+    /** Calculates the resulting hash value into 32 bytes of buffer from offset.
+     * 
+     * @param buf byte[] buffer
+     * @param off int offset in buffer
      */
-    protected void coreDigest (byte[] buf, int off)
+    @Override
+	protected void coreDigest (byte[] buf, int off)
     {
         for( int i=0; i<context.length; i++ )
             for( int j=0; j<4 ; j++ )
@@ -103,7 +112,8 @@ public class SHA256 extends HashMac implements Cloneable
     }
 
 
-    protected void coreReset()
+    @Override
+	protected void coreReset()
     {
         // initial values
         context[0] = 0x6a09e667;
@@ -117,7 +127,8 @@ public class SHA256 extends HashMac implements Cloneable
     }
 
 
-    protected void coreUpdate(byte[] block, int offset)
+    @Override
+	protected void coreUpdate(byte[] block, int offset)
     {
 
         int[] W = buffer;

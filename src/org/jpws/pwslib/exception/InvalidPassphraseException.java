@@ -1,9 +1,21 @@
 /*
- * $Id: InvalidPassphraseException.java,v 1.1.1.1 2006/09/17 17:30:01 Besitzer Exp $
+ *  File: InvalidPassphraseException.java
  * 
- * This file is provided under the standard terms of the Artistic Licence.  See the
- * LICENSE file that comes with this package for details.
- */
+ *  Project PWSLIB3
+ *  @author Wolfgang Keller
+ *  Created 2005
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
+
 package org.jpws.pwslib.exception;
 
 /**

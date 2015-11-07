@@ -1,47 +1,24 @@
-// $Id: Twofish.java,v 1.2 2006/10/14 15:07:22 Besitzer Exp $
-//
-// $Log: Twofish.java,v $
-// Revision 1.2  2006/10/14 15:07:22  Besitzer
-// no message
-//
-// Revision 1.1  2006/09/25 10:12:09  Besitzer
-// made Twofish running, inclusive CBC testing
-//
-// Revision 1.2  2006/09/10 07:35:32  Besitzer
-// new computer system, update
-//
-// Revision 1.1  2006/05/03 17:41:45  Melbar Kasom
-// created Sebass and most of its testing
-//
-// Revision 1.6  2005/05/27 07:33:12  somebody
-// last changes for 0.0.4
-//
-// Revision 1.5  2005/02/15 14:50:10  somebody
-// completing versions for release DEV-0-0-3
-//
-// Revision 1.4  2005/02/03 17:52:58  somebody
-// no message
-//
-// Revision 1.3  2005/02/01 07:15:43  somebody
-// no message
-//
-// Revision 1.2  2004/10/24 18:17:54  somebody
-// updated header encryption code
-//
-// Revision 1.1  2004/10/18 23:28:26  somebody
-// changed to 40-byte encryption MAC header
-//
-// Revision 1.1  2004/07/19 23:33:37  somebody
-// added Twofish encryption algo
-//
-// Revision 1.0  1998/03/24  raif
-// + start of history.
-//
-// $Endlog$
 /*
- * Copyright (c) 1997, 1998 Systemics Ltd on behalf of
- * the Cryptix Development Team. All rights reserved.
- */
+ *  File: Twofish.java
+ * 
+ *  Project PWSLIB3
+ *  @author Wolfgang Keller
+ *  @author Raif S. Naffah
+ *  Created 19.07.2004
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 1997, 1998 Systemics Ltd on behalf of
+ *  the Cryptix Development Team. All rights reserved.
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
+
 package org.jpws.pwslib.crypto;
 
 import java.io.PrintWriter;
@@ -57,7 +34,7 @@ import java.security.InvalidKeyException;
  * dependent "whitening" subkeys, and after the final round the output bits
  * are xored with other key-dependent whitening subkeys; these subkeys are
  * not used anywhere else in the algorithm.
- * Crypting methods of this class are not synchronised.
+ * <p>Crypting methods of this class are not synchronised.
  *
  * <p>Twofish was submitted by Bruce Schneier, Doug Whiting, John Kelsey, Chris
  * Hall and David Wagner.<p>
@@ -74,8 +51,6 @@ import java.security.InvalidKeyException;
  * <b>$Revision: 1.2 $</b>
  * @author  Raif S. Naffah
  * @author  carefully enhanced interface by Wolfgang Keller (2005-2006)
- * 
- * @since 2-0-0
  */
 final class Twofish // implicit no-argument constructor
 {
@@ -389,9 +364,9 @@ System.out.println();
    /**
     * Expand a user-supplied key material into a session key.
     *
-    * @param k  The 64/128/192/256-bit user-key to use.
-    * @return  This cipher's round keys.
-    * @exception  InvalidKeyException  If the key is invalid.
+    * @param k  The 64/128/192/256-bit user-key to use (8, 16, 24 or 32 bytes)
+    * @return  Object this cipher's round keys
+    * @exception  InvalidKeyException  if the given key is invalid
     */
    public static synchronized Object makeKey (byte[] k)
    throws InvalidKeyException {
@@ -505,10 +480,10 @@ if (DEBUG) trace(OUT, "makeKey()");
    /**
     * Encrypt exactly one block (16 bytes) of plaintext.
     *
-    * @param in        The plaintext.
-    * @param inOffset   Index of in from which to start considering data.
-    * @param sessionKey  The session key to use for encryption.
-    * @return The ciphertext generated from a plaintext using the session key.
+    * @param in byte[] plaintext data block
+    * @param inOffset int  index in "in" from which to start operation
+    * @param sessionKey Object Twofish session key to use for encryption
+    * @return byte[] ciphertext data generated from input
     */
    public static byte[] blockEncrypt (byte[] in, int inOffset, Object sessionKey) 
    {
@@ -586,10 +561,10 @@ if (DEBUG) trace(OUT, "blockEncrypt()");
    /**
     * Decrypt exactly one block (16 bytes) of ciphertext.
     *
-    * @param in        The ciphertext.
-    * @param inOffset   Index of in from which to start considering data.
-    * @param sessionKey  The session key to use for decryption.
-    * @return The plaintext generated from a ciphertext using the session key.
+    * @param in byte[] ciphertext data block
+    * @param inOffset int  index in data block from which to start operation
+    * @param sessionKey Object Twofish session key to use for decryption
+    * @return byte[] plaintext data generated from input
     */
    public static byte[] blockDecrypt (byte[] in, int inOffset, Object sessionKey) 
    {
@@ -771,7 +746,9 @@ if (DEBUG) trace(OUT, "blockDecrypt()");
       return result;
    }
 
-   /** @return The length in bytes of the Algorithm input block. */
+   /** Length in bytes of the Algorithm input block. 
+    * @return int (16)
+    */
    public static int blockSize() { return BLOCK_SIZE; }
 
    /** A basic symmetric encryption/decryption test for a given key size. */

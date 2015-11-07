@@ -1,43 +1,47 @@
-KSE PWSLIB 2-3-1
+KSE PWSLIB 2-4-0
 
 KSE Password Safe V3 Library
 README FILE
 
-This package is a part of the JPasswords project (JPWS) 
-(http://jpws.sourceforge.net) but may be used independently
+This package is a stand-alone project distributed under a BSD-like license,
+see the license.txt file for details.
+It was formerly a part of the JPasswords project (JPWS) which is its first
+application (http://jpws.sourceforge.net).
 
-Library Platform: Java 1.4.2 
-(Warning!! Does not compile under higher platform versions;
-for pure application purposes use the ready library instead!)
+A media related supplement to the core packages is available to support FTP
+based file access. This supplement is released under a different license.
+Details can be found under "suppl" directory of the project in the download
+files.
 
-System Compatibility Format: PWS 3.10 (Password Safe)
-Reference Format Document: 
+The file format handled is from open-source project "Password Safe". 
+This package contains strong encryption software provided by
+The Cryptix Foundation, UK, also under the BSD license, and own development.
 
-Release Date: 20 Feb 2013
-Text updated: 20 Feb 2013
+Library Platform: Java 1.6 
 
-2-3-1 is a security update!
+System Compatibility Format: PWS 3.13 (Password Safe)
+Reference Format Documents: formatV3.txt, formatV2.txt, formatV1.txt
+Javadoc API documentation available
+
+Release Date: 07 Nov 2015
+Text updated: 06 Nov 2015
+
+Available Executable Packages
+    pws-engine-kse-2-4-0.jar		BSD-like license
+    pws-suppl-ftp-2-4-0.jar		LGPL 2
+
+Documentary and Development Packages    
+    pws-engine-kse-2-4-0.zip		executables + documentation
+    pws-engine-source-2-4-0.zip		source code + library + documentation
+
+Release Type
+2-4-0 is a full overhaul update with few interface changes. Upgraders from previous 
+versions may have to apply some adaption work and careful testing of the results!
+Also see file changelog.txt for further details.
 
 -------------------------------
 
-CHANGELOG
-Text Date: 20. Feb. 2013
-
-Actual Release 2-3-1, Date: 20 Feb. 2013
-----------------------------------------
-
-- PwsFile.setPersistentFile(ContextFile) now allows for the null parameter 
-  which is equivalent to PwsFile.setFilePath(null).
-- new exception  LoginFailureException has been created to replace 
-  sun.net.ftp.FtpLoginException outwardly. 
-- security update for the encryption/decryption process. With thorough memory testing
-  some spreading of decrypted content garbage onto the VM (temporary!) data heap have 
-  been removed. VM memory should now be clean from decrypted database content
-  after reading or writing, except for Title and User-Name.
-- CryptoRandom cryptographical random generator now runs on SHA512 instead of SHA1.   
-
-
-DESCRIPTION
+PRODUCT DESCRIPTION
 
 This is a stable, complete library to access, modify and create encryption protected
 databases for passwords in the various formats of CounterPane's program "Password Safe"
@@ -45,7 +49,7 @@ databases for passwords in the various formats of CounterPane's program "Passwor
 
 These are the main features of this software:
 
-a)  Support of a recent security standard of Password Safe files (format version 3.6)
+a)  Support of a recent security standard of Password Safe files (format version 3.13)
 
 b)  Support of all historical file formats (V2 and V1)
 

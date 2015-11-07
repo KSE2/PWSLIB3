@@ -1,26 +1,20 @@
 /*
- *  file: PwsFile.java
+ *  File: PwsFile.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 07.08.2005
- *  Version
  * 
  *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license which is given in the document section of this 
+ project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
+ FOR A PARTICULAR PURPOSE. See the license for more details.
  */
 
 package org.jpws.pwslib.data;
@@ -605,7 +599,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * This is a relatively expensive operation as it walks through analysing 
     * all records with each call.
     * 
-    * @param int format file format version of the projected persistent state
+    * @param format int file format version of the projected persistent state
     * @return long required (blocked) data size
     */
    public long getBlockedDataSize ( int format )
@@ -836,7 +830,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * Returns a human info file path notation incorporating the IO-context name.
     * 
     * @param app <code>ApplicationAdapter</code> the application context 
-	* @param path String the path for the file
+	* @param filePath String the path for the file
 	* @return String human readable info about context + file
     */
    protected String extFileRef ( ApplicationAdapter app, String filePath )

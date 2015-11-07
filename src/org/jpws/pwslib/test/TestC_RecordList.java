@@ -1,3 +1,21 @@
+/*
+ *  File: TestC_RecordList.java
+ * 
+ *  Project PWSLIB3
+ *  @author Wolfgang Keller
+ *  Created 10.2015
+ * 
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ * 
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
+
+ This program is distributed in the hope that it will be useful, but WITHOUT
+ ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
+
 package org.jpws.pwslib.test;
 
 import static org.junit.Assert.assertEquals;
@@ -11,6 +29,7 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -40,8 +59,8 @@ public class TestC_RecordList {
 	};
 	
 public TestC_RecordList() {
-	Log.setDebugLevel(10);
-	Log.setLogLevel(10);
+	Log.setDebugLevel(2);
+	Log.setLogLevel(2);
 }
 
 private void test_state ( PwsRecordList list, 
@@ -99,6 +118,7 @@ private PwsRecord createRecord (int type) {
         rec.setNotes( "Zugang zum Tresor, muﬂ man sich verschaffen!" );
         break;
     case 1:
+    	rec.setGroup("Stadthasen");
         rec.setTitle( "Maria Brenner" );
         rec.setPassword( new PwsPassphrase( "brezensieb" ) );
         rec.setUsername( "Brennermausi" );
@@ -1771,7 +1791,269 @@ public void test_replace () throws DuplicateEntryException {
 			Util.equalArrays(sig2, li1.getSignature()));
 }
 
+@Test
+public void test_list_events () throws DuplicateEntryException, NoSuchRecordException {
+	PwsRecordList li1, li2, li3, hares;
+	Collection<PwsRecord> col1, col2, col3;
+	DefaultRecordWrapper[] wraps;
+	List<PwsRecord> list1;
+	PwsRecord rec;
+	byte[] sig1, sig2, sig3;
+
+	col1 = getRecordCollection(6);
+	col2 = getRecordCollection(6);
+	li1 = new PwsRecordList(col1);
+	li2 = new PwsRecordList(col2);
+	list1 = new ArrayList<PwsRecord>();
+
+	Test_FileListener listener = new Test_FileListener();
+	li1.addFileListener(listener);
+	assertTrue("early event dispatching", listener.getCounter() == 0);
+	
+	// test remove one
+	Iterator<PwsRecord> iterator = col1.iterator();
+	rec = iterator.next();
+	li1.removeRecord(rec);
+	listener.testOneEvent(PwsFileEvent.RECORD_REMOVED, rec);
+	
+	// test add one
+	rec = createRecord(1);
+	listener.reset();
+	li1.addRecord(rec);
+	listener.testOneEvent(PwsFileEvent.RECORD_ADDED, rec);
+
+	rec = createRecord(2);
+	listener.reset();
+	li1.addRecordValid(rec);
+	listener.testOneEvent(PwsFileEvent.RECORD_ADDED, rec);
+
+	// test update one identical
+	rec = li1.getRecord(rec);
+	listener.reset();
+	li1.updateRecord(rec);
+	assertTrue("no event was expected while updating unmodified record", listener.getCounter() == 0);
+
+	// test update one modified
+	rec.setTitle("new title");
+	listener.reset();
+	li1.updateRecord(rec);
+	listener.testOneEvent(PwsFileEvent.RECORD_UPDATED, rec);
+	
+	rec.setTitle("Fax hat die Faxen dicke");
+	listener.reset();
+	li1.updateRecordValid(rec);
+	listener.testOneEvent(PwsFileEvent.RECORD_UPDATED, rec);
+
+	// test add record list + collection
+	listener.reset();
+	li1.addRecordList(li2);
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	listener.reset();
+	col3 = getRecordCollection(3);
+	li1.addCollection(col3);
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	// test various updaters
+	listener.reset();
+	li3 = li1.renameGroup("", "Eselsgruppe");
+	Log.debug(1, "rename group, size == " + li3.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	listener.reset();
+	li3 = li1.getGroup("Stadthasen");
+	wraps = li1.moveRecords(li3.toRecordWrappers(null), "Hasenkiste", false);
+	Log.debug(1, "move group, size == " + wraps.length);
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	listener.reset();
+	hares = li1.removeGroup("Hasenkiste");
+	Log.debug(1, "remove group, size == " + hares.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	listener.reset();
+	col2 = getRecordCollection(3);
+	li2 = new PwsRecordList(col2);
+	li3 = li1.merge(li2, PwsRecordList.MERGE_INCLUDE, false);
+	assertTrue("incomplete merge", li3.isEmpty());
+	assertTrue("merge not successful", li1.containsRecordList(li2));
+	Log.debug(1, "merge list, size == " + li1.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	// test remove record list
+	
+	listener.reset();
+	li3 = li1.removeRecordList(li2);
+	assertNull("incomplete remove list", li3);
+	Log.debug(1, "remove list, size == " + li2.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	li1.addCollection(col2);
+	listener.reset();
+	list1 = li1.removeCollection(col2);
+	assertNull("incomplete remove collection", list1);
+	Log.debug(1, "remove collection, size == " + col2.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	// test update record list
+	
+	li1.addRecordList(hares);
+	col3 = hares.toList();
+	for (PwsRecord record : col3) {
+		record.setGroup("Neue Stadt");
+	}
+	
+	listener.reset();
+	list1 = li1.updateCollection(col3);
+	assertNull("incomplete collection update", list1);
+	Log.debug(1, "update collection, size == " + col3.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+
+	for (PwsRecord record : col3) {
+		record.setGroup("Eberhardts Scheune");
+	}
+	
+	listener.reset();
+	li2 = new PwsRecordList(col3);
+	li3 = li1.updateRecordList(li2);
+	assertNull("incomplete update record list", li3);
+	Log.debug(1, "update record list, size == " + li2.size());
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+
+	// test take over record list
+	
+	listener.reset();
+	col2 = getRecordCollection(6);
+	li2 = new PwsRecordList(col2);
+	PwsRecord[] recs = col2.toArray(new PwsRecord[col2.size()]);
+	li1.replaceContent(recs);
+	assertTrue(li1.containsRecordList(li2));
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	listener.reset();
+	col2 = getRecordCollection(6);
+	li2 = new PwsRecordList(col2);
+	li1.replaceFrom(li2);
+	assertTrue(li1.containsRecordList(li2));
+	listener.testOneEvent(PwsFileEvent.LIST_UPDATED, null);
+	
+	// test list cleared
+	
+	listener.reset();
+	li3 = li1.copy();
+	li3.addFileListener(listener);
+	li3.clear();
+	listener.testOneEvent(PwsFileEvent.LIST_CLEARED, null);
+
+	listener.reset();
+	li3 = li1.copy();
+	li3.addFileListener(listener);
+	li3.replaceContent(null);
+	listener.testOneEvent(PwsFileEvent.LIST_CLEARED, null);
+
+	listener.reset();
+	li3 = li1.copy();
+	li3.addFileListener(listener);
+	li3.replaceContent(new PwsRecord[0]);
+	listener.testOneEvent(PwsFileEvent.LIST_CLEARED, null);
+
+	//  ------- NO EVENTS ------
+	
+	listener.reset();
+	li3 = new PwsRecordList();
+	li3.addFileListener(listener);
+	li3.clear();
+	listener.testNoEvent();
+	
+	li3.addCollection(getRecordCollection(0));
+	listener.testNoEvent();
+	
+	li3.addRecordList(new PwsRecordList());
+	listener.testNoEvent();
+	
+	li3.replaceFrom(li2);
+	assertTrue(li3.size() == col2.size());
+	listener.reset();
+	li3.updateCollection(col2);
+	listener.testNoEvent();
+
+	li3.updateRecordList(li2);
+	listener.testNoEvent();
+
+	li3.removeCollection(getRecordCollection(0));
+	listener.testNoEvent();
+	
+	li3.removeRecordList(new PwsRecordList());
+	listener.testNoEvent();
+	
+	li3.merge(new PwsRecordList(), PwsRecordList.MERGE_INCLUDE, false);
+	listener.testNoEvent();
+	
+	li3.moveRecords(new DefaultRecordWrapper[0], null, true);
+	listener.testNoEvent();
+	
+	li3.removeGroup("Earschlitten");
+	listener.testNoEvent();
+	
+	li3.removeRecord(new UUID());
+	listener.testNoEvent();
+	
+	rec = li3.iterator().next();
+	li3.updateRecord(rec);
+	listener.testNoEvent();
+}
+
 // ---------- inner classes ----------
+
+private class Test_FileListener implements PwsFileListener {
+	private HashSet<Integer> typeSet = new HashSet<Integer>();
+	private int counter;
+	private PwsFileEvent event;
+	
+	@Override
+	public void fileStateChanged(PwsFileEvent evt) {
+		event = evt;
+		typeSet.add(evt.getType());
+		counter++;
+	}
+
+	public void reset () {
+		typeSet.clear();
+		counter = 0;
+	}
+	
+	public int getCounter () {
+		return counter;
+	}
+	
+	public int getTypeCount () {
+		return typeSet.size();
+	}
+	
+	public boolean typeOccurred (int type) {
+		return typeSet.contains(type);
+	}
+	
+	public PwsFileEvent getEvent () {
+		return event;
+	}
+	
+	public void testOneEvent (int type, PwsRecord rec) {
+		assertTrue("no event occurred", counter > 0);
+		assertTrue("more than expected one event", counter == 1);
+		assertTrue("other than expected event type", event.getType() == type);
+		if (rec != null) {
+			assertNotNull("event does not show record", event.getRecord());
+			assertTrue("other than expected record in event", event.getRecord().equals(rec));
+		} else {
+			assertNull("event shows unexpected record", event.getRecord());
+		}
+	}
+	
+	public void testNoEvent () {
+		assertTrue("unexpected event issued", counter == 0);
+	}
+}
 
 private class AllMethods_RecordList extends PwsRecordList {
 

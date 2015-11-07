@@ -1,28 +1,20 @@
 /*
- *  TwofishECB in org.jpws.pwslib.crypto
- *  file: TwofishECB.java
+ *  File: TwofishECB.java
  * 
- *  Project PWSLIB2
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 25.09.2006
- *  Version
  * 
- *  Copyright (c) 2006 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2006-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.crypto;
 
@@ -33,7 +25,7 @@ import org.jpws.pwslib.global.Util;
 /**
  * Class wrapping a low-level implementation of the Twofish cipher
  * into a <code>PwsCipher</code> of the ECB modus.
- * Methods of this class are not synchronized.
+ * Methods of this class are not synchronised!
  * 
  */
 class TwofishECB implements PwsCipher
@@ -48,29 +40,45 @@ class TwofishECB implements PwsCipher
  */   
 public TwofishECB () 
 {
-   try { sk = Twofish.makeKey( Util.getCryptoRand().nextBytes( 32 ) ); }
-   catch ( InvalidKeyException e )
-   { throw new IllegalStateException( e.toString() ); }
+   try { 
+	   sk = Twofish.makeKey( Util.getCryptoRand().nextBytes( 32 ) ); 
+   } catch ( InvalidKeyException e ) { 
+	   throw new IllegalStateException( e.toString() ); 
+   }
 }
 
+/**
+ * Creates a Twofish ECB cipher with the given user key material.
+ * 
+ * @param key byte[] user key material (8, 16, 24 or 32 bytes)
+ * @throws IllegalArgumentException if key is invalid (length)
+ */
 public TwofishECB ( byte[] key )
 {
-   try { sk = Twofish.makeKey( key ); }
-   catch ( InvalidKeyException e )
-   { throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); }
+   try { 
+	   sk = Twofish.makeKey( key ); 
+   } catch ( InvalidKeyException e ) { 
+	   throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); 
+   }
 }
 
+/**
+ * Creates a Twofish ECB cipher with the given user key material.
+ * 
+ * @param key byte[] user key material 
+ * @param offset int start offset in key 
+ * @param length int length in key to be used (8, 16, 24 or 32 bytes)
+ * @throws IllegalArgumentException if key is invalid (length)
+ */
 public TwofishECB ( byte[] key, int offset, int length )
 {
-   byte[] buf;
-   
    try {
-      buf = new byte[ length ];
+	  byte[] buf = new byte[ length ];
       System.arraycopy( key, offset, buf, 0, length );
       sk = Twofish.makeKey( buf ); 
+   } catch ( InvalidKeyException e ) { 
+	   throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); 
    }
-   catch ( InvalidKeyException e )
-   { throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); }
 }
 
 @Override

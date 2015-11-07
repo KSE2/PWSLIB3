@@ -1,29 +1,21 @@
 
 /*
- *  PwsRecord in org.jpws.pwslib.data
- *  file: PwsRecord.java
+ *  File: PwsRecord.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 11.08.2004
- *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.data;
 
@@ -52,7 +44,7 @@ import org.jpws.pwslib.global.Util;
  * version this class implements is 3.13 (decimal). The following fields of 
  * the description are NOT available in this interface (although they are 
  * preserved when loaded from other applications): Double-Click-Action, 
- * Shift-Double-Click-Action, Run-Command, Keyboard-Shortcut. 
+ * Shift-Double-Click-Action, Run-Command. 
  * 
  * <p>A record-ID - a {@link org.jpws.pwslib.global.UUID} object - holds 
  * an immutable universal value and is by design always existent on a 
@@ -354,7 +346,7 @@ private long normalisedTime (long time) {
    
    /** Returns the value of record field ACCESSTIME in epoch time. 
     *
-    * @param long date in milliseconds
+    * @return long date in milliseconds
     */
    public long getAccessTime ()
    {
@@ -646,7 +638,7 @@ private long normalisedTime (long time) {
     *  of an encrypted value. A passphrase of length zero is equivalent to 
     *  <b>null</b>. Use <b>null</b> to clear the field.
     *  
-    *  @param <code>PwsPassphrase</code> or <b>null</b>
+    *  @param value <code>PwsPassphrase</code> or <b>null</b>
     */
    public void setNotes ( PwsPassphrase value )
    {
@@ -1527,10 +1519,10 @@ public void setPassPolicyName ( String policyName )
    controlValue( oldValue, policyName, "PASSPOLICY_NAME" );
 }
 
-/** Sets the keyboard shortcut value for this record as a <code>KeyStroke</code>
- * value. 
+/** Returns the keyboard shortcut value for this record as a 
+ * <code>KeyStroke</code> or <b>null</b> if not defined. 
  * 
- * @param shortcut <code>KeyStroke</code> shortcut key or <b>null</b>
+ * @return <code>KeyStroke</code> shortcut key or <b>null</b>
  */
 public KeyStroke getKeyboardShortcut () 
 {

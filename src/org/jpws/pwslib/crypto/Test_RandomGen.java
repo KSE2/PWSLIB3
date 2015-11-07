@@ -90,7 +90,7 @@ public class Test_RandomGen {
     }
     
     public static void main ( String args[] ) {
-        Global.init();
+        Global.getDefaultCharset();
         new Test_RandomGen().performTest_1();
     }
 }

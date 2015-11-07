@@ -1,27 +1,20 @@
 /*
- *  file: UUID.java
+ *  File: UUID.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 07.08.2005
- *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.global;
 
@@ -42,7 +35,7 @@ import org.jpws.pwslib.crypto.SHA1;
  * @author Kevin Preece
  * @author Wolfgang Keller
  */
-public final class UUID implements Cloneable, Comparable, Serializable
+public final class UUID implements Cloneable, Comparable<UUID>, Serializable
 {
 	private final byte []		uidValue	= new byte[ 16 ];
 	private       int          hashcode;
@@ -133,6 +126,7 @@ public final class UUID implements Cloneable, Comparable, Serializable
     * @return <b>true</b> if and only if all bytes of the 16 byte UUID value 
     *         are equal
 	 */
+	@Override
 	public boolean equals( Object obj )
 	{
       if ( obj == null || !(obj instanceof UUID) )
@@ -143,13 +137,15 @@ public final class UUID implements Cloneable, Comparable, Serializable
 
 	/** A hashcode coherent with <code>equals()</code>.
 	 */ 
+   @Override
    public int hashCode()
    {
       return hashcode;
    }
 
    //  * @since 2-1-0
-	public int compareTo ( Object o )
+	@Override
+	public int compareTo ( UUID o )
    {
        UUID obj = (UUID)o;
        int i = 0;
@@ -184,6 +180,7 @@ public final class UUID implements Cloneable, Comparable, Serializable
    /**
     * Makes a deep clone of this UUID object.
     */
+   @Override
    public Object clone ()
    {
       try {  return super.clone();  }
@@ -199,6 +196,7 @@ public final class UUID implements Cloneable, Comparable, Serializable
 	 * 
 	 * @return <code>String</code> representation of this <code>UUID</code>
 	 */
+	@Override
 	public String toString()
 	{
 		return toString( uidValue );

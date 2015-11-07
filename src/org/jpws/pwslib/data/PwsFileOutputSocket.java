@@ -1,28 +1,20 @@
 /*
- *  PwsFile in org.jpws.pwslib.data
- *  file: PwsFile.java
+ *  File: PwsFileOutputSocket.java
  * 
- *  Project PWSLIB2
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 20.08.2006
- *  Version
  * 
- *  Copyright (c) 2006 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.data;
 
@@ -47,7 +39,7 @@ import org.jpws.pwslib.global.Util;
  *  block-segmented data stream. 
  *  
  *  @see org.jpws.pwslib.data.PwsBlockOutputStream
- *  @see org.jpws.pwslib.data.PwsFileOutputSocket.RawFieldWriter
+ *  @see org.jpws.pwslib.data.PwsRawFieldWriter
  */
 
 public class PwsFileOutputSocket
@@ -65,60 +57,6 @@ public class PwsFileOutputSocket
    
    
    /**
-    * Interface defining a device designed to write objects of type {@link
-    * PwsRawField} to an encrypted output stream. This writer organises
-    * the appropriate block stream of the cipher depending on previously 
-    * defined file parameters.  
-    * 
-    * <p>Closing the writer is possible to avoid further use, but does not
-    * close the underlying data stream.
-    * 
-    */
-   public interface RawFieldWriter 
-   {
-
-   /**
-    * Closes this writer and flushes data. Does not close the underlying
-    * output stream. 
-    */
-   public void close () throws IOException;
-
-   /** The blocksize of the underlying encryption cipher. 
-    */
-   public int getBlockSize ();
-
-   /** The file format version for which this writer was defined. 
-    * 
-    * @return int format version
-    */
-   public int getFormat ();
-   
-   
-   /**
-    * Writes a single raw field to the underlying (encrypted) output stream.
-    * 
-    * @param rawField <code>PwsRawField</code>
-    * @throws IOException
-    */
-   public void writeRawField ( PwsRawField rawField ) throws IOException;
-
-   /** 
-    * The number of written blocks in the underlying output stream.
-    *  
-    * @return int number of blocks (0 means new stream)
-    */
-   public int getCount ();
-   
-//   /** Returns the blockstream on which this writer operates.
-//    * 
-//    * @return <code>PwsBlockOutputStream</code>
-//    */
-//   public PwsBlockOutputStream getBlockStream ();
-   }  // interface RawFieldWriter
-
-
-   
-/**
  * Creates an output socket with an empty header field list. (Essential header
  * fields will be created with default values where necessary.)
  * 
@@ -270,9 +208,9 @@ public void setIterations ( int iterations )
  * @return <code>RawFieldWriter</code>
  * @throws IOException
  */
-public RawFieldWriter getRawFieldWriter () throws IOException
+public PwsRawFieldWriter getRawFieldWriter () throws IOException
 {
-   return (RawFieldWriter)getBlockOutputStream();
+   return (PwsRawFieldWriter)getBlockOutputStream();
 }
 
 
@@ -303,7 +241,7 @@ public PwsBlockOutputStream getBlockOutputStream () throws IOException
  *  to a database output stream. Also writes the next aggregation
  *  of BLOCKs: DATAFIELDS as handed over in <code>RawField</code> objects. 
  */
-private class BlockWriter implements PwsBlockOutputStream, RawFieldWriter
+private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
 {
    OutputStream out;
    PwsCipher cipher;

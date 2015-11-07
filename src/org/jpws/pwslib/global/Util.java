@@ -1,28 +1,20 @@
 /*
- *  Util in org.jpws.pwslib.global
- *  file: Util.java
+ *  File: Util.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 07.08.2004
- *  Version 
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.global;
 
@@ -865,21 +857,20 @@ public static boolean equalArrays ( char[] a, char[] b )
  */
 public static char[] clearedSymbolSet ( char[] ownSymbols )
 {
-   SortedSet set = new TreeSet();
+   SortedSet<Character> set = new TreeSet<Character>();
    char[] result;
    int i = 0;
    
-   if ( ownSymbols != null )
-   {
-      for ( i = 0; i < ownSymbols.length; i++ )
-      {
+   if ( ownSymbols != null ) {
+      for ( i = 0; i < ownSymbols.length; i++ ) {
          set.add( new Character( ownSymbols[ i ] ) );
       }
       
       i = 0;
       result = new char[ set.size() ]; 
-      for ( Iterator it = set.iterator(); it.hasNext(); )
+      for ( Iterator<Character> it = set.iterator(); it.hasNext(); ) {
          result[ i++ ] = ((Character)it.next()).charValue();
+      }
       return result;
    }
    return null;

@@ -1,28 +1,20 @@
 /*
- *  BlowfishCipher in org.jpws.pwslib.crypto
- *  file: BlowfishCipher.java
+ *  File: BlowfishCipher.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 08.08.2004
- *  Version 
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.crypto;
 
@@ -31,7 +23,7 @@ package org.jpws.pwslib.crypto;
  * This class allows to instantiate Twofish ciphers of different operation
  * modi, conforming to the <code>PwsCipher</code> interface.
  * Available are "ECB" and "CBC" modi. Crypting methods of this class are 
- * synchronized. 
+ * synchronised. The blocksize of this cipher is 16.
  * 
  */
 public class TwofishCipher implements PwsCipher
@@ -48,7 +40,9 @@ public class TwofishCipher implements PwsCipher
 
    /**
     *  Creates a Twofish ECB cipher with specified key material.
-    *  @param key the key material
+    *  
+    *  @param key byte[] key material (8, 16, 24 or 32 bytes)
+    *  @throws IllegalArgumentException if key length is invalid
     */
    public TwofishCipher ( byte[] key )
    {
@@ -57,8 +51,10 @@ public class TwofishCipher implements PwsCipher
 
    /**
     *  Creates a Twofish CBC cipher with specified key material and CBC IV value.
-    *  @param key the key material
-    *  @param init the CBC IV value (minimum 16 bytes) 
+    *  
+    *  @param key byte[]  key material (8, 16, 24 or 32 bytes)
+    *  @param init byte[] CBC IV value (minimum 16 bytes) 
+    *  @throws IllegalArgumentException if key or IV length is invalid
     */
    public TwofishCipher ( byte[] key, byte[] init )
    {

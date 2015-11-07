@@ -1,28 +1,20 @@
 /*
- *  OrderedRecordList in org.jpws.front
- *  file: OrderedRecordList.java
+ *  File: OrderedRecordList.java
  * 
- *  Project Jpws-Front
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 27.09.2004
- *  Version
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.order;
 
@@ -40,36 +32,38 @@ import org.jpws.pwslib.data.PwsRecordList;
 
 /**
  *  Represents an ordered list of <code>DefaultRecordWrapper</code> objects
- *  which may (or may not) belong to a specific, singular <code>PwsRecordList
- *  </code>.
+ *  which may (or may not) belong to a specific, singular <code>PwsRecordList.
+ *  </code>
  *  List altering actions, like insertion and removal of records or loading
  *  of a database, preserve the order of the list. Record-wrappers may be 
  *  addressed by their index numbers in the list.
  * 
  *  <p>The design of this class is to function as a "middleware" between a 
- *  record database object and any record aware data model which needs reference
- *  to a sorted order of its items. The <code>OrderedRecordList</code> hereby 
+ *  record database object and any record aware data model which requires 
+ *  reference to a sorted order of items. The <code>OrderedRecordList</code>  
  *  listens to modification events of the underlying database
  *  and transforms them into events of the sorted list. This class may, however, 
  *  also be used for simpler (or likewise more complex) purposes of sorting 
- *  records as the bondage to a database is not mandatory. 
+ *  records as the bondage to a database is not mandatory and record wrappers
+ *  can be added and removed from the list directly.
  *  
  *  <p>The sorting follows a fixed combination of values, namely GROUP + TITLE.
  *  Sorting follows the <code>Collator</code> class to guarantee locale 
  *  sensitive sorting success.
  *  
  *  <p>This class issues events for <code>OrderedListListener</code>s to reflect
- *  any list modifications. At the same time this class is a 
+ *  list modifications. At the same time this class is a 
  *  <code>PwsFileListener</code>  and - if records were loaded from a Pws record
- *  list - it listens to modifications of this database and aligns the elements 
- *  of this list accordingly. This design allows to update even complex display 
+ *  list - it listens to modifications of this database and aligns elements 
+ *  of the list accordingly. This design allows to update even complex display 
  *  component arrangements by simply modifying the underlying record database. 
  *  
  *  <p>A facility for list filtering is available. The user has to set up a
  *  class to implement the <code>RecordSelector</code> interface where 
- *  acceptance of records is defined.The selector is activated through method
- *  <code>setRecordSelector()</code>; for each new selection criterion <code>
- *  reload()</code> must be called to recreate the list content. 
+ *  acceptance of records is defined. The selector is activated through method
+ *  <code>setRecordSelector()</code>; for each updated selection criterion 
+ *  <code>refresh()</code> or <code>reload()</code> must be called to recreate
+ *  the list content. 
  * 
  */
 public class OrderedRecordList implements PwsFileListener
@@ -160,7 +154,7 @@ public OrderedRecordList ( PwsRecordList f, Locale locale )
 /** Tests if the parameter record complys with database bondage of this list.
  *  In case of non-compliance an exception is thrown.
  * 
- *  @param rec record to be evaluated
+ *  @param wrap <code>DefaultRecordWrapper</code> record to be evaluated
  *  @throws IllegalArgumentException ("unrelated record") if bondage violation
  */
 protected void verifyBondage ( DefaultRecordWrapper wrap )
@@ -583,6 +577,9 @@ public void printout ( PrintStream out )
    
    // --------- INNER CLASSES ----------
    
+/** Interface to define filtering criteria for this ordered list via the
+ * <code>accept()</code> method.
+ */
 public static interface RecordSelector {
 	
   /** Performs the filtering criterion for accepting a record into a list. 

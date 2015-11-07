@@ -1,28 +1,20 @@
 /*
- *  Global in org.jpws.pwslib.global
- *  file: Global.java
+ *  File: Global.java
  * 
- *  Project JPasswords
+ *  Project PWSLIB3
  *  @author Wolfgang Keller
  *  Created 05.08.2004
- *  Version 
  * 
- *  Copyright (c) 2005 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
  * 
- This program is not freeware software but copyright protected to the author(s)
- stated above. However, you can use, redistribute and/or modify it under the terms 
- of the GNU General Public License as published by the Free Software Foundation, 
- version 2 of the License.
+ This program is copyright protected to the author(s) stated above. However, 
+ you can use, redistribute and/or modify it for free under the terms of the 
+ 2-clause BSD-like license given in the document section of this project.  
 
  This program is distributed in the hope that it will be useful, but WITHOUT
  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
- FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License along with
- this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- Place - Suite 330, Boston, MA 02111-1307, USA, or go to
- http://www.gnu.org/copyleft/gpl.html.
- */
+ FOR A PARTICULAR PURPOSE. See the license for more details.
+*/
 
 package org.jpws.pwslib.global;
 
@@ -40,8 +32,8 @@ import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 
 /**
- *  Global references for the PWSLIB backend library classes. This singleton 
- *  class is self-initializing.  
+ *  Global references for the PWSLIB backend library classes. This static 
+ *  singleton class is self-initializing.  
  *  
  *  <p>Two important global objects are available: the standard application
  *  adapter and the standard encryption cipher. 
@@ -142,7 +134,7 @@ public static void setStandardApplication ( ApplicationAdapter adp )
    
    String hstr = haveApplications ? "Standard Application: " + adp.getName() 
           : "Standard Application cleared";
-   Log.log( 1, "(PWSLIB) " + hstr );
+   Log.log( 1, "PWSLIB " + hstr );
 }
 
 /** The currently active standard application adapter (IO-context) of this 
@@ -222,7 +214,7 @@ public static void setDisplayUsernames ( boolean v )
  *  <p>Does nothing if this class is already initialised.
  *
  */ 
-public static void init ()
+private static void init ()
 {
    if ( !isInitialized ) {
 	  setStandardApplication( DefaultFilesystemAdapter.get() );
