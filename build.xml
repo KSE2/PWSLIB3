@@ -11,7 +11,7 @@
 	<property name="build.suppl" value="${suppl}/build" />
 
 <!--   FILES                                                          -->
-        <property name="junit" value="../Library/junit-4.jar"/>
+        <property name="junit" value="${lib}/junit-4.jar"/>
         <property name="ftp4j" value="${lib}/ftp4j-1.7.2.jar" />
 
         <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt formatV2.txt formatV1.txt" />
@@ -32,6 +32,7 @@
     <tstamp/>
     <mkdir dir="${dist}"/>
     <mkdir dir="${build}"/>
+    <mkdir dir="${build.suppl}"/>
 </target>
 
 <target name="clear-c" description="remove class files from build area">
@@ -77,7 +78,6 @@
      manifest="MANIFEST.MF"
      includes="org/jpws/pwslib/**"
      excludes="**/Test*">
-  <!--   <zipfileset src="${ftp4j}"/>-->
 </jar>
 </target>
 
@@ -108,7 +108,8 @@
     <zipfileset dir="." includes="${rootfileset}" prefix="pwslib" />
     <zipfileset dir="${src}/org/jpws/pwslib" prefix="pwslib/src/org/jpws/pwslib"/>
     <zipfileset dir="${suppl}/src/org/jpws/pwslib" prefix="pwslib/suppl/src/org/jpws/pwslib"/>
-    <zipfileset file="${ftp4j}" prefix="pwslib/suppl/lib"/>
+    <zipfileset file="${ftp4j}" prefix="pwslib/lib"/>
+    <zipfileset file="${junit}" prefix="pwslib/lib"/>
     <zipfileset dir="${doc}" includes="${docfileset}" prefix="pwslib/doc" />
     <zipfileset dir="${apidoc}" prefix="pwslib/doc/api"/>
     <zipfileset dir="${suppl}/doc" prefix="pwslib/suppl/doc"/>
@@ -124,7 +125,8 @@ tofile="${dist}/pws-engine-kse-src.zip" overwrite="yes"/> -->
 <target name="help">
 	<echo>Targets:
 --------
-jar      - create JPWS backend executable library
+jar      - create PWSLIB executable library
+suppl    - create PWSLIB supplementary libraries
 api      - create Javadoc API for backend library
 dist     - create JPWS backend distribution package
 clear-c  - remove class files from build area
