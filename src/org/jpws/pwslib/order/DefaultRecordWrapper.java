@@ -22,6 +22,7 @@ import java.text.CollationKey;
 import java.text.Collator;
 import java.util.Locale;
 
+import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.global.Global;
@@ -58,6 +59,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     *  Defaults to "?" 
     */
    public static String defaultTitle = "?";
+   private static SHA1 sha1 = new SHA1();
    
    private Locale locale;
    private CollationKey key;
@@ -99,7 +101,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
        { return null; }
        
        obj.record = (PwsRecord) record.clone();
-       obj.key = Collator.getInstance( locale ).getCollationKey( sortValue );
+//       obj.key = Collator.getInstance( locale ).getCollationKey( sortValue );
        return obj;
     }
 
@@ -184,24 +186,25 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     */
    public static String sortValueOf ( PwsRecord rec )
    {
-      return sortValueOf( rec.getGroup(), rec.getTitle() );
+      String group = rec.getGroup();
+      String title = rec.getTitle();
+      String recid = getRecordIdent(rec);
+      
+      if ( group == null ) group = "";
+      if ( title == null ) title = "";
+      return group + ":" + title + ":" + recid;
    }
    
-   /** Returns the standard sort value given the parameter group and title 
-    * values.
-    * 
-    *  @return String sort value, combination of parameters 
-    */
-   public static String sortValueOf ( String group, String title )
-   {
-      if ( group == null )
-         group = "";
-      if ( title == null )
-         title = "";
-      return group + ":" + title;
+   private static synchronized String getRecordIdent (PwsRecord rec) {
+      byte[] uid = rec.getRecordID().getBytes();
+      sha1.reset();
+      sha1.update(uid);
+      sha1.finalize();
+      String res = sha1.toString().substring(0, 6);
+      return res;
    }
-   
-   /**
+
+/**
     * Makes a deep clone of an array of <code>DefaultRecordWrapper</code> items.
     * 
     * @param arr <code>DefaultRecordWrapper[]</code>

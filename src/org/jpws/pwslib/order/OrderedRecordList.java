@@ -177,7 +177,7 @@ public void insertItem ( DefaultRecordWrapper record )
 {
    DefaultRecordWrapper wrap = record;
    verifyBondage( wrap );
-   sortMap.put(wrap, null);
+   sortMap.put(wrap, wrap);
    
    if ( acceptEntry( wrap ) ) {
 	   insertRecordIndex( wrap );
@@ -236,7 +236,7 @@ public void loadDatabase ( PwsRecordList rlist, long expireScope )
    sortMap.clear();
    for ( Iterator<PwsRecord> it = rlist.iterator(); it.hasNext(); ) {
 	  DefaultRecordWrapper wrap = makeRecordWrapper( it.next(), locale );
-	  sortMap.put(wrap, null);
+	  sortMap.put(wrap, wrap);
    }
 
    // use sorted map to create filtered index + issue "reloaded" or "cleared" event

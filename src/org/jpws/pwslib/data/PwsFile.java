@@ -740,10 +740,10 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
     */
-   public UUID saveCopy( ApplicationAdapter app, String filepath ) 
+   public UUID saveCopy( ContextFile targetFile ) 
          throws IOException, ApplicationFailureException
    {
-      return saveCopy( app, filepath, null, 0, false );
+      return saveCopy( targetFile, null, 0, new UUID() );
    }
 
    /**
@@ -751,11 +751,8 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * allowing to setup a different access passphrase for the copy. 
     * The copy will own a different UUID identifier.
     *
-    * @param app ApplicationAdapter the application context in which the target
-    *        file will be created;
-    *        if <b>null</b> then the same application is referred to as defined
-    *        for <b>this</b> file  
-    * @param filepath String the file name specification for the target file
+    * @param targetFile <code>ContextFile</code> file specification for the 
+    *        copy target
     * @param pass PwsPassphrase an optional passphrase for the copy; if 
     *        <b>null</b> the passphrase of this file is used       
     * 
@@ -767,11 +764,10 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
     */
-   public UUID saveCopy( ApplicationAdapter app, String filepath,
-         PwsPassphrase pass ) 
+   public UUID saveCopy( ContextFile targetFile, PwsPassphrase pass ) 
          throws IOException, ApplicationFailureException
    {
-      return saveCopy( app, filepath, pass, 0, false );
+      return saveCopy( targetFile, pass, 0, new UUID() );
    }
 
    /**
@@ -779,50 +775,50 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * allowing to setup a different passphrase and a different file format 
     * version for the copy. 
     *
-    * @param app ApplicationAdapter the application context in which the target 
-    *        file will be created; if <b>null</b> then the same application is 
-    *        referred to as defined for this file  
-    * @param filepath String the file name specification for the target file
+    * @param targetFile <code>ContextFile</code> file specification for the 
+    *        copy target
     * @param pass PwsPassphrase an optional passphrase for the copy; if 
     *        <b>null</b> the passphrase of this file is used
     * @param format int the target file format version or 0 for this file's 
     *        format setting   
-    * @param preserveUUID if <b>true</b> the existing UUID will be the same in 
-    *        the copy otherwise a new one is created; V3 only                  
+    * @param fileUUID <code>UUID</code> if not <b>null</b> the copy will assume
+    *        this UUID value, otherwise keep the existing UUID; V3 only  
     * @return UUID the file identifier value of the saved file or <b>null</b> if
     *         unavailable
-    * @throws IllegalArgumentException if <code>filepath</code> or the file
+    * @throws IllegalArgumentException if <code>filepath</code> or the 
     *         passphrase are not defined
     * @throws IOException if an IO-error occurs
     * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
     */
-   public UUID saveCopy( ApplicationAdapter app, String filepath,
-         PwsPassphrase pass, int format, boolean preserveUUID ) 
+   public UUID saveCopy( ContextFile targetFile, PwsPassphrase pass, 
+		                 int format, UUID fileUUID ) 
          throws IOException, ApplicationFailureException
    {
       // some default constitutive values from original
-      if ( app == null )
-         app = application;
       if ( pass == null )
          pass = ps;
       if ( format == 0 )
          format = formatVersionMajor;
 
-      // we copy the headers to prevent update events striking through to the original 
-      HeaderFieldList headers = new HeaderFieldList( headerFields );
+      // we copy the headers to prevent update events striking through to the original
+      // these events may occur here and deep down in PwsFileFactory
+      // (don't use "clone()" here!)
+      HeaderFieldList headers = new HeaderFieldList(headerFields);
       
-      if ( format == Global.FILEVERSION_3 & !preserveUUID ) {
-         // this will trigger creation of a new UUID for the copy
-         headers.removeField( 1 ); 
+      if ( format == Global.FILEVERSION_3 & fileUUID != null ) {
+         // create new UUID value in header field of the copy
+    	 PwsRawField field = new PwsRawField(1, fileUUID.getBytes()); 
+         headers.setField( field ); 
       }
       
-      Log.log( 2, "(PwsFile) saving a file copy to" + idString  + extFileRef(app, filepath)); 
-      UUID fid = PwsFileFactory.saveFile(iterator(), app, filepath, pass, headers, 
+      // save copy in file factory
+      Log.log( 2, "(PwsFile) saving a file copy to" + idString  + extFileRef(targetFile)); 
+      UUID fid = PwsFileFactory.saveFile(iterator(), targetFile, pass, headers, 
     		     securityLoops, format);
-      String hstr = headers.contains(1) ? Util.bytesToHex(headers.getField(1).getData()) 
-    		                       : "void";
-      Log.log( 2, "(PwsFile) copy done, target UUDI = " + hstr ) ; 
+
+      String hstr = fid != null ? fid.toHexString() : "void";
+      Log.log( 2, "(PwsFile) copy done, target UUID = " + hstr ) ; 
       return fid;
    }
 
@@ -836,6 +832,19 @@ public class PwsFile extends PwsRecordList implements Cloneable
    protected String extFileRef ( ApplicationAdapter app, String filePath )
    {
       return "\"" + app.getName() + "\" -> " + filePath;
+   }
+   
+   /**
+    * Returns a human info file path notation incorporating the IO-context name.
+    * 
+    * @param file <code>ContextFile</code> file 
+	* @return String human readable info about context + file
+    */
+   protected String extFileRef ( ContextFile file )
+   {
+	   ApplicationAdapter app = file.getAdapter();
+	   String filePath = file.getFilepath();
+	   return extFileRef( app, filePath );
    }
    
    /**

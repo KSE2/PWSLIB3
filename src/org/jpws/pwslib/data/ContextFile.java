@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
 
 import org.jpws.pwslib.exception.ApplicationFailureException;
@@ -205,6 +206,22 @@ public String getFileName ()
    return hstr; 
 }
 
+/** 
+ * Returns the directory name part of the file path definition of this 
+ * context file. The expression ends with a separator character.
+ * 
+ * @return <code>String</code> parent name element 
+ */  
+public String getFileParentName() {
+   String hstr = getFilepath();
+   int i = hstr.lastIndexOf( adapter.separator() );
+   if ( i > -1 ) {
+      hstr = hstr.substring(0, i+1 );
+   }
+   return hstr; 
+}
+
+
 /** Attempts to delete the persistent state of this context file on the 
  * external file system.
  * 
@@ -221,8 +238,10 @@ public boolean delete () throws IOException
    return ok;
 }
 
-/** Attempts to rename this file to the given path expression. If the file
- * does not exist or this operation is not permitted, <b>false</b> is returned.
+/** Attempts to rename this file to the given path expression on the external
+ * medium. If the file does not exist or this operation is not permitted, 
+ * <b>false</b> is returned. The file path of this file does not change by
+ * this operation!
  * <p>The moving of this file to a different location may also be triggered by
  * this method, if this operation is supported by the external file system. 
  * 
@@ -232,7 +251,8 @@ public boolean delete () throws IOException
  */ 
 public boolean renameTo ( String newpath ) throws IOException
 {
-   return adapter.renameFile( filepath, newpath );
+   boolean ok = adapter.renameFile( filepath, newpath );
+   return ok;
 }
 
 /** Whether this file has a persistent state on the external medium. 
@@ -270,6 +290,26 @@ public OutputStream getOutputStream () throws IOException, ApplicationFailureExc
    return out;
 }
 
+/** Writes the given text string as new content of this file to external medium.
+ * <br>ATTENTION!! - This overwrites any previous content of the file!!
+ * 
+ * @param text String text content to be written to file
+ * @param charset String character set to be used for text encoding
+ * @throws IOException
+ * @throws ApplicationFailureException
+ * @throws UnsupportedEncodingException
+ */
+public void writeString ( String text, String charset ) 
+		throws IOException, ApplicationFailureException 
+{
+	OutputStream out = getOutputStream();
+	if ( text != null ) {
+		byte[] buffer = text.getBytes(charset);
+		out.write(buffer);
+	}
+	out.close();
+}
+
 /** Whether this file can perform creation of a new persistent state.
  * 
  *  @return boolean
@@ -292,11 +332,16 @@ public boolean canRead () throws IOException
  * (This method attempts to delete the target file in case of an error condition
  *  after creating the output stream.)
  * 
- * @param target <code>ContextFile</code> file destination 
+ * @param target <code>ContextFile</code> file destination
+ * @throws IllegalArgumentException if the target is this file
  * @throws IOException
  */
 public void copyTo ( ContextFile target ) throws IOException, ApplicationFailureException
 {
+	// control nonsense
+	if ( target.equals(this) ) 
+		throw new IllegalArgumentException("copy to self");
+	
    OutputStream out = null;
    InputStream in = getInputStream();
    try {

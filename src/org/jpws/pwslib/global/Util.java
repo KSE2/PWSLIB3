@@ -463,24 +463,24 @@ public static boolean equalArrays ( byte[] a, byte[] b, int offset )
    return true;
 }
 
-/**
- * Returns an array of clone copies of the set of <code>DefaultRecordWrapper</code>
- * objects represented by the parameter array. Order preserved.
- * 
- * @param recs
- * @return array of <code>DefaultRecordWrapper</code>
- * @since 2-1-0
- */
-public static DefaultRecordWrapper[] cloneRecordWrappers ( DefaultRecordWrapper[] recs )
-{
-   DefaultRecordWrapper[] copy;
-   int i;
-   
-   copy = new DefaultRecordWrapper[ recs.length ];
-   for ( i = 0; i < recs.length; i++ )
-      copy[ i ] = (DefaultRecordWrapper) recs[ i ].clone(); 
-   return copy;
-}
+///**
+// * Returns an array of clone copies of the set of <code>DefaultRecordWrapper</code>
+// * objects represented by the parameter array. Order preserved.
+// * 
+// * @param recs
+// * @return array of <code>DefaultRecordWrapper</code>
+// * @since 2-1-0
+// */
+//public static DefaultRecordWrapper[] cloneRecordWrappers ( DefaultRecordWrapper[] recs )
+//{
+//   DefaultRecordWrapper[] copy;
+//   int i;
+//   
+//   copy = new DefaultRecordWrapper[ recs.length ];
+//   for ( i = 0; i < recs.length; i++ )
+//      copy[ i ] = (DefaultRecordWrapper) recs[ i ].clone(); 
+//   return copy;
+//}
 
 /**
  * Returns the content of the parameter byte array <code>b</code> in a second 

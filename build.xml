@@ -18,11 +18,11 @@
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-4-0" />
+	<property name="ver" value="2-4-1" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value="07 Nov. 2015"/>
+        <property name="release date" value="20 Nov. 2015"/>
         <property name="release year" value="2015"/>
-        <property name="release type" value="full review"/>
+        <property name="release type" value="Internal, JPWS"/>
         <property name="system format" value="3.13"/>
         <property name="classpath" value="${junit};${ftp4j};${build}"/>
 

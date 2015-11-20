@@ -928,12 +928,12 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
          Log.log( 5, "(PwsFileFactory) saveFile mark A2 (decided for swapping)" );
          swapPath = filepath + ".temp";
       } else {
-          Log.log( 5, "(PwsFileFactory) saveFile mark A2 (decided for create file)" );
+         Log.log( 5, "(PwsFileFactory) saveFile mark A2 (decided for create file)" );
       }
       
       // create file for (new) content of database 
-      OutputStream out = swap ? StreamFactory.getOutputStream( app, swapPath ) 
-    		                  : file.getOutputStream();
+      String path = swap ? swapPath : filepath;
+      OutputStream out = StreamFactory.getOutputStream( app, path ); 
       try {
          // save all listed records
          Log.log( 5, "(PwsFileFactory) saveFile mark A3 (writing primary file)" );
