@@ -8,6 +8,7 @@ jartest.bat
 # Package Files #
 *.war
 *.ear
+*.*~
 
 # Project Local Directories
 bin

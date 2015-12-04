@@ -360,7 +360,7 @@ public class PwsRecordList implements Cloneable
       }
    
       PwsRecord copy = (PwsRecord)rec.clone();
-      Object replaced = recMap.put( copy.getRecordID(), copy );
+      PwsRecord replaced = recMap.put( copy.getRecordID(), copy );
       setModified();
       
       if ( Log.getDebugLevel() > 2 )
@@ -369,7 +369,7 @@ public class PwsRecordList implements Cloneable
       
       int evType = replaced == null ? PwsFileEvent.RECORD_ADDED :
     	  		   PwsFileEvent.RECORD_UPDATED;
-      fireFileEvent( evType, rec );
+      fireFileEvent( evType, rec, replaced );
       return copy;
    }
 
@@ -692,7 +692,7 @@ public class PwsRecordList implements Cloneable
          setModified();
          if ( Log.getDebugLevel() > 2 )
          Log.debug( 3, "(PwsRecordList.updateRecord) record updated in file" + idString  + copy ); 
-         fireFileEvent( PwsFileEvent.RECORD_UPDATED, rec );
+         fireFileEvent( PwsFileEvent.RECORD_UPDATED, rec, (PwsRecord)oldRec.clone() );
       }
    }  // updateRecord
 
@@ -1175,7 +1175,7 @@ public class PwsRecordList implements Cloneable
 			
 			if ( Log.getDebugLevel() > 2 )
 		    Log.debug( 3, "record removed from list" + idString  + deleted.toString() ); 
-            fireFileEvent( PwsFileEvent.RECORD_REMOVED, copy );
+            fireFileEvent( PwsFileEvent.RECORD_REMOVED, copy, copy );
             return copy;
 		}
 		return null;
@@ -1552,7 +1552,20 @@ public class PwsRecordList implements Cloneable
     */
    protected void fireFileEvent ( int type, PwsRecord rec )
    {
-  	 PwsFileEvent evt = new PwsFileEvent( this, type, rec );
+	   fireFileEvent(type, rec, null);
+   }
+   
+   /**
+    * Fires a <code>PwsFileEvent</code> of the specified type to the listeners 
+    * to this list. The operation runs synchronous.
+    * 
+    * @param type int, event type as defined in class <code>PwsFileEvent</code>  
+    * @param rec <code>PwsRecord</code>, optional record reference
+    * @param oldRec <code>PwsRecord</code>, optional previous record value
+    */
+   protected void fireFileEvent ( int type, PwsRecord rec, PwsRecord oldRec )
+   {
+  	 PwsFileEvent evt = new PwsFileEvent( this, type, rec, oldRec );
   	 fireFileEvent(evt);
    }
    
@@ -1566,6 +1579,7 @@ public class PwsRecordList implements Cloneable
    {
       if ( event != null && !eventPause && 
     	   listeners != null && !listeners.isEmpty() ) {
+    	  
          for ( PwsFileListener li : getFileListeners() ) {
             li.fileStateChanged( event );
          }

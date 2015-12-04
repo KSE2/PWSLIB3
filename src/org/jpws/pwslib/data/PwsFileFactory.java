@@ -669,19 +669,25 @@ throws IOException, PasswordSafeException
     * The key-stroke is defined along key-code and modifiers values.
     * 
     * @param data byte[] buffer containing key info
-    * @return <code>KeyStroke</code> 
+    * @return <code>KeyStroke</code> or null if data was invalid
     */
    private static KeyStroke readKeyStroke ( byte[] data ) {
-  	 int code = data[0];
-  	 int mods = 0;
-  	 int h = (int)data[3] & 0xFF;
-  	 if ( (h & 1) == 1) mods += InputEvent.ALT_MASK;
-  	 if ( (h & 2) == 2) mods += InputEvent.CTRL_MASK;
-  	 if ( (h & 4) == 4) mods += InputEvent.SHIFT_MASK;
-  	 if ( (h & 8) == 8) mods += InputEvent.ALT_GRAPH_MASK;
-  	 if ( (h & 16) == 16) mods += InputEvent.META_MASK;
-  	 KeyStroke ks = KeyStroke.getKeyStroke(code, mods);
-  	 return ks;
+	 try {
+	  	 int code = Util.readIntLittle(data, 0) & 0xFFFF;
+	  	 int mods = 0;
+	  	 int h = (int)data[2] & 0xFF;
+	  	 if ( (h & 1) == 1) mods += InputEvent.ALT_MASK;
+	  	 if ( (h & 2) == 2) mods += InputEvent.CTRL_MASK;
+	  	 if ( (h & 4) == 4) mods += InputEvent.SHIFT_MASK;
+	  	 if ( (h & 8) == 8) mods += InputEvent.ALT_GRAPH_MASK;
+	  	 if ( (h & 16) == 16) mods += InputEvent.META_MASK;
+	  	 KeyStroke ks = KeyStroke.getKeyStroke(code, mods);
+	  	 Log.debug(10, "(PwsFileFactory.readKeyStroke) - read KeyStroke (" + code + "-" + mods + ") : " + ks);
+	  	 return ks;
+	 } catch (Exception e) {
+		 e.printStackTrace();
+		 return null;
+	 }
    }
    
    /** Attempts to read the remainder of the file as records in the V1 format.
@@ -1185,7 +1191,7 @@ private static void saveRecordsV3 ( Iterator<PwsRecord> records,
  */
 private static byte[] convertKeyStroke( KeyStroke ks ) {
 	byte[] data = new byte[4];
-	data[0] = (byte)ks.getKeyCode();
+	Util.writeIntLittle(ks.getKeyCode(), data, 0);
 	int h = ks.getModifiers();
 	int mods = 0;
 	if ( (h & InputEvent.ALT_MASK) == InputEvent.ALT_MASK ) mods += 1;
@@ -1193,7 +1199,8 @@ private static byte[] convertKeyStroke( KeyStroke ks ) {
 	if ( (h & InputEvent.SHIFT_MASK) == InputEvent.SHIFT_MASK ) mods += 4;
 	if ( (h & InputEvent.ALT_GRAPH_MASK) == InputEvent.ALT_GRAPH_MASK ) mods += 8;
 	if ( (h & InputEvent.META_MASK) == InputEvent.META_MASK ) mods += 16;
-	data[3] = (byte)mods;
+	data[2] = (byte)mods;
+	data[3] = 0;
 	return data;
 }
 

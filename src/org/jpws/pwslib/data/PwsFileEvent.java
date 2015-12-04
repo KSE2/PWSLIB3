@@ -49,6 +49,7 @@ public class PwsFileEvent extends EventObject
    public static final int CONTENT_ALTERED = 8;
    
    private PwsRecord record;
+   private PwsRecord oldRecord;
    private int eventType;
    
    
@@ -67,6 +68,24 @@ public PwsFileEvent ( Object source, int type, PwsRecord ref )
    record = ref;
 }  // constructor
 
+/** Constructor for an UPDATE event.
+ * 
+ * @param source the event issuing object
+ * @param type the event type as defined by this class
+ * @param rec a <code>PwsRecord</code> that will be obtainable through the
+ *        <code>getRecord()</code> method; may be <b>null</b>
+ * @param oldRec a <code>PwsRecord</code> that will be obtainable through the
+ *        <code>getOldRecord()</code> method; may be <b>null</b>
+ */
+public PwsFileEvent ( Object source, int type, PwsRecord rec, PwsRecord oldRec )
+{
+   super( source );
+
+   eventType = type;
+   record = rec;
+   oldRecord = oldRec;
+}  // constructor
+
 /** The record involved in the event or <b>null</b> if unavailable. 
  *  The returned record is a clone of the corresponding record in the list.
  *  
@@ -75,6 +94,17 @@ public PwsFileEvent ( Object source, int type, PwsRecord ref )
 public PwsRecord getRecord ()
 {
    return record;
+}
+
+/** The previous record involved in an UPDATE event or <b>null</b> if 
+ * unavailable. The returned record is a clone of the corresponding record in 
+ * the list.
+ *  
+ *  @return <code>PwsRecord</code> or null
+ */ 
+public PwsRecord getOldRecord ()
+{
+   return oldRecord;
 }
 
 /** Returns the event type.
