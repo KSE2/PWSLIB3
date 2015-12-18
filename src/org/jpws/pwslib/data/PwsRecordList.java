@@ -33,6 +33,7 @@ import org.jpws.pwslib.exception.DuplicateEntryException;
 import org.jpws.pwslib.exception.NoSuchRecordException;
 import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
+import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.order.DefaultRecordWrapper;
 import org.jpws.pwslib.order.OrderedRecordList;
 
@@ -387,9 +388,13 @@ public class PwsRecordList implements Cloneable
 		   throws DuplicateEntryException
    {
       if ( list != null && !list.isEmpty() ) {
-	      // insert list elements without issuing file-events
-	      boolean oldPause = getEventPause();
-       	  setEventPause( true );
+          // switch off event reporting if list is larger than one entry
+    	  boolean oldPause = getEventPause();
+          if ( list.size() > 1 ) {
+        	  setEventPause( true );
+          }
+         
+	      // insert list elements
 	      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
 	         addRecordIntern( it.next(), "addRecordList" );
 	      }
@@ -411,9 +416,13 @@ public class PwsRecordList implements Cloneable
 		   throws DuplicateEntryException 
    {
       if ( coll != null && !coll.isEmpty() ) {
-	      // insert list elements without issuing file-events
-	      boolean oldPause = getEventPause();
-       	  setEventPause( true );
+          // switch off event reporting if list is larger than one entry
+    	  boolean oldPause = getEventPause();
+          if ( coll.size() > 1 ) {
+        	  setEventPause( true );
+          }
+         
+	      // insert list elements
 	      for ( Iterator<PwsRecord> it = coll.iterator(); it.hasNext(); ) {
 	         addRecordIntern( it.next(), "addCollection" );
 	      }
@@ -452,9 +461,12 @@ public class PwsRecordList implements Cloneable
 	  PwsRecordList fList = null;
 	  
       if ( list != null && !list.isEmpty() ) {
-	      // insert list elements without issuing file-events
-	      boolean oldPause = getEventPause();
-       	  setEventPause( true );
+          // switch off event reporting if list is larger than one entry
+    	  boolean oldPause = getEventPause();
+          if ( list.size() > 1 ) {
+        	  setEventPause( true );
+          }
+         
           for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
         	 PwsRecord rec = it.next();
 	         PwsRecord delRec = removeRecord( rec.getRecordID() );
@@ -488,9 +500,12 @@ public class PwsRecordList implements Cloneable
 	  ArrayList<PwsRecord> fList = null;
 	  
       if ( coll != null && !coll.isEmpty() ) {
-	      // insert list elements without issuing file-events
-	      boolean oldPause = getEventPause();
-       	  setEventPause( true );
+          // switch off event reporting if list is larger than one entry
+    	  boolean oldPause = getEventPause();
+          if ( coll.size() > 1 ) {
+        	  setEventPause( true );
+          }
+         
 	      for ( PwsRecord rec : coll ) {
 	         PwsRecord delRec = removeRecord( rec.getRecordID() );
 	         if ( delRec == null ) {
@@ -522,9 +537,9 @@ public class PwsRecordList implements Cloneable
    }
    
    /**
-    * Returns a new record list containing the intersection of this record list 
-    * with the given record list. If the intersection is empty or the parameter 
-    * is <b>null</b>, an empty list is returned. 
+    * Returns a new record list containing all records of this list which are
+    * also contained in the parameter record list (intersection). 
+    * If the parameter is <b>null</b>, an empty list is returned. 
     * 
     * @param list <code>PwsRecordList</code>, may be null
     * @return <code>PwsRecordList</code> intersection with parameter list
@@ -537,7 +552,7 @@ public class PwsRecordList implements Cloneable
 	    	 PwsRecord rec = it.next(); 
 	         if ( contains(rec) ) {
 	            try { 
-	            	result.addRecordIntern( rec, "(intersection)" );
+	            	result.addRecordIntern( getRecord(rec), "(intersection)" );
 	            } catch ( DuplicateEntryException e ) {
 	            } 
 	         }
@@ -597,32 +612,36 @@ public class PwsRecordList implements Cloneable
     */
    public PwsRecordList updateRecordList ( PwsRecordList list ) 
    {
+      if ( list == null || list.isEmpty() ) return null;
       PwsRecordList result = null;
-
-      if ( list != null && !list.isEmpty() ) {
-    	 boolean old = getEventPause();
-         setEventPause( true );
-         
-         // update list elements (without issuing file-events)
-         for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
-        	PwsRecord rec = it.next();
+      
+      // switch off event reporting if list is larger than one entry
+	  boolean old = getEventPause();
+      if ( list.size() > 1 ) {
+    	  setEventPause( true );
+      }
+     
+      // update list elements (without issuing file-events)
+      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+    	 PwsRecord rec = it.next();
+         try { 
+        	updateRecord( rec ); 
+         } catch ( NoSuchRecordException e ) {
+            // insert not matching record to result list	
+            // late creation of result list	
+            if ( result == null ) {
+              result = new PwsRecordList();
+            }
+            // insert to result ignoring duplicates
             try { 
-            	updateRecord( rec ); 
-            } catch ( NoSuchRecordException e ) {
-               // insert not matching record to result list	
-               // late creation of result list	
-               if ( result == null ) {
-                  result = new PwsRecordList();
-               }
-               // insert to result ignoring duplicates
-               try { 
-            	   result.addRecord( rec ); 
-               } catch ( DuplicateEntryException e1 ) {
-               }
+        	   result.addRecord( rec ); 
+            } catch ( DuplicateEntryException e1 ) {
             }
          }
-         setEventPause( old );
       }
+
+      // set event reporting to previous state (may trigger LIST_UPDATED event)
+      setEventPause( old );
       return result;
    }  // updateRecordList
 
@@ -642,28 +661,32 @@ public class PwsRecordList implements Cloneable
     */
    public List<PwsRecord> updateCollection ( Collection<PwsRecord> coll ) 
    {
+      if ( coll == null || coll.isEmpty() ) return null;
       List<PwsRecord> result = null;
-
-      if ( coll != null && !coll.isEmpty() ) {
-    	 boolean old = getEventPause();
-         setEventPause( true );
-         
-         // update list elements (without issuing file-events)
-         for ( Iterator<PwsRecord> it = coll.iterator(); it.hasNext(); ) {
-        	PwsRecord rec = it.next();
-            try { 
-            	updateRecord( rec ); 
-            } catch ( NoSuchRecordException e ) {
-               // insert not matching record to result list	
-               // late creation of result list	
-               if ( result == null ) {
-                  result = new ArrayList<PwsRecord>();
-               }
-               result.add( rec );
-            }
-         }
-         setEventPause( old );
+      
+      // switch off event reporting if list is larger than one entry
+	  boolean old = getEventPause();
+      if ( coll.size() > 1 ) {
+    	  setEventPause( true );
       }
+     
+      // update list elements (without issuing file-events)
+      for ( Iterator<PwsRecord> it = coll.iterator(); it.hasNext(); ) {
+    	 PwsRecord rec = it.next();
+         try { 
+        	updateRecord( rec ); 
+         } catch ( NoSuchRecordException e ) {
+            // insert not matching record to result list	
+            // late creation of result list	
+            if ( result == null ) {
+               result = new ArrayList<PwsRecord>();
+            }
+            result.add( rec );
+         }
+      }
+      
+      // set event reporting to previous state (may trigger LIST_UPDATED event)
+      setEventPause( old );
       return result;
    }  // updateRecordList
 
@@ -1004,21 +1027,17 @@ public class PwsRecordList implements Cloneable
    public PwsRecordList removeGroup ( String group )
    {
 	  PwsRecordList result = new PwsRecordList(); 
-      boolean oldPause = getEventPause();
-      setEventPause( true );
-      
       for ( Iterator<PwsRecord> it = getGroupedRecords( group, true ); it.hasNext(); ) {
          try {
 			result.addRecord(it.next());
  		 } catch (DuplicateEntryException e) {
 		 }
-         it.remove();
       }
-      setEventPause( oldPause );
-
+      removeRecordList(result);
+      
       // control success
       if ( containsGroup(group) ) {
-    	  throw new IllegalStateException("*** failed to remove GROUP completely: ".concat(group));
+    	  throw new IllegalStateException("*** failed to remove entire GROUP: ".concat(group));
       }
       return result;
    }
@@ -1174,7 +1193,7 @@ public class PwsRecordList implements Cloneable
 			PwsRecord copy = (PwsRecord)deleted.clone();
 			
 			if ( Log.getDebugLevel() > 2 )
-		    Log.debug( 3, "record removed from list" + idString  + deleted.toString() ); 
+		    Log.debug( 3, "(PwsRecordList.removeRecord) record removed" + idString  + deleted.toString() ); 
             fireFileEvent( PwsFileEvent.RECORD_REMOVED, copy, copy );
             return copy;
 		}
@@ -1633,6 +1652,8 @@ public class PwsRecordList implements Cloneable
     */
    public void setEventPause ( boolean value )
    {
+	  if ( value == eventPause ) return;
+	  
       boolean old = eventPause;
       eventPause = value;
       boolean risingFlank = !old & eventPause;
@@ -1730,7 +1751,8 @@ public class PwsRecordList implements Cloneable
     *  various conflict handling policies (descriptions see constants of this 
     *  class).
     *  A conflict arises if a record-id is encountered in the parameter list
-    *  which is also contained in this list. With the <code>modus</code> 
+    *  which is also contained in this list AND both records don't share the 
+    *  same set of data. With the <code>modus</code> 
     *  parameter a set of conflict solving policies can be enabled. If more than
     *  one policy is set up, they are conjuncted with logical AND. That means
     *  if one of the policies indicates exclusion, the record is excluded.
@@ -1789,11 +1811,16 @@ public class PwsRecordList implements Cloneable
             continue;
          }
          
-         // branch on containment of record
-         // if failing because of double entry
+         // containment of record in both lists: potential of conflict
          thisRec = getRecordShallow( rec.getRecordID() );
          if ( thisRec != null ) {
+        	 
+             // if both records have same data, no conflict arises
+            if ( Util.equalArrays( thisRec.getSignature(), rec.getSignature() )) {
+            	continue;
+            }
          
+            // conflict case
             try {
                // criteria for record exclusion
                if (  merge_plain ||
@@ -1830,12 +1857,6 @@ public class PwsRecordList implements Cloneable
 
          } catch ( DuplicateEntryException e ) {
         	 e.printStackTrace();
-//            try { result.addRecord( rec ); 
-//            } catch ( Exception e1 ) {          
-//               System.out.println( "*** Serious Record Failure (merge): " 
-//                     + rec.toString() + "  " + rec.getTitle() );
-//               System.out.println( e1 );
-//            }
          }
       }  // for
 

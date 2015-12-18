@@ -193,8 +193,10 @@ private PwsRecordList makeRecordList (Iterator<PwsRecord> it)
 }
 
 @Test
-public void test_merge () {
+public void test_merge () throws NoSuchRecordException {
    PwsRecordList li1, li2, li3, li4;
+   PwsRecord rec;
+   UUID uuid;
    String grpValue, newGrpValue;
    int modus, size;	
    
@@ -213,14 +215,25 @@ public void test_merge () {
    li3 = li1.copy();
    modus = PwsRecordList.MERGE_PLAIN;
    li4 = li3.merge(li3, modus, false);
-   assertTrue("unsufficient record exclusion", li4.size() == size);
+   assertTrue("unexpected record exclusion", li4.size() == 0);
    assertTrue("false resulting size", li3.size() == size);
 
-   // merge same list (include)
+   // merge list copy with modifications (exclude)
    li3 = li1.copy();
+   rec = li3.iterator().next();
+   uuid = rec.getRecordID();
+   rec.setTitle("Krummer Hund");
+   li3.updateRecord(rec);
+   modus = PwsRecordList.MERGE_PLAIN;
+   li4 = li3.merge(li1, modus, false);
+   assertTrue("unsufficient record exclusion", li4.size() == 1);
+   assertTrue("missing excluded record", li4.contains(uuid));
+
+   // merge list copy with modifications (exclude)
    modus = PwsRecordList.MERGE_INCLUDE;
-   li4 = li3.merge(li3.copy(), modus, false);
-   assertTrue("unsufficient record exclusion", li4.isEmpty());
+   li4 = li3.merge(li1, modus, false);
+   assertTrue("unexpected record exclusion", li4.isEmpty());
+   assertTrue("missing included record", li3.contains(uuid));
    assertTrue("false resulting size", li3.size() == size);
 
    

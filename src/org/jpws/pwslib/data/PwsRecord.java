@@ -1144,7 +1144,7 @@ private long normalisedTime (long time) {
  * 			<code>PwsRecord</code> with RECORD-ID same as this record's ID 
  */
    @Override
-public boolean equals ( Object obj )
+   public boolean equals ( Object obj )
    {
 	   if ( obj == null || !(obj instanceof PwsRecord)) {
 		   return false;
@@ -1157,7 +1157,7 @@ public boolean equals ( Object obj )
  * @return int
  */   
    @Override
-public int hashCode ()
+   public int hashCode ()
    {
       return recordID.hashCode();
    }
@@ -1169,7 +1169,7 @@ public int hashCode ()
     * @return String
     */
    @Override
-public String toString ()
+   public String toString ()
    {
       return recordID.toString();
    }

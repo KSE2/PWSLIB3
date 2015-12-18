@@ -33,12 +33,14 @@ public class OrderedListEvent extends EventObject
    /** Event type. */
    public static final int ITEM_REMOVED = 2;
    /** Event type. */
-   public static final int LIST_CLEARED = 3;
+   public static final int ITEM_UPDATED = 3;
+   /** Event type. */
+   public static final int LIST_CLEARED = 4;
    /** Event type. Content of list may be totally new. */
-   public static final int LIST_RELOADED = 4;
+   public static final int LIST_RELOADED = 5;
 
    private DefaultRecordWrapper record;
-   private int index = -1;
+   private int index;
    private int eventType;
    
 /**
@@ -46,12 +48,12 @@ public class OrderedListEvent extends EventObject
  */
 public OrderedListEvent ( Object source, 
                           int type, 
-                          int index, 
+                          int index,
                           DefaultRecordWrapper record )
 {
    super( source );
    
-   if ( type < 1 | type > 4 )
+   if ( type < 1 | type > 5 )
       throw new IllegalArgumentException();
    
    eventType = type;

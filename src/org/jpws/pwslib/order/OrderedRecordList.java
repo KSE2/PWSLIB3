@@ -20,15 +20,18 @@ package org.jpws.pwslib.order;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
-import java.util.TreeMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.jpws.pwslib.data.PwsFile;
 import org.jpws.pwslib.data.PwsFileEvent;
 import org.jpws.pwslib.data.PwsFileListener;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
+import org.jpws.pwslib.global.Log;
 
 /**
  *  Represents an ordered list of <code>DefaultRecordWrapper</code> objects
@@ -80,11 +83,15 @@ public class OrderedRecordList implements PwsFileListener
     */ 
    protected ArrayList<DefaultRecordWrapper> list = new ArrayList<DefaultRecordWrapper>();
    
-   /** Map structure to hold <code>DefaultRecordWrapper</code> objects
-    *  representing the content of this record list in a sorted order.
+   /** Sorted Set structure to hold <code>DefaultRecordWrapper</code> objects
+    *  representing the content of this record list in a sorted fashion.
+    *  WARNING! - DefaultRecordWrapper does not comply to the Set requirements.
+    *  Element containment cannot be researched correctly in this set! 
     */ 
-   protected TreeMap<DefaultRecordWrapper, Object> sortMap 
-                                  = new TreeMap<DefaultRecordWrapper, Object>();
+   protected SortedSet<DefaultRecordWrapper> sortedSet = new TreeSet<DefaultRecordWrapper>();
+   
+   /** Set structure to verify element containment in this list. */
+   protected HashSet<DefaultRecordWrapper> elementSet = new HashSet<DefaultRecordWrapper>();
    
    protected RecordSelector selector;
    
@@ -164,8 +171,48 @@ protected void verifyBondage ( DefaultRecordWrapper wrap )
       throw new IllegalArgumentException( "unrelated record: ".concat(rec.toString()) );
 }
 
+/** Updates the given record in this list and in the filtered index. The
+ * record must be an element of this list, otherwise an exception is thrown.
+ * 
+ * @param record <code>DefaultRecordWrapper</code>
+ */
+public void updateItem ( DefaultRecordWrapper record ) {
+	String hstr = record.getRecord().toString();
+	if ( !elementSet.contains(record) ) 
+		throw new IllegalArgumentException("record not contained: ".concat(hstr));
+	
+    int i = indexOf( record );
+    int si = sortIndexOf( record );
+    
+    // update the record value in full lists
+	elementSet.remove(record);
+	elementSet.add(record);
+	sortedSet.remove(record);
+	sortedSet.add(record);
+
+	// case: unmoved position
+    if ( i > -1 && (si == i | si == i+1) ) {
+    	Log.log(10, "(OrderedRecordList.updateItem) UPDATE case IDENTICAL POSITION (" + i + "), " + hstr);
+    	
+    	list.remove(i);
+    	list.add(i, record);
+ 	    record.setIndex(i);
+    	fireOrderedListEvent( OrderedListEvent.ITEM_UPDATED, i, record );
+    }
+    
+    // other cases: replace index position
+    else  {
+    	Log.log(10, "(OrderedRecordList.updateItem) UPDATE case MOVE POSITION, from " 
+    			+ i + " to " + si + ", " + hstr);
+        removeItemIndex( i );
+    	insertRecordIndex(record, si);
+    }
+}
+
 /** Inserts an element into this list. If this list is bound to a
- *  <code>PwsRecordList</code> object, the record must be an element of it. 
+ *  <code>PwsRecordList</code>, the given record must be an element of it.
+ *  Whether the inserted item appears in the current filtered index, and thus
+ *  issues an insertion event, depends on the filter settings (if there are any).
  *  <p>WARNING!! Applying this when this list has bondage may lead to 
  *  de-synchronisation of list and database. This method does not insert a 
  *  record into the database!
@@ -177,31 +224,55 @@ public void insertItem ( DefaultRecordWrapper record )
 {
    DefaultRecordWrapper wrap = record;
    verifyBondage( wrap );
-   sortMap.put(wrap, wrap);
-   
+   boolean replace = sortedSet.remove(wrap);
+   sortedSet.add(wrap);
+   elementSet.remove(wrap);
+   elementSet.add(wrap);
+   Log.log(10, "(OrderedRecordList.insertItem) INSERT record " + wrap.getRecordID() + ", replace=" + replace);
+
+   // insert into filter index if record is acceptable
    if ( acceptEntry( wrap ) ) {
-	   insertRecordIndex( wrap );
-	   fireOrderedListEvent( OrderedListEvent.ITEM_ADDED, wrap.getIndex(), wrap );
+	   int index =  sortIndexOf(wrap);
+	   insertRecordIndex( wrap, index );
    }
 }
 
-/** Inserts a record representation into the sorted and filtered index without 
- *  without issuing <code>OrderedListEvent</code>. This does not verify bondage.
+/** Detached iterator over all elements in the filtered index of this list.
+ * Iteration follows the sequential sorting of this list and allows concurrent 
+ * list modifications (which are not reflected into the traversed set).
+ * 
+ * @return Iterator&lt;DefaultRecordWrapper&gt;
+ */
+public Iterator<DefaultRecordWrapper> iterator() {
+	return new ArrayIterator<DefaultRecordWrapper>( list.toArray(
+			new DefaultRecordWrapper[list.size()]) );
+}
+
+/** Detached iterator over all elements in this list.
+ * This iterator allows concurrent list modifications (which are not reflected 
+ * into the traversed set).
+ * 
+ * @return Iterator&lt;DefaultRecordWrapper&gt;
+ */
+public Iterator<DefaultRecordWrapper> elementIterator() {
+	return new ArrayIterator<DefaultRecordWrapper>( sortedSet.toArray(
+			new DefaultRecordWrapper[sortedSet.size()]) );
+}
+
+/** Inserts a record into the sorted and filtered index  
+ *  and issues a <code>OrderedListEvent</code>. This does not verify bondage.
  * 
  *  @param wrap <code>DefaultRecordWrapper</code> record representation
+ *  @param index int index position in filtered list
  */  
-protected void insertRecordIndex ( DefaultRecordWrapper wrap )
+protected void insertRecordIndex ( DefaultRecordWrapper wrap, int index )
 {
-   int index = list.size();
-   for ( int i = 0; i < list.size(); i++ ) {
-	  DefaultRecordWrapper item = (DefaultRecordWrapper) list.get( i );
-      if ( wrap.compareTo( item ) < 0 ) {
-         index = i;
-         break;
-      }
+   if ( index > -1 && index < list.size()+1 ) {
+	   list.add( index, wrap );
+	   wrap.setIndex( index );
+  	   Log.log(10, "(OrderedRecordList.insertRecordIndex) inserted to INDEX (" + index + "): " + wrap.getRecord());
+	   fireOrderedListEvent( OrderedListEvent.ITEM_ADDED, index, wrap );
    }
-   list.add( index, wrap );
-   wrap.setIndex( index );
 }
 
 /** Loads a list of <code>PwsRecord</code>s from a <code>PwsRecordList</code> 
@@ -233,21 +304,25 @@ public void loadDatabase ( PwsRecordList rlist, long expireScope )
    rlist.addFileListener( this );
    
    // clear all content and rebuild from parameter record list (sorted map)
-   sortMap.clear();
+   sortedSet.clear();
+   elementSet.clear();
    for ( Iterator<PwsRecord> it = rlist.iterator(); it.hasNext(); ) {
-	  DefaultRecordWrapper wrap = makeRecordWrapper( it.next(), locale );
-	  sortMap.put(wrap, wrap);
+	  DefaultRecordWrapper wrap = makeRecordWrapper(it.next(), locale);
+	  sortedSet.add(wrap);
+	  elementSet.add(wrap);
    }
 
    // use sorted map to create filtered index + issue "reloaded" or "cleared" event
    refresh();
 }
 
-/** Recreates the list index according to current filter settings.
+/** Recreates the filtered list index according to current filter settings
+ * provided by the user (<code>setRecordSelector()</code>).
  */
 protected void reindex () {
+   Log.log(10, "(OrderedRecordList.reindex) rebuilding INDEX");
    list.clear();
-   for ( Iterator<DefaultRecordWrapper> it = sortMap.keySet().iterator(); it.hasNext();) {
+   for ( Iterator<DefaultRecordWrapper> it = sortedSet.iterator(); it.hasNext();) {
 	   DefaultRecordWrapper wrap = it.next();
 	   if ( acceptEntry( wrap ) ) {
 		   list.add(wrap); 
@@ -255,9 +330,10 @@ protected void reindex () {
 	}
 }
 
-/** Refreshes the list index according to current filter settings. This issues
- * an <code>OrderedListEvent</code>.
- * <p>This has to be performed when a filtering agent has been modified
+/** Refreshes the filtered list index according to current filter settings, 
+ * if they were provided by the user. 
+ * This issues an <code>OrderedListEvent</code>.
+ * <p>Note: This has to be performed when a filtering agent has been modified
  * which was added by the user through  <code>setRecordSelector()</code>.
  */
 public void refresh () {
@@ -269,10 +345,10 @@ public void refresh () {
 }
 
 /**
- * Reloads (resorts) the content of the record list (which was last loaded
- * by use of <code>loadDatabase()</code>. This is an expensive operation 
- * and will cause a LIST_RELOADED event. Does nothing if there was no list
- * loaded. 
+ * Reloads and resorts this list's content from the record list which was last 
+ * loaded by use of <code>loadDatabase()</code>. This is an expensive operation 
+ * and will issue a LIST_RELOADED event. Does nothing if there was no list
+ * previously loaded. 
  */
 public void reload ()
 {
@@ -296,31 +372,37 @@ protected boolean acceptEntry ( DefaultRecordWrapper rec )
 }
 
 /** The default function used by this class to create wrappers for records. 
- *  May be overridden by
- *  user applications to supply a specific record wrapper type (which must be a
- *  subclass of <code>DefaultRecordWrapper</code>).
+ *  May be overridden by user applications to supply a specific record wrapper 
+ *  type (which must be a subclass of <code>DefaultRecordWrapper</code>).
  * 
- * @param rec PwsRecord
- * @param locale Locale
+ * @param rec <code>PwsRecord</code>
+ * @param locale <code>Locale</code>
  * @return <code>DefaultRecordWrapper</code> containing the argument record
  */
 public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale )
 {
-   DefaultRecordWrapper wrap = new DefaultRecordWrapper( rec, locale );
+   DefaultRecordWrapper wrap = new DefaultRecordWrapper(rec, locale);
    if ( expireScope >= 0 ) {
       wrap.refreshExpiry( expireScope );
    }
    return wrap;
 }
 
-/** The number of elements in this list.
+/** The number of elements in the filtered list index.
  */
 public int size ()
 {
    return list.size();
 }
 
-/** Returns an element record (wrapper) of this list from its sequence index.
+/** The number of elements in this list.
+ */
+public int totalSize ()
+{
+   return elementSet.size();
+}
+
+/** Returns an element record (wrapper) of this list from its filtered index.
  * 
  * @param index int
  * @return <code>DefaultRecordWrapper</code> if <code>index</code> is in
@@ -328,12 +410,12 @@ public int size ()
  */
 public DefaultRecordWrapper getItemAt ( int index )
 {
-   return index > -1 && index < list.size() ? list.get( index ) : null;
+   return index > -1 && index < list.size() ? list.get(index) : null;
 }
 
 /**
- * Returns the subset of records from the index which belong to the specified 
- * GROUP value.
+ * Returns the subset of records from the filtered index which contain the 
+ * specified GROUP value.
  *  
  * @param group String selective group value; if <b>null</b> an empty array 
  *        is returned
@@ -374,65 +456,95 @@ public final Locale getLocale ()
    return locale;
 }
 
-/** Returns the index position of the parameter record in this list.
+/** Returns the current index position of the parameter record in the filtered
+ * index.
  * 
  *  @param rec the <code>PwsRecord</code> to be searched
- *  @return index position or -1 if the record is unknown
+ *  @return index position or -1 if the record is not in the filtered list
  */ 
 public int indexOf ( PwsRecord rec )
 {
    return rec == null ? -1 : list.indexOf( makeRecordWrapper( rec, locale ));
 }
 
-/** Returns the index position of the parameter record in this list.
+/** Returns the current index position of the parameter record in the filtered
+ * index.
  * 
  *  @param rec <code>DefaultRecordWrapper</code> the record to be searched;
  *         may be null
- *  @return index position or -1 if the record is unknown
+ *  @return index position or -1 if the record is not in the filtered list
  */ 
 public int indexOf ( DefaultRecordWrapper rec )
 {
    return rec == null ? -1 : list.indexOf( rec );
 }
 
-/** Removes the element at a specified index position from this list.
- *  Does nothing if index is out of range.
+/** Returns the sort index position of the parameter record if it were inserted
+ * into it. This does not require the parameter to be element of this list or 
+ * the filtered index. However, if the record <b>cannot</b> be element of 
+ * the index, e.g. due to filtering restrictions, -1 is returned.
+ * 
+ *  @param rec <code>DefaultRecordWrapper</code> the record to be sorted;
+ *         may be null
+ *  @return index position or -1 if the parameter was null or not in the 
+ *          filtered index
+ */ 
+protected int sortIndexOf ( DefaultRecordWrapper rec )
+{
+   if ( rec == null || !acceptEntry(rec) ) return -1;
+   
+   int index = list.size();
+   for ( int i = 0; i < list.size(); i++ ) {
+	  DefaultRecordWrapper item = (DefaultRecordWrapper) list.get( i );
+      if ( rec.compareTo( item ) < 0 ) {
+         index = i;
+         break;
+      }
+   }
+   return index;
+}
+
+/** Removes the element at a specified index position from the filtering index
+ *  and issues an ordered list event.
+ *  Does not remove the record from this list!. Does nothing if given index 
+ *  position is out of range.
  *  <p>WARNING!! Applying this method when this list has bondage may lead to 
  *  de-synchronisation of list and database. This method does not remove a 
  *  record from the database!
  */
-public void removeItem ( int index )
+protected void removeItemIndex ( int index )
 {
    if ( index > -1 && index < list.size() ) {
 	  DefaultRecordWrapper item = list.get( index );
       list.remove( index );
-      sortMap.remove(item);
+  	  Log.log(10, "(OrderedRecordList.removeItemIndex) removed item from INDEX (" + index + "): " + item.getRecord());
       fireOrderedListEvent( OrderedListEvent.ITEM_REMOVED, index, item );
    }
 }
 
-/** Removes the specified record representation from this list.
+/** Removes the specified record from this list. If the record was shown in the 
+ * current filtered index, a remove event is fired.
  *  <p>WARNING!! Applying this method when this list has bondage may lead to 
  *  de-synchronisation of list and database. This method does not remove a 
- *  record from the database!
+ *  record from the linked database!
  * 
  * @param wrap <code>DefaultRecordWrapper</code> record to remove; may be null
  */
 public void removeItem ( DefaultRecordWrapper wrap ) 
 {
+   Log.log(10, "(OrderedRecordList.removeItem) REMOVE record from list ".concat(wrap.getRecord().toString()));
+   sortedSet.remove( wrap );
+   elementSet.remove( wrap );
    int index = indexOf( wrap );
-   if ( index > -1 ) {
-	   removeItem( index );
-   } else {
-	   sortMap.remove( wrap );
-   }
+   removeItemIndex( index );
 }
 
 /** Removes all elements from this list. 
  */
 public void clear ()
 {
-   sortMap.clear();	
+   sortedSet.clear();	
+   elementSet.clear();
    if ( size() > 0 ) {
       list.clear();
       fireOrderedListEvent( OrderedListEvent.LIST_CLEARED, -1, null );
@@ -444,7 +556,8 @@ public void clear ()
 protected void clearIntern ()
 {
    list.clear();
-   sortMap.clear();
+   sortedSet.clear();
+   elementSet.clear();
 }
 
 /** Sets the time scope for which level EXPIRE_SOON of wrapper records EXPIRY 
@@ -455,8 +568,8 @@ protected void clearIntern ()
  */
 public void setExpireScope ( long time )
 {
-   if ( sortMap.size() > 0 ) {
-      for ( Iterator<DefaultRecordWrapper> it = sortMap.keySet().iterator(); it.hasNext(); ) {
+   if ( sortedSet.size() > 0 ) {
+      for ( Iterator<DefaultRecordWrapper> it = sortedSet.iterator(); it.hasNext(); ) {
          it.next().refreshExpiry( time );
       }
       fireOrderedListEvent( OrderedListEvent.LIST_RELOADED, -1, null );
@@ -465,8 +578,9 @@ public void setExpireScope ( long time )
 
 /** Sets the record selector to be active as filter criterion for this
  * ordered record list. By default this value is <b>null</b> and permits all
- * records. <code>refresh()</code> or <code>reload()</code> has to 
- * be performed on this list when the filter criterion was modified.
+ * records. <code>refresh()</code> - preferrably - or <code>reload()</code> can 
+ * be performed in order to rebuild the index when the filter criterion 
+ * has been modified.
  * 
  * @param selector <code>RecordSelector</code>, may be null
  */
@@ -529,7 +643,7 @@ public void printout ( PrintStream out )
    }
    out.println( "+++ ORDERLIST PRINTOUT for DB : " + hstr );
    
-   for ( int i = 0; i < size(); i++ ) {
+   for ( int i = 0; i < list.size(); i++ ) {
 	  DefaultRecordWrapper item = (DefaultRecordWrapper) list.get( i );
       PwsRecord rec = item.getRecord();
       out.println( "   - rec (" + i + ") " + item.getSortValue() + ", " +
@@ -549,28 +663,29 @@ public void printout ( PrintStream out )
       PwsRecord record = evt.getRecord();
       
       if ( type == PwsFileEvent.RECORD_ADDED ) {
+    	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received RECORD_ADDED");
          insertItem( makeRecordWrapper( record, locale ) );
       }
       
       else if ( type == PwsFileEvent.RECORD_REMOVED ) {
-         int i = indexOf( record );
-         if ( i > -1 && i < size() )
-            removeItem( i );
+     	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received RECORD_REMOVED");
+    	 DefaultRecordWrapper wrap = makeRecordWrapper( record, locale );
+    	 removeItem(wrap);
       }
       
       else if ( type == PwsFileEvent.RECORD_UPDATED ) {
-         int i = indexOf( record );
-         if ( i > -1 && i < size() ) {
-            removeItem( i );
-            insertItem( makeRecordWrapper( record, locale ) );
-         }
+     	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received RECORD_UPDATED");
+    	 DefaultRecordWrapper wrap = makeRecordWrapper( record, locale );
+     	 updateItem(wrap);
       }
       
       else if ( type == PwsFileEvent.LIST_UPDATED ) {
+     	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received LIST_UPDATED");
          reload();
       }
       
       else if ( type == PwsFileEvent.LIST_CLEARED ) {
+      	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received LIST_CLEARED");
          clear();
       }
    }
