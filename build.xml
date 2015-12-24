@@ -16,11 +16,12 @@
 
         <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt formatV2.txt formatV1.txt" />
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
+	<property name="java1.6-runtime" value="/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-4-1" />
+	<property name="ver" value="2-5-0" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value="24 Nov. 2015"/>
+        <property name="release date" value="24 Dec. 2015"/>
         <property name="release year" value="2015"/>
         <property name="release type" value="Internal, JPWS"/>
         <property name="system format" value="3.13"/>
@@ -44,8 +45,10 @@
 
 <target name="comp" depends="init,clear-c" description="compile PWSLIB library">
    <javac srcdir="${src}"  destdir="${build}" includeantruntime="false"  
+       source="1.6" target="1.6" bootclasspath="${java1.6-runtime}"
        classpath="${classpath}" encoding="iso-8859-1"/>
    <javac srcdir="${suppl}/src"  destdir="${build.suppl}" includeantruntime="false"  
+       source="1.6" target="1.6" bootclasspath="${java1.6-runtime}"
        classpath="${classpath}" encoding="iso-8859-1"/>
 </target>
 
@@ -109,7 +112,9 @@
     <zipfileset dir="${src}/org/jpws/pwslib" prefix="pwslib/src/org/jpws/pwslib"/>
     <zipfileset dir="${suppl}/src/org/jpws/pwslib" prefix="pwslib/suppl/src/org/jpws/pwslib"/>
     <zipfileset file="${ftp4j}" prefix="pwslib/lib"/>
+    <zipfileset file="${ftp4j}.sig" prefix="pwslib/lib"/>
     <zipfileset file="${junit}" prefix="pwslib/lib"/>
+    <zipfileset file="${junit}.sig" prefix="pwslib/lib"/>
     <zipfileset dir="${doc}" includes="${docfileset}" prefix="pwslib/doc" />
     <zipfileset dir="${apidoc}" prefix="pwslib/doc/api"/>
     <zipfileset dir="${suppl}/doc" prefix="pwslib/suppl/doc"/>
@@ -128,7 +133,7 @@ tofile="${dist}/pws-engine-kse-src.zip" overwrite="yes"/> -->
 jar      - create PWSLIB executable library
 suppl    - create PWSLIB supplementary libraries
 api      - create Javadoc API for backend library
-dist     - create JPWS backend distribution package
+dist     - create JPWS backend distribution packages
 clear-c  - remove class files from build area
 	</echo>
 </target>

@@ -115,14 +115,14 @@ private PwsRecord createRecord (int type) {
         rec.setTitle( "Hans Hase" );
         rec.setPassword( new PwsPassphrase( "abc" ) );
         rec.setUsername( "Hasimaus" );
-        rec.setNotes( "Zugang zum Tresor, muß man sich verschaffen!" );
+        rec.setNotes( "Zugang zum Tresor, muï¿½ man sich verschaffen!" );
         break;
     case 1:
     	rec.setGroup("Stadthasen");
         rec.setTitle( "Maria Brenner" );
         rec.setPassword( new PwsPassphrase( "brezensieb" ) );
         rec.setUsername( "Brennermausi" );
-        rec.setNotes( "Vor der Sieggötter Söhnen, tat ich Gesichte nun kund" );
+        rec.setNotes( "Vor der Sieggï¿½tter Sï¿½hnen, tat ich Gesichte nun kund" );
         break;
     case 2:
         rec.setTitle( "Ursav Dominikus" );
@@ -250,7 +250,7 @@ public void test_rename_group () throws DuplicateEntryException {
 	
 	// rename existing group to new
 	grpValue = "Handlanger.Brecheisen";
-	newGrpValue = "Eselsbrücken";
+	newGrpValue = "Eselsbrï¿½cken";
 	li2 = li1.renameGroup(grpValue, newGrpValue);
 	assertNotNull("should return a value", li2);
 	assertTrue("result list size", li2.size() == 5);
@@ -262,7 +262,7 @@ public void test_rename_group () throws DuplicateEntryException {
 	assertTrue(li1.getGrpRecordCount(newGrpValue, true) == 5);
 	
 	// rename existing group to existing group
-	grpValue = "Eselsbrücken";
+	grpValue = "Eselsbrï¿½cken";
 	newGrpValue = "";
 	li2 = li1.renameGroup(grpValue, newGrpValue);
 	assertNotNull("should return a value", li2);
@@ -1354,7 +1354,7 @@ public void test_update_record_list () throws DuplicateEntryException {
 	assertTrue("false list modification", Util.equalArrays(sig1, li1.getSignature()));
 	
 	// probe update null list
-	resLi1 = li1.updateRecordList(null);
+	resLi1 = li1.updateRecordList((PwsRecordList)null);
 	assertNull("result list should be null (empty parameter)", resLi1);
 	assertTrue("false list modification", Util.equalArrays(sig1, li1.getSignature()));
 }

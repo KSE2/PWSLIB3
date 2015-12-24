@@ -53,7 +53,7 @@ import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 public final class Global
 {
 
-public static final String LIBRARY_VERSION = "2.4.0";  
+public static final String LIBRARY_VERSION = "2.5.0";  
 public static final String LIBRARY_IDENT = "KSE-PWSLIB " + LIBRARY_VERSION;  
 
 /** Milliseconds of a day.
@@ -63,7 +63,7 @@ public static final long DAY = 86400000;
 /** The default value for a look-ahead time for expiring records
  *  in milliseconds. This is equivalent to 30 days.
  */
-public static final long DEFAULT_EXPIRESCOPE = 30 * DAY;  
+public static final long DEFAULT_EXPIRESCOPE = 20 * DAY;  
 
 /** Identifier for PWS file format versions 1.x */
 public static final int FILEVERSION_1 = 1;

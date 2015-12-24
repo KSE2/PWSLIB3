@@ -1,14 +1,19 @@
-KSE PWSLIB 2-4-0
+KSE PWSLIB 2-5-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 07. Nov. 2015
+Text Date: 24. Dec. 2015
 
 
-Actual Release 2-4-0, Date: 07 Nov. 2015
+Actual Release 2-5-0, Date: 24 Dec. 2015
 ----------------------------------------
+
+
+
+Release 2-4-0, Date: 07 Nov. 2015
+---------------------------------
 
 - all parts were overhauled for standardised coding style and improved
   Javadoc descriptions

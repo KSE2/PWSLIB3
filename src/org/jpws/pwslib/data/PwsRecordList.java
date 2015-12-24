@@ -645,6 +645,37 @@ public class PwsRecordList implements Cloneable
       return result;
    }  // updateRecordList
 
+   /** Updates a list of records in this record list represented by an array
+    * of <code>DefaultRecordWrapper</code>. Duplicate records in the parameter
+    * do not cause a problem, the last occurrence counts. Duplicates are not
+    * included in the return list.
+    * 
+    * @param records <code>DefaultRecordWrapper[]</code> records to be updated, 
+    *        may be <b>null</b>
+    * @return <code>PwsRecordList</code> subset of parameter list containing
+    *         records which were not updated, <b>null</b> if empty
+    */
+   public PwsRecordList updateRecordList ( DefaultRecordWrapper[] records ) 
+   {
+	   if ( records == null ) return null;
+	   
+	   // transform the array into a PwsRecordList, overwriting duplicates
+	   PwsRecordList list = new PwsRecordList();
+	   for ( DefaultRecordWrapper wrap : records ) {
+		   PwsRecord rec = wrap.getRecord();
+		   if ( list.contains(rec) ) {
+			   try { list.updateRecord(rec);
+			   } catch (NoSuchRecordException e) {
+			   }
+		   } else {
+			   try { list.addRecord(rec);
+			   } catch (DuplicateEntryException e) {
+			   }
+		   }
+	   }
+	   return updateRecordList(list);
+   }
+   
    /** Updates a collection of records in this record list. Unknown 
     *  records of the collection are not updated and returned in the
     *  resulting record list. Does nothing if the parameter is <b>null</b>

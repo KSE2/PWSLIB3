@@ -28,4 +28,9 @@ public class ArrayIterator<T> implements Iterator<T> {
 		T obj = arr[p++];
 		return obj;
 	}
+
+	@Override
+	public void remove() {
+		throw new UnsupportedOperationException();
+	}
 }
