@@ -177,7 +177,7 @@ protected void verifyBondage ( DefaultRecordWrapper wrap )
  * @param record <code>DefaultRecordWrapper</code>
  */
 public void updateItem ( DefaultRecordWrapper record ) {
-	String hstr = record.getRecord().toString();
+	String hstr = record.getRecord().toString() + ", sort " + record.getSortValue();
 	if ( !elementSet.contains(record) ) 
 		throw new IllegalArgumentException("record not contained: ".concat(hstr));
 	
@@ -205,7 +205,7 @@ public void updateItem ( DefaultRecordWrapper record ) {
     	Log.log(10, "(OrderedRecordList.updateItem) UPDATE case MOVE POSITION, from " 
     			+ i + " to " + si + ", " + hstr);
         removeItemIndex( i );
-    	insertRecordIndex(record, si);
+    	insertRecordIndex(record, i<si ? si-1 : si);
     }
 }
 

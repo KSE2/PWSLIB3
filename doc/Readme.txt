@@ -1,4 +1,4 @@
-KSE PWSLIB 2-4-0
+KSE PWSLIB 2-5-0
 
 KSE Password Safe V3 Library
 README FILE
@@ -23,19 +23,19 @@ System Compatibility Format: PWS 3.13 (Password Safe)
 Reference Format Documents: formatV3.txt, formatV2.txt, formatV1.txt
 Javadoc API documentation available
 
-Release Date: 07 Nov 2015
-Text updated: 06 Nov 2015
+Release Date: 24 Dec 2015
+Text updated: 24 Dec 2015
 
 Available Executable Packages
-    pws-engine-kse-2-4-0.jar		BSD-like license
-    pws-suppl-ftp-2-4-0.jar		LGPL 2
+    pws-engine-kse-2-5-0.jar		Core, BSD-like license
+    pws-suppl-ftp-2-5-0.jar		FTP module, LGPL 2
 
 Documentary and Development Packages    
-    pws-engine-kse-2-4-0.zip		executables + documentation
-    pws-engine-source-2-4-0.zip		source code + library + documentation
+    pws-engine-kse-2-5-0.zip		executables + documentation
+    pws-engine-source-2-5-0.zip		source code + libraries + documentation
 
 Release Type
-2-4-0 is a full overhaul update with few interface changes. Upgraders from previous 
+2-5-0 is a full overhaul update with few interface changes. Upgraders from previous 
 versions may have to apply some adaption work and careful testing of the results!
 Also see file changelog.txt for further details.
 
@@ -92,7 +92,8 @@ n)  Smartly tailored file socket classes allow user to develop other kind of app
 
 (COMPATIBILITY)
 
-All genuine PWS V3 files (files created by CounterPane's program "Password Safe") should be compatible.
+All genuine PWS files (file formats defined by open-source project "Password Safe") up to version V3
+should be compatible.
 
 (STATE OF MATURITY)
 

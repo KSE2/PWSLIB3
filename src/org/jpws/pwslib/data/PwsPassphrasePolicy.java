@@ -40,11 +40,11 @@ import org.jpws.pwslib.global.Util;
  */
 public class PwsPassphrasePolicy implements Cloneable
 {
-   /** The maximum password length this policy can set up. Value is 256. */
-   public static final int MAXKEYLENGTH = 256;
+   /** The maximum password length this policy can set up. Value is 1024. */
+   public static final int MAXKEYLENGTH = 1024;
    
-   /** The default password length for this policy (8 characters). */
-   public static final int DEFAULT_KEYLENGTH = 8;
+   /** The default password length for this policy (10 characters). */
+   public static final int DEFAULT_KEYLENGTH = 10;
    
 	/**
 	 * <code>true</code> if generated password should contain lowercase characters.

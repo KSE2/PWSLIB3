@@ -1,14 +1,33 @@
-KSE PWSLIB 2-4-0
+KSE PWSLIB 2-5-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 07. Nov. 2015
+Text Date: 26. Dec. 2015
 
 
-Actual Release 2-4-0, Date: 07 Nov. 2015
+Actual Release 2-5-0, Date: 24 Dec. 2015
 ----------------------------------------
+
+- some minor bug fixes
+- corrected reading of key-stroke data element in records
+- corrected a sorting problem when two records have same naming head
+- PwsPassphrasePolicy now allows 1024 (was 256) length for generated passwords,
+  default key-length is 10 (was 8)
+- extended interface methods for ContextFile, PwsFileEvent, PwsRecordList,
+  OrderedRecordList
+- modified interface: PwsFile saveCopy() methods now work with ContextFile 
+  parameter
+- improved event reporting in PwsRecordList (now issues SINGLE RECORD events in
+  cases where parameter record lists contain only one element)
+- OrderedListEvent has additional event type: ITEM_UPDATED
+- OrderedRecordList reworked to issue 'item updated' events when underlying
+  database issues single-record update (was remove+insert before)
+- new utility class ArrayIterator
+
+Release 2-4-0, Date: 07 Nov. 2015
+---------------------------------
 
 - all parts were overhauled for standardised coding style and improved
   Javadoc descriptions
