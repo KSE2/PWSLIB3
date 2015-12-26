@@ -1,6 +1,7 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
-Current status: RELEASE 2-4-0
+Current status: RELEASE 2-5-0
+Release date: 24 Dec 2015
 
 Platform: Java 1.6 or higher
 Distribution License: BSD-like (2-clause, proprietary)
