@@ -77,13 +77,13 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
 	 * @param rec the record to be represented 
      * @param loc the locale used for sorting this instance; if <b>null</b>
      *        the current VM default locale is used
+     * @throws NullPointerException if record is null
 	 */
-	public DefaultRecordWrapper( PwsRecord rec, Locale loc )
-	{
-       if ( rec == null )
+	public DefaultRecordWrapper( PwsRecord record, Locale loc ) {
+       if ( record == null )
           throw new NullPointerException( "record void" );
        
-      record	= rec;
+      this.record = record;
       refresh();
       setLocale( loc );
    }
@@ -142,8 +142,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     *  standard scope of <code>Global.DEFAULT_EXPIRESCOPE</code>.
     *
     */
-   public void refresh ()
-   {
+   public void refresh () {
       sortValue = sortValueOf( record );
       importry = record.getImportStatus();
       refreshExpiry( Global.DEFAULT_EXPIRESCOPE );
@@ -157,8 +156,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * 
     *  @param l locale to be activated for the collation key
     */
-   public void setLocale ( Locale l )
-   {
+   public void setLocale ( Locale l ) {
       if ( l == null ) {
          l = Locale.getDefault();
       }
@@ -273,7 +271,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
    @Override
    public boolean equals ( Object obj )
    {
-      return obj != null && 
+      return obj != null && obj instanceof DefaultRecordWrapper &&
              ((DefaultRecordWrapper)obj).getRecord().equals( record );
    }
 

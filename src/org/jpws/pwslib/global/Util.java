@@ -48,7 +48,6 @@ public class Util
     *  @since 2-1-0 made private (was public)
     */
    private static CryptoRandom cryptoRand = new CryptoRandom();
-   
    private static Random rand = new Random();
    
 
@@ -57,8 +56,7 @@ public class Util
  * @return <code>CryptoRandom</code>
  * @since 2-1-0
  */   
-public static CryptoRandom getCryptoRand ()
-{
+public static CryptoRandom getCryptoRand () {
    return cryptoRand;
 }
 
@@ -67,10 +65,10 @@ public static CryptoRandom getCryptoRand ()
  * @param cr <code>CryptoRandom</code>
  * @since 2-1-0
  */
-public static void setCryptoRandom ( CryptoRandom cr )
-{
-   if ( cr != null )
+public static void setCryptoRandom ( CryptoRandom cr ) {
+   if ( cr != null ) {
       cryptoRand = cr;
+   }
 }
    
 /**

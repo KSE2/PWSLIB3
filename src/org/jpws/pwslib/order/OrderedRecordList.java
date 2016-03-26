@@ -20,6 +20,7 @@ package org.jpws.pwslib.order;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
@@ -32,6 +33,7 @@ import org.jpws.pwslib.data.PwsFileListener;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
 import org.jpws.pwslib.global.Log;
+import org.jpws.pwslib.global.UUID;
 
 /**
  *  Represents an ordered list of <code>DefaultRecordWrapper</code> objects
@@ -91,7 +93,7 @@ public class OrderedRecordList implements PwsFileListener
    protected SortedSet<DefaultRecordWrapper> sortedSet = new TreeSet<DefaultRecordWrapper>();
    
    /** Set structure to verify element containment in this list. */
-   protected HashSet<DefaultRecordWrapper> elementSet = new HashSet<DefaultRecordWrapper>();
+   protected HashMap<DefaultRecordWrapper, DefaultRecordWrapper> elementSet = new HashMap<DefaultRecordWrapper, DefaultRecordWrapper>();
    
    protected RecordSelector selector;
    
@@ -114,8 +116,9 @@ public OrderedRecordList ()
  */ 
 public OrderedRecordList ( Locale locale )
 {
-   if ( locale != null )
+   if ( locale != null ) {
       this.locale = locale;
+   }
 }  // constructor
    
 /** Constructor for an ordered record list which is related to a 
@@ -178,16 +181,20 @@ protected void verifyBondage ( DefaultRecordWrapper wrap )
  */
 public void updateItem ( DefaultRecordWrapper record ) {
 	String hstr = record.getRecord().toString() + ", sort " + record.getSortValue();
-	if ( !elementSet.contains(record) ) 
+	if ( !elementSet.containsKey(record) ) 
 		throw new IllegalArgumentException("record not contained: ".concat(hstr));
 	
     int i = indexOf( record );
     int si = sortIndexOf( record );
     
     // update the record value in full lists
-	elementSet.remove(record);
-	elementSet.add(record);
-	sortedSet.remove(record);
+    DefaultRecordWrapper removed = elementSet.remove(record);
+	boolean ok = removed != null; 
+//	Log.debug(10, "(OrderedRecordList.updateItem) removed from element-set: " + ok);
+	elementSet.put(record, record);
+	
+	ok = sortedSet.remove(removed);
+//	Log.debug(10, "(OrderedRecordList.updateItem) removed from sorted-set: " + ok);
 	sortedSet.add(record);
 
 	// case: unmoved position
@@ -227,7 +234,7 @@ public void insertItem ( DefaultRecordWrapper record )
    boolean replace = sortedSet.remove(wrap);
    sortedSet.add(wrap);
    elementSet.remove(wrap);
-   elementSet.add(wrap);
+   elementSet.put(wrap, wrap);
    Log.log(10, "(OrderedRecordList.insertItem) INSERT record " + wrap.getRecordID() + ", replace=" + replace);
 
    // insert into filter index if record is acceptable
@@ -309,7 +316,7 @@ public void loadDatabase ( PwsRecordList rlist, long expireScope )
    for ( Iterator<PwsRecord> it = rlist.iterator(); it.hasNext(); ) {
 	  DefaultRecordWrapper wrap = makeRecordWrapper(it.next(), locale);
 	  sortedSet.add(wrap);
-	  elementSet.add(wrap);
+	  elementSet.put(wrap, wrap);
    }
 
    // use sorted map to create filtered index + issue "reloaded" or "cleared" event
@@ -366,8 +373,7 @@ public void reload ()
  *  @param rec <code>DefaultRecordWrapper</code> a entry candidate for this list
  *  @return <b>true</b> if this candidate has to be included into this list 
  */
-protected boolean acceptEntry ( DefaultRecordWrapper rec ) 
-{
+protected boolean acceptEntry ( DefaultRecordWrapper rec ) {
 	return selector == null || selector.acceptEntry(rec);
 }
 
@@ -378,9 +384,9 @@ protected boolean acceptEntry ( DefaultRecordWrapper rec )
  * @param rec <code>PwsRecord</code>
  * @param locale <code>Locale</code>
  * @return <code>DefaultRecordWrapper</code> containing the argument record
+ * @throws NullPointerException if rec is null
  */
-public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale )
-{
+public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale ) {
    DefaultRecordWrapper wrap = new DefaultRecordWrapper(rec, locale);
    if ( expireScope >= 0 ) {
       wrap.refreshExpiry( expireScope );
@@ -390,15 +396,13 @@ public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale )
 
 /** The number of elements in the filtered list index.
  */
-public int size ()
-{
+public int size () {
    return list.size();
 }
 
 /** The number of elements in this list.
  */
-public int totalSize ()
-{
+public int totalSize () {
    return elementSet.size();
 }
 
@@ -451,8 +455,7 @@ public DefaultRecordWrapper[] getGroup ( String group, boolean exact )
 
 /** Returns the active locale used to collate sortvalues of this list.
  */ 
-public final Locale getLocale ()
-{
+public final Locale getLocale () {
    return locale;
 }
 
@@ -462,8 +465,7 @@ public final Locale getLocale ()
  *  @param rec the <code>PwsRecord</code> to be searched
  *  @return index position or -1 if the record is not in the filtered list
  */ 
-public int indexOf ( PwsRecord rec )
-{
+public int indexOf ( PwsRecord rec ) {
    return rec == null ? -1 : list.indexOf( makeRecordWrapper( rec, locale ));
 }
 
@@ -474,8 +476,7 @@ public int indexOf ( PwsRecord rec )
  *         may be null
  *  @return index position or -1 if the record is not in the filtered list
  */ 
-public int indexOf ( DefaultRecordWrapper rec )
-{
+public int indexOf ( DefaultRecordWrapper rec ) {
    return rec == null ? -1 : list.indexOf( rec );
 }
 
@@ -676,6 +677,7 @@ public void printout ( PrintStream out )
       else if ( type == PwsFileEvent.RECORD_UPDATED ) {
      	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received RECORD_UPDATED");
     	 DefaultRecordWrapper wrap = makeRecordWrapper( record, locale );
+//    	 DefaultRecordWrapper oldWrap = makeRecordWrapper( evt.getOldRecord(), locale );
      	 updateItem(wrap);
       }
       

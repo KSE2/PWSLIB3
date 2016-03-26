@@ -312,7 +312,8 @@ public synchronized int nextInt ( int n )
    if (n<=0)
       throw new IllegalArgumentException("n <= 0");
 
-   int bits = nextIntIntern() & 0x7FFFFFFF;
+   int bits = nextIntIntern();
+   bits = (bits < 0) ? -bits : bits;
    int val = bits % n;
    return val;
 }
@@ -333,7 +334,7 @@ public synchronized int nextInt ()
  */
 public synchronized long nextLong ( )
 {
-   return ((long)nextIntIntern()) << 32 | nextIntIntern() ;
+   return ((long)nextIntIntern() << 32) | ((long)nextIntIntern() & 0xFFFFFFFFL);
 }
 
 /**
@@ -372,7 +373,7 @@ public boolean nextBoolean ()
 private int nextIntIntern ()
 {
    return
-   ((int)nextByteIntern() & 0xFF) << 24 |
+   (int)nextByteIntern() << 24 |
    ((int)nextByteIntern() & 0xFF) << 16 |
    ((int)nextByteIntern() & 0xFF) <<  8 |
    ((int)nextByteIntern() & 0xFF);

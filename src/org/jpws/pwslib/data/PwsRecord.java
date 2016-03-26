@@ -1146,10 +1146,8 @@ private long normalisedTime (long time) {
    @Override
    public boolean equals ( Object obj )
    {
-	   if ( obj == null || !(obj instanceof PwsRecord)) {
-		   return false;
-	   }
-      return recordID.equals( ((PwsRecord)obj).recordID );
+	   if ( obj == null || !(obj instanceof PwsRecord)) return false;
+       return recordID.equals( ((PwsRecord)obj).recordID );
    }
 
 /** A hashcode value coherent with the <code>equals</code> function.

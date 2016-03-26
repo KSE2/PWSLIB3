@@ -1,14 +1,24 @@
-KSE PWSLIB 2-5-0
+KSE PWSLIB 2-5-1
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 26. Dec. 2015
+Text Date: 26. Mar. 2016
 
 
-Actual Release 2-5-0, Date: 24 Dec. 2015
+Actual Release 2-5-1, Date: 26 Mar. 2016
 ----------------------------------------
+
+- corrected a bug in CryptoRandom that reduced the value range of nextInt(int)
+  and appeared to prefer negative values in nextLong()
+- corrected a bug in OrderedRecordList which falsely kept some updated old record
+  states (doubles) after reindex when record title has changed
+- minor improvements
+
+
+Release 2-5-0, Date: 24 Dec. 2015
+---------------------------------
 
 - some minor bug fixes
 - corrected reading of key-stroke data element in records

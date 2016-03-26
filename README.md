@@ -1,7 +1,7 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
-Current status: RELEASE 2-5-0
-Release date: 24 Dec 2015
+Current status: RELEASE 2-5-1
+Release date: 26 Mar 2016
 
 Platform: Java 1.6 or higher
 Distribution License: BSD-like (2-clause, proprietary)
@@ -13,7 +13,14 @@ Available Supplements:
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
 
-New Features
+Bug Fixes with 2-5-1
+
+- corrected a bug in CryptoRandom that reduced the value range of nextInt(int)
+  and appeared to prefer negative values in nextLong()
+- corrected a bug in OrderedRecordList which falsely kept some updated old record
+  states (doubles) after reindex when record title has changed
+
+New Features with 2-5-0
 
 - all parts were overhauled for standardised coding style and improved
   Javadoc descriptions

@@ -47,12 +47,11 @@ class FieldHeader
       int remLength; // remaining data length in data blocks 
       int segLen;    // length of header block data capacity (segment)
       
-      long v = Util.readLongLittle( block, 0 );
-      length = (int)v;
+      length = Util.readIntLittle( block, 0 );
       if ( length < 0 ) {
          length = Integer.MAX_VALUE;
       }
-      type = (int)(v >>> 32) & 0xff;
+      type = (int)block[4] & 0xff;
       segLen = block.length - 5;
       
       if ( format == Global.FILEVERSION_3 ) {
