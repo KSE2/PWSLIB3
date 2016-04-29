@@ -1,4 +1,4 @@
-KSE PWSLIB 2-5-1
+KSE PWSLIB 2-5-2
 
 KSE Password Safe V3 Library
 README FILE
@@ -23,21 +23,20 @@ System Compatibility Format: PWS 3.13 (Password Safe)
 Reference Format Documents: formatV3.txt, formatV2.txt, formatV1.txt
 Javadoc API documentation available
 
-Release Date: 26 Mar 2016
-Text updated: 26 Mar 2016
+Release Date: 30 Apr 2016
+Text updated: 30 Apr 2016
 
 Available Executable Packages
-    pws-engine-kse-2-5-1.jar		Core, BSD-like license
-    pws-suppl-ftp-2-5-1.jar		FTP module, LGPL 2
+    pws-engine-kse-2-5-2.jar		Core, BSD-like license
+    pws-suppl-ftp-2-5-2.jar		FTP module, LGPL 2
 
 Documentary and Development Packages    
-    pws-engine-kse-2-5-1.zip		executables + documentation
-    pws-engine-source-2-5-1.zip		source code + libraries + documentation
+    pws-engine-kse-2-5-2.zip		executables + documentation
+    pws-engine-source-2-5-2.zip		source code + libraries + documentation
 
 Release Type
-2-5-1 is a maintenance update with no interface changes. It is a security update as well
-as it mends minor bugs in CryptoRandom (did not affect password generation or encryption
-security). See file "changelog.txt" for further details!
+2-5-2 is a release with minor adaptions to service JPasswords 0-8-0-RC1. A general upgrade
+for users is not required. See file "changelog.txt" for change history!
 
 -------------------------------
 

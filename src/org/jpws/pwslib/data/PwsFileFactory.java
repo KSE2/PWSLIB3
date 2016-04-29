@@ -1242,7 +1242,8 @@ private static void saveUnknownFields ( PwsRecord rec, PwsRawFieldWriter writer 
             // logging
             if ( Log.getDebugLevel() > 5 ) {
                String hstr = "-- saving UNKNOWN FIELD (" + rec + ") id=" + 
-                      Util.byteToHex( ufld.type ) + ", val=" + Util.bytesToHex( ufld.data );
+                      Util.byteToHex( ufld.type ) + ", val=" + Util.bytesToHex( 
+                      limitedBytes(ufld.data, 512) );
                Log.debug(6, hstr);
             }
          
@@ -1253,6 +1254,11 @@ private static void saveUnknownFields ( PwsRecord rec, PwsRawFieldWriter writer 
       }
    }
 }  // saveUnknownFields
+
+private static byte[] limitedBytes ( byte[] data, int length ) {
+	if ( data.length <= length ) return data;
+	return Util.arraycopy(data, length);
+}
 
 /** Stores a list of records to an output stream of raw fields 
  *  in the file format version V1. This does not check for record validity.

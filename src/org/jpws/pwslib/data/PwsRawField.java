@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.IllegalCharsetNameException;
+import java.util.zip.CRC32;
 
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.global.Global;
@@ -501,4 +502,13 @@ public class PwsRawField implements Cloneable
       Util.destroyBytes( data );
       data = null;
    }
+
+	@Override
+	public String toString() {
+		CRC32 crc = new CRC32();
+		crc.update(data);
+		return "PwsRawField " + type + ", length=" + length + ", crc=" + crc.getValue();
+	}
+   
+   
 }

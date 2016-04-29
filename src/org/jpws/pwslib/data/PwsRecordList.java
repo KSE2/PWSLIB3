@@ -163,8 +163,7 @@ public class PwsRecordList implements Cloneable
 	/**
 	 * Constructs a new, empty PasswordSafe record list.
 	 */
-	public PwsRecordList()
-	{
+	public PwsRecordList() {
       initInstance();
 	}  // constructor
 
@@ -228,13 +227,12 @@ public class PwsRecordList implements Cloneable
      * @throws DuplicateEntryException 
      */
     public PwsRecordList( Collection<PwsRecord> recs ) 
-    		   throws DuplicateEntryException
-    {
+    		throws DuplicateEntryException {
+    	
        this( recs == null ? null : recs.toArray(new PwsRecord[recs.size()]) );
     }  // constructor
 
-   private void initInstance ()
-   {
+   private void initInstance () {
       fileID = instanceCounter++;
       idString = " (" + fileID + "): ";
       Log.log( 2, "(PwsRecList) new PwsRecordList: inst-ID = " + fileID );
@@ -246,8 +244,7 @@ public class PwsRecordList implements Cloneable
     * 
     * @return <code>PwsRecord[]</code>
     */
-   public PwsRecord[] toArray ()
-   {
+   public PwsRecord[] toArray () {
       PwsRecord[] arr = new PwsRecord[ size() ];
       Iterator<PwsRecord> it = internalIterator();
       for ( int i = 0; it.hasNext(); i++ ) {
@@ -1649,8 +1646,7 @@ public class PwsRecordList implements Cloneable
     * 
     * @return <code>org.jpws.pwslib.global.UUID</code>
     */ 
-   public UUID getUUID ()
-   {
+   public UUID getUUID () {
       return listUUID;
    }
 
@@ -1660,8 +1656,7 @@ public class PwsRecordList implements Cloneable
     * @param fileUUID <code>org.jpws.pwslib.global.UUID</code>
     * @throws NullPointerException if parameter is null
     */
-   public void setUUID ( UUID fileUUID )
-   {
+   public void setUUID ( UUID fileUUID ) {
       if ( fileUUID == null )
          throw new NullPointerException();
       

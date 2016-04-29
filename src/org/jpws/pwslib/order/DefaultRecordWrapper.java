@@ -253,8 +253,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * 
     * @return int, one of { 0, EXPIRED, EXPIRE_SOON }
     */
-   public int getExpiry ()
-   {
+   public int getExpiry () {
       return expiry;
    }
    
@@ -262,23 +261,20 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * 
     * @return one of { 0, IMPORTED, IMPORTED_CONFLICT }
     */
-   public int getImportStatus ()
-   {
+   public int getImportStatus () {
       return importry;
    }
    
    /** Wrappers equal parallel to their contained records. */ 
    @Override
-   public boolean equals ( Object obj )
-   {
+   public boolean equals ( Object obj ) {
       return obj != null && obj instanceof DefaultRecordWrapper &&
              ((DefaultRecordWrapper)obj).getRecord().equals( record );
    }
 
    /** <code>equals()</code> compatible hashcode. */
    @Override
-   public int hashCode ()
-   {
+   public int hashCode () {
       return record.hashCode();
    }
    

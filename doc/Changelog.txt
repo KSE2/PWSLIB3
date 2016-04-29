@@ -1,14 +1,21 @@
-KSE PWSLIB 2-5-1
+KSE PWSLIB 2-5-2
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 26. Mar. 2016
+Text Date: 30. Apr. 2016
 
 
-Actual Release 2-5-1, Date: 26 Mar. 2016
+Actual Release 2-5-2, Date: 30 Apr. 2016
 ----------------------------------------
+
+- minor adjustments to please JPasswords 0-8-0-RC1; general upgrade not required.
+- PwsFile.SECURITY_ITERATIONS_MAXIMUM has been set to 2048*2048*100.
+
+
+Release 2-5-1, Date: 26 Mar. 2016
+---------------------------------
 
 - corrected a bug in CryptoRandom that reduced the value range of nextInt(int)
   and appeared to prefer negative values in nextLong()

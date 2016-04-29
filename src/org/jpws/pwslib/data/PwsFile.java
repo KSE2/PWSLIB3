@@ -133,7 +133,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
 
    /** Maximum number of security calculation loops for access key verification. 
    */
-   public static final int SECURITY_ITERATIONS_MAXIMUM = 2048 * 2048;
+   public static final int SECURITY_ITERATIONS_MAXIMUM = 2048 * 2048 *100;
    
    /** 
     * The application adapter representing the context of this file's
@@ -822,7 +822,13 @@ public class PwsFile extends PwsRecordList implements Cloneable
       return fid;
    }
 
-   /**
+   @Override
+   public void setUUID(UUID fileUUID) {
+	  super.setUUID(fileUUID);
+      headerFields.setField( new PwsRawField( 1, getUUID().getBytes() ) );
+   }
+
+/**
     * Returns a human info file path notation incorporating the IO-context name.
     * 
     * @param app <code>ApplicationAdapter</code> the application context 

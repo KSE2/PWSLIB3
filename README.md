@@ -1,7 +1,7 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
-Current status: RELEASE 2-5-1
-Release date: 26 Mar 2016
+Current status: RELEASE 2-5-2
+Release date: 30 Apr 2016
 
 Platform: Java 1.6 or higher
 Distribution License: BSD-like (2-clause, proprietary)
@@ -12,6 +12,10 @@ Available Supplements:
 -- FTP IO-adapter
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
+
+Release 2-5-2
+
+- minor adjustments for JPasswords 0-8-0-RC1; upgrade not required.
 
 Bug Fixes with 2-5-1
 

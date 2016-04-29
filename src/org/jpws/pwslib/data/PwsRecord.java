@@ -326,8 +326,7 @@ private long normalisedTime (long time) {
     *  @return <b>true</b> if and only if there is a PASSLIFETIME defined and
     *          the current time is equal/higher than the PASSLIFETIME
     */ 
-   public boolean hasExpired ()
-   {
+   public boolean hasExpired () {
       return willExpire( System.currentTimeMillis() );  
    }
    
@@ -338,10 +337,19 @@ private long normalisedTime (long time) {
     *  @return boolean <b>true</b> if and only if there is a PASSLIFETIME 
     *          defined and the compare time is higher than the PASSLIFETIME
     */ 
-   public boolean willExpire ( long date )
-   {
+   public boolean willExpire ( long date )  {
       long t = getPassLifeTime();
       return t > 0 && date > t;  
+   }
+
+   /** Whether this record contains an EXTRA FIELD of the given type.
+    * Stating canonical fields results in <b>false</b>.
+    * 
+    * @param type int field type
+    * @return boolean
+    */
+   public boolean hasExtraField (int type) {
+	   return otherValues == null ? false : otherValues.contains(type);
    }
    
    /** Returns the value of record field ACCESSTIME in epoch time. 
@@ -827,8 +835,7 @@ private long normalisedTime (long time) {
     * @param type int, field type number (0..255)
     * @param value byte array, field value (exact length)
     */
-   protected void addUnknownField ( int type, byte[] value )
-   {
+   protected void addUnknownField ( int type, byte[] value ) {
       if ( value == null ) return;
       
       if ( otherValues == null ) {
@@ -850,8 +857,7 @@ private long normalisedTime (long time) {
     * @param value field value, or <b>null</b> to remove the field
     * @param format the referenced file format version or 0 for default
     */
-   public void setExtraField ( int type, byte[] value, int format )
-   {
+   public void setExtraField ( int type, byte[] value, int format ) {
       // control field type
       if ( PwsFileFactory.isCanonicalField( type, format ) )
          throw new IllegalArgumentException( "canonical field type" );
@@ -861,15 +867,17 @@ private long normalisedTime (long time) {
          otherValues = new RawFieldList();
       }
       
+      // erase field from list
       if ( value == null ) {
-          // erase field from list
          if ( otherValues.removeField( type ) != null ) {
             modified();
          }
+
+      // add / replace new value
       } else {
-          // add / replace new value
-         otherValues.setField( new PwsRawField( type, value ) );
-         modified();
+    	 PwsRawField newValue = new PwsRawField(type, value);
+     	 PwsRawField oldValue = otherValues.setField( newValue );
+     	 controlValue(oldValue, newValue, "EXTRAFIELD " + type);
       }
    }  // setExtraField
    
@@ -1207,6 +1215,7 @@ private long normalisedTime (long time) {
          out.writeLong( passLifeTime );
          out.writeLong( passModTime );
          out.writeInt( expiryInterval );
+         out.writeInt( importStatus );
          out.writeBoolean( protectedEntry );
 
          if ( title != null )
