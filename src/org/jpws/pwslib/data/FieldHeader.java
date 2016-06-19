@@ -18,11 +18,13 @@
 
 package org.jpws.pwslib.data;
 
+import java.io.StreamCorruptedException;
+
 import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.Util;
 
 /**
- * Package class to represent a HEADERBLOCK of the database format description.
+ * Package class to represent a field HEADERBLOCK of the database format description.
  */
 class FieldHeader
 {
@@ -41,18 +43,23 @@ class FieldHeader
    /**  Creates a header block by interpreting a data block of the PWS file. 
     *
     *  @param block file data block (of version dependent length)
+ * @throws StreamCorruptedException 
     */
-   public FieldHeader ( byte[] block, int format )
+   public FieldHeader ( byte[] block, int format ) throws StreamCorruptedException
    {
       int remLength; // remaining data length in data blocks 
       int segLen;    // length of header block data capacity (segment)
+      int blocklen = block.length;
       
+      // read data length value
       length = Util.readIntLittle( block, 0 );
       if ( length < 0 ) {
-         length = Integer.MAX_VALUE;
+         throw new StreamCorruptedException("illegal negative length value: " + length);
       }
+      
+      // read type value
       type = (int)block[4] & 0xff;
-      segLen = block.length - 5;
+      segLen = blocklen - 5;
       
       if ( format == Global.FILEVERSION_3 ) {
          data = Util.arraycopy( block, 5, Math.min( segLen, length ) );
@@ -60,17 +67,17 @@ class FieldHeader
       } else {
          remLength = length;
       }
-      
-      blocks = remLength / block.length;
-      if ( remLength % block.length > 0 ||
+
+      // determine number of blocks following
+      blocks = remLength / blocklen;
+      if ( remLength % blocklen > 0 ||
            (format < Global.FILEVERSION_3 & remLength == 0) ) {
          blocks++;
       }
    }  // constructor
    
    /** Erases all data from this header and reset its values to zero/null. */
-   public void clear ()
-   {
+   public void clear () {
       Util.destroyBytes( data );
       data = null;
       length = 0;

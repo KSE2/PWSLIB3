@@ -114,8 +114,8 @@ public PwsPassphrase ( String content )
    setValue( content );
 }
 
-/** Constructor from an array containing a sequence of bytes, representing 
- *  characters as seen through the specified encoding.
+/** Constructor from a byte array containing binary serialisation 
+ * of a character sequence with the given encoding.
  * 
  * @param buffer an array of byte containing the initial value for this PP as
  *        an encoded character sequence. 
@@ -125,11 +125,27 @@ public PwsPassphrase ( String content )
  * @throws  UnsupportedCharsetException if no support for the named charset is 
  *          available in this instance of the Java virtual machine
  */
-public PwsPassphrase ( byte[] buffer, String enc )
-{
+public PwsPassphrase ( byte[] buffer, String enc ) {
+	this( buffer, 0, buffer.length, enc );
+}
+
+/** Constructor from a byte array section containing binary serialisation 
+ * of a character sequence with the given encoding.
+ * 
+ * @param buffer an array of byte containing the initial value for this PP as
+ *        an encoded character sequence
+ * @param offset int buffer start offset
+ * @param length int data length in buffer 
+ * @param enc the charset to which the content of the buffer is encoded; 
+ *        <b>null</b> for VM default charset
+ * @throws  IllegalCharsetNameException if the given charset name is illegal
+ * @throws  UnsupportedCharsetException if no support for the named charset is 
+ *          available in this instance of the Java virtual machine
+ */
+public PwsPassphrase ( byte[] buffer, int offset, int length, String enc ) {
    cipher = Global.getStandardCipher();
    blocksize = cipher.getBlockSize() / 2;
-   setBytes( buffer, enc );
+   setBytes( buffer, offset, length, enc );
 }
 
 /** Sets the content of this passphrase from a byte array which is encoded with 
@@ -143,12 +159,28 @@ public PwsPassphrase ( byte[] buffer, String enc )
  * @throws  UnsupportedCharsetException if no support for the named charset is 
  *          available
  */
-public void setBytes ( byte[] buffer, String enc )
-{
+public void setBytes ( byte[] buffer, String enc ) {
+	setBytes(buffer, 0, buffer.length, enc);
+}
+
+/** Sets the content of this passphrase from a byte array section which is 
+ * encoded with the specified character set.
+ *  
+ * @param buffer array of byte containing an encoded character sequence 
+ * @param offset int buffer start offset
+ * @param length int data length in buffer 
+ * @param enc String name of charset for the content of the buffer;
+ *        <b>null</b> for VM default
+ *  
+ * @throws  IllegalCharsetNameException if the given charset name is illegal
+ * @throws  UnsupportedCharsetException if no support for the named charset is 
+ *          available
+ */
+public void setBytes ( byte[] buffer, int offset, int length, String enc ) {
    if ( enc == null ) {
       enc = Global.getDefaultCharset();
    }
-   CharBuffer cbuf = Charset.forName( enc ).decode( ByteBuffer.wrap( buffer ) );
+   CharBuffer cbuf = Charset.forName( enc ).decode( ByteBuffer.wrap( buffer, offset, length ) );
    setValue( cbuf.array(), cbuf.position(), cbuf.remaining() );
    Util.destroyChars( cbuf.array() );
 }

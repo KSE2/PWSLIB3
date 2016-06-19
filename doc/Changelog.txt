@@ -1,14 +1,40 @@
-KSE PWSLIB 2-5-2
+KSE PWSLIB 2-6-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 30. Apr. 2016
+Text Date: 19 Jun 2016
 
 
-Actual Release 2-5-2, Date: 30 Apr. 2016
+Actual Release 2-6-0, Date: 19 Jun. 2016
 ----------------------------------------
+
+- this is a major release including interface and some behaviour changes. Thorough testing
+  of usage is required when replacing previous versions!
+
+- for files of version 3: fixed conversion from user input character string to primary 
+  file access key material to UTF-8 encoding. Password Safe V3 format definition was 
+  unspecific to this point and hitherto practice relied on the JVM default which basically 
+  is locale and OS specific.
+  In order to standardise file access among varying locations of use, this step was required.
+  In consequence of this modification, failing file access may occur if characters outside 
+  of ASCII have been used as key material. In this case the file should be opened in a previous
+  version of this software and the access key modified to a key which contains only ASCII 
+  characters. This modified file should be able to open under new conditions (2-6 and later). 
+  There is no other solution.
+
+- Extra Fields in PwsRecord (record data field types outside of the Password Safe data canon)
+  are now stored encrypted in memory; was cleartext before. 
+
+- the standard (internal) cipher used and provided by PWSLIB package is now Twofish ECB 
+  (was Blowfish before).
+
+- performance of crypting and file reading routines has been improved.
+
+
+Release 2-5-2, Date: 30 Apr. 2016
+---------------------------------
 
 - minor adjustments to please JPasswords 0-8-0-RC1; general upgrade not required.
 - PwsFile.SECURITY_ITERATIONS_MAXIMUM has been set to 2048*2048*100.

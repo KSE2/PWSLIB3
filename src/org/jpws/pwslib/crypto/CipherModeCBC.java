@@ -31,14 +31,11 @@ import org.jpws.pwslib.global.Util;
  */
 public class CipherModeCBC implements PwsCipher
 {
-   public static final int ENCRYPTING = 1;
-   public static final int DECRYPTING = 2;
-
-   private PwsCipher cipher;
-   private int blocksize;
+   private final PwsCipher cipher;
+   private final int blocksize;
    private int direction;
    private byte[] vector;
-   private byte[] cbuf;
+   private final byte[] cbuf;
 
 /**
  * Creates a CBC mode cipher from the parameter cipher and the
@@ -50,8 +47,7 @@ public class CipherModeCBC implements PwsCipher
  *        <code>ci</code> blocksize)
  * @throws IllegalArgumentException
  */
-public CipherModeCBC ( PwsCipher ci, byte[] iv )
-{
+public CipherModeCBC ( PwsCipher ci, byte[] iv ) {
    if ( ci instanceof CipherModeCBC )
       throw new IllegalArgumentException( "input cipher must be ECB-cipher, is CBC" );
    
@@ -68,25 +64,22 @@ public CipherModeCBC ( PwsCipher ci, byte[] iv )
 
 /**
  * Creates a CBC mode cipher from the parameter cipher and
- * a block of zeros as initialization vector.
+ * a block of zeros as initialisation vector.
  * 
  * @param ci ECB mode block-cipher
  */
-public CipherModeCBC ( PwsCipher ci )
-{
+public CipherModeCBC ( PwsCipher ci ) {
    this( ci, new byte[ ci.getBlockSize() ] );
 }
 
 @Override
-public byte[] decrypt ( byte[] buffer )
-{
+public byte[] decrypt ( byte[] buffer ) {
    return decrypt( buffer, 0, buffer.length );
 }
 
 @Override
-public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
-{
-   byte[] buf1, plain, result;
+public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
+   byte[] plain, result;
    int i, loops, pos;
    
    if ( direction == ENCRYPTING )
@@ -97,7 +90,6 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
    if ( length % blocksize != 0 )
       throw new IllegalArgumentException( "illegal data length" );
    
-   plain = null;
    result = new byte[ length ];
    loops = length / blocksize;
    pos = 0;
@@ -106,15 +98,15 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
       System.arraycopy( buffer, start + pos, cbuf, 0, blocksize );
       
       // decrypt user block and XOR it with vector
-      buf1 = cipher.decrypt( cbuf );
-      plain = Util.XOR_buffers( buf1, vector );
+      plain = cipher.decrypt( cbuf );
+      Util.XOR_buffers2( plain, vector );
 
       // save results of this decryption loop
       System.arraycopy( plain, 0, result, pos, blocksize );
       Util.destroyBytes( plain );
       
       // create next vector
-      vector = Util.arraycopy( cbuf );
+      System.arraycopy( cbuf, 0, vector, 0, blocksize );
 
       // propagate pointer
       pos += blocksize;
@@ -124,15 +116,13 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
 }  // decrypt
 
 @Override
-public byte[] encrypt ( byte[] buffer )
-{
+public byte[] encrypt ( byte[] buffer ) {
    return encrypt( buffer, 0, buffer.length );
 }
 
 @Override
-public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
-{
-   byte[] buf1=null, buf2, result;
+public synchronized byte[] encrypt ( byte[] buffer, int start, int length ) {
+   byte[] buf2, result;
    int i, loops, pos;
    
    if ( direction == DECRYPTING )
@@ -151,8 +141,8 @@ public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
       System.arraycopy( buffer, start + pos, cbuf, 0, blocksize );
       
       // XOR user block with vector and encrypt result 
-      buf1 = Util.XOR_buffers( cbuf, vector );
-      buf2 = cipher.encrypt( buf1 );
+      Util.XOR_buffers2( cbuf, vector );
+      buf2 = cipher.encrypt( cbuf );
 
       // save results of this encryption loop
       System.arraycopy( buf2, 0, result, pos, blocksize );
@@ -162,21 +152,18 @@ public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
       pos += blocksize;
    }
    
-   Util.destroyBytes(cbuf);
    return result;
 }  // encrypt
 
 @Override
-public int getBlockSize ()
-{
+public int getBlockSize () {
    return blocksize;
 }
 
 /** The cipher operation direction. May be <code>ENCRYPTING</code> or <code>DECRYPTING</code>
  *  or 0 if not yet determined. (The first cipher operation determines the direction.) 
  *  */  
-public int getDirection ()
-{
+public int getDirection () {
    return direction;
 }
 
@@ -184,8 +171,7 @@ public int getDirection ()
  * Returns the cipher's CBC encryption vector as a direct reference.
  * @return byte[] of cipher's blocksize length
  */
-public byte[] getVector ()
-{
+public byte[] getVector () {
    return vector;
 }
 

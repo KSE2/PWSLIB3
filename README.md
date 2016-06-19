@@ -1,21 +1,50 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
-Current status: RELEASE 2-5-2
-Release date: 30 Apr 2016
+
+Current status: RELEASE 2-6-0
+
+Release date: 19 Jun 2016
 
 Platform: Java 1.6 or higher
+
 Distribution License: BSD-like (2-clause, proprietary)
+
 Contributions: strong encryption software by Cryptix Foundation; others
+
 Addresses: local file system, http internet (read-only)
 
 Available Supplements:
+
 -- FTP IO-adapter
+
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
 
-Release 2-5-2
+Release 2-6-0
 
-- minor adjustments for JPasswords 0-8-0-RC1; upgrade not required.
+- major release for JPasswords 0-8-0; interface additions and behaviour changes.
+
+New Features with 2-6-0
+
+- for files of version 3: fixed conversion from user input character string to primary 
+  file access key material to UTF-8 encoding. Password Safe V3 format definition was 
+  unspecific to this point and hitherto practice relied on the JVM default which basically 
+  is locale and OS specific.
+  In order to standardise file access among varying locations of use, this step was required.
+  In consequence of this modification, failing file access may occur if characters outside 
+  of ASCII have been used as key material. In this case the file should be opened in a previous
+  version of this software and the access key modified to a key which contains only ASCII 
+  characters. This modified file should be able to open under new conditions (2-6 and later). 
+  There is no other solution.
+
+- Extra Fields in PwsRecord (record data field types outside of the Password Safe data canon)
+  are now stored encrypted in memory; was cleartext before. 
+
+- the standard (internal) cipher used and provided by PWSLIB package is now Twofish ECB 
+  (was Blowfish before).
+
+- performance of crypting and file reading routines has been improved.
+
 
 Bug Fixes with 2-5-1
 

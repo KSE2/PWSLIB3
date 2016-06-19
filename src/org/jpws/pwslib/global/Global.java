@@ -19,14 +19,13 @@
 package org.jpws.pwslib.global;
 
 import java.awt.Dimension;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
 import java.nio.charset.Charset;
 
 import org.jpws.pwslib.crypto.BlowfishCipher;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.crypto.SHA256;
+import org.jpws.pwslib.crypto.ScatterCipher;
 import org.jpws.pwslib.crypto.TwofishCipher;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
@@ -53,7 +52,7 @@ import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 public final class Global
 {
 
-public static final String LIBRARY_VERSION = "2.5.0";  
+public static final String LIBRARY_VERSION = "2.6.0";  
 public static final String LIBRARY_IDENT = "KSE-PWSLIB " + LIBRARY_VERSION;  
 
 /** Milliseconds of a day.
@@ -150,7 +149,7 @@ public static ApplicationAdapter getStandardApplication ()
 
 /** Returns the standard encryption cipher of this package. This is an ECB 
  *  block-cipher and ready to use but only valid for transitional data as it is 
- *  individual for any given application session. Currently a Blowfish cipher
+ *  individual for any given application session. Currently a Twofish cipher
  *  is supplied.
  * 
  *  @return <code>PwsCipher</code>
@@ -207,39 +206,46 @@ public static void setDisplayUsernames ( boolean v )
  *  method is automatically called on first reference to this class.
  * <p><small>This 
  *  performs self-testing of the encryption algorithms and SHA hash-functions. 
- *  If tests are ok then invokes a new instance of ECB Blowfish2 as  
+ *  If tests are ok then invokes a new instance of ECB Twofish as  
  *  the standard cipher for this library and sets the default application 
  *  adapter to the local file system.</small>
  *  
  *  <p>Does nothing if this class is already initialised.
  *
  */ 
-private static void init ()
-{
+private static void init () {
    if ( !isInitialized ) {
 	  setStandardApplication( DefaultFilesystemAdapter.get() );
 
-	  boolean ok = securityTest(); 
+	  String text = "CAUTION! Security-test failed! Package may be unusable";
+	  boolean ok = securityTest();
 	  if ( ok ) {
-		  standardCipher = new BlowfishCipher();
+//		  standardCipher = new TwofishCipher();
+		  standardCipher = new TwofishCipher();
+		  text = "standard cipher: ".concat(standardCipher.getName());
 	  }
       isInitialized = true;
-      Log.log( 1, LIBRARY_IDENT.concat(" initialized"));
+      Log.log( 1, LIBRARY_IDENT.concat(" initialized; ".concat(text)));
    }
 }
 
-private static boolean securityTest ()
-{
-   boolean ok, ok1, ok2, ok3, ok4;
+/** Performs self-test of the module. 
+ * 
+ * @return boolean true == test passed
+ */
+private static boolean securityTest () {
+   boolean ok, ok1, ok2, ok3, ok4, ok5;
 
    ok1 = new SHA1().selfTest();
    ok4 = SHA256.self_test();
    ok2 = BlowfishCipher.self_test();
    ok3 = TwofishCipher.self_test();
-   ok = ok1 & ok2 & ok3 & ok4;
+   ok5 = ScatterCipher.self_test();
+   ok = ok1 & ok2 & ok3 & ok4 & ok5;
    
    Log.debug( 6, "SHA1 Test : " + ok1 );
    Log.debug( 6, "SHA256 Test : " + ok4 );
+   Log.debug( 6, "Scatter Test : " + ok5 );
    Log.debug( 6, "Blowfish Test : " + ok2 );
    Log.debug( 6, "Twofish Test : " + ok3 );
 
@@ -258,8 +264,7 @@ private Global ()
  * 
  * @param args String[]
  */   
-public static void main ( String[] args )
-{
+public static void main ( String[] args ) {
    Log.setLogLevel(10);
 //   Log.log(0, getProgramName());
    Log.log(0, "Default Charset: ".concat(getDefaultCharset()));

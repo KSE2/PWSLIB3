@@ -475,11 +475,11 @@ throws IOException, PasswordSafeException
          switch ( raw.getType() )
          {
          case RECIDTYPE:
-            try { rec.setRecordID( new UUID( raw.getData()) ); 
+            try { rec.setRecordID( new UUID( raw.getDataDirect()) ); 
             } catch ( IllegalArgumentException e ) {
                // bad UUID value
                Log.error( 3, "(PwsFileFactory.readRecordsV2) bad record UUID: " 
-                     + Util.bytesToHex(raw.getData()) + 
+                     + Util.bytesToHex(raw.getDataDirect()) + 
                      "\r\ncreated new UUID: " + rec );
                file.setPreserveOld( true );
             }
@@ -574,7 +574,7 @@ throws IOException, PasswordSafeException
             if ( version > Global.FILEVERSION_2 ) {
                rec.setUrl( raw.getPassphrase( charset ) );
             } else {
-               rec.addUnknownField( raw.getType(), raw.getData() );
+               rec.addUnknownField( raw.getType(), raw.getDataDirect() );
             }
             break;
            
@@ -583,7 +583,7 @@ throws IOException, PasswordSafeException
             // an intermediate policy already defined  
             // (this excludes overwriting of a prior "modern" definition field)
             if ( intermediatePolicy == null ) {
-               data = raw.getData();
+               data = raw.getDataDirect();
                intermediatePolicy = new PwsPassphrasePolicy(Util.readIntLittle( data, 0 ));
                if ( Log.getDebugLevel() > 8 )
                   Log.debug( 9, "(PwsFileFactory.readRecordsV2) - receiving OLD POLICY for record " + rec );
@@ -617,7 +617,7 @@ throws IOException, PasswordSafeException
             if ( version > Global.FILEVERSION_2 ) {
                rec.setHistory( raw.getPassphrase( charset ) );
             } else {
-               rec.addUnknownField( raw.getType(), raw.getData() );
+               rec.addUnknownField( raw.getType(), raw.getDataDirect() );
             }
             break;
             
@@ -625,7 +625,7 @@ throws IOException, PasswordSafeException
             if ( version > Global.FILEVERSION_2 ) {
                rec.setAutotype( raw.getString( charset ) );
             } else {
-               rec.addUnknownField( raw.getType(), raw.getData() );
+               rec.addUnknownField( raw.getType(), raw.getDataDirect() );
             }
             break;
             
@@ -642,7 +642,7 @@ throws IOException, PasswordSafeException
             break;
 
          case PROTECTED_ENTRYTYPE:
-            rec.setProtectedEntry( raw.getLength() > 0 && raw.getData()[0] != 0 );
+            rec.setProtectedEntry( raw.getLength() > 0 && raw.getDataDirect()[0] != 0 );
             break;
 
          case POLICY_NAMETYPE:
@@ -650,18 +650,22 @@ throws IOException, PasswordSafeException
             break;
 
          case KEYBOARD_SHORTCUT_TYPE:
-        	 data = raw.getData();
+        	 data = raw.getDataDirect();
         	 KeyStroke ks = readKeyStroke(data);
              rec.setKeyboardShortcut( ks );
              break;
 
          default: 
-            rec.addUnknownField( raw.getType(), raw.getData() );
+            rec.addUnknownField( raw );
+            Log.debug(6, "(??) -- adding UNKNOWN FIELD to record (" + rec.getTitle() 
+                      + "): " + raw.toString());
 //System.err.println( "++ reading UNKNOWN FIELD: t=" + raw.getType() + 
 //      ", v=" + Util.bytesToHex( raw.getData() ));
          }
 
-         raw.destroy();
+         if ( !raw.isEncrypted() ) {
+        	raw.destroy();
+         }
       } // while loop
    }  // readRecordsV23
    
@@ -1215,7 +1219,7 @@ private static void saveRawField ( PwsRawField raw,
 		                           PwsRawFieldWriter writer )
                throws IOException
 {
-   if ( raw != null && raw.data != null ) {
+   if ( raw != null && raw.hasData() ) {
       writer.writeRawField( raw );
    }
 }
@@ -1243,7 +1247,7 @@ private static void saveUnknownFields ( PwsRecord rec, PwsRawFieldWriter writer 
             if ( Log.getDebugLevel() > 5 ) {
                String hstr = "-- saving UNKNOWN FIELD (" + rec + ") id=" + 
                       Util.byteToHex( ufld.type ) + ", val=" + Util.bytesToHex( 
-                      limitedBytes(ufld.data, 512) );
+                      limitedBytes(ufld.getData(), 512) );
                Log.debug(6, hstr);
             }
          
@@ -1491,7 +1495,7 @@ private static void saveBooleanField (int type, boolean value,
 private static long readIntegerField ( PwsRawField raw, PwsRecord rec )
 {
    try {
-      byte[] a = raw.getData();
+      byte[] a = raw.getDataDirect();
       if ( a.length < 4 ) {
          a = Util.arraycopy( a, 4 );
       } else if ( a.length > 4 ) {
@@ -1515,8 +1519,8 @@ private static long readIntegerField ( PwsRawField raw, PwsRecord rec )
 private static long readTimeField ( PwsRawField raw, PwsRecord rec )
 {
    try {
-      return (raw.length == 4 ? Util.readUIntLittle( raw.getData(), 0 ) 
-             : Util.readLongLittle( raw.getData(), 0 )) * 1000;
+      return (raw.length == 4 ? Util.readUIntLittle( raw.getDataDirect(), 0 ) 
+             : Util.readLongLittle( raw.getDataDirect(), 0 )) * 1000;
    } catch ( Exception e ) {
       Log.error( 3, "(PwsFileFactory.readTimeField) *** invalid time data: " + rec );
       return 0;

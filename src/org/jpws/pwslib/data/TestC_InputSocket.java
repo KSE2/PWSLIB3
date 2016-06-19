@@ -61,8 +61,7 @@ public PwsRecordList getPwsRecordList ( int dataCode )
    
    try {
       // create data records if opted
-      switch ( dataCode )
-      {
+      switch ( dataCode ) {
       case 1:
       case 2:
          //
@@ -74,9 +73,8 @@ public PwsRecordList getPwsRecordList ( int dataCode )
          list.addRecord( rec );
          break;
       }
-   }
-   catch ( Exception e )
-   {
+
+   } catch ( Exception e ) {
       fail( "Exception during creation of record list: " + e );
    }
    
@@ -94,9 +92,7 @@ public InputStream getPwsInputStream( int version, PwsPassphrase key, PwsRecordL
    try {
       PwsFileFactory.saveFile( list.iterator(), out, key, null, 0, version );
       
-   }
-   catch ( IOException e )
-   {
+   } catch ( IOException e ) {
       throw new IllegalStateException( "IOException: " + e );
    }
    
@@ -594,9 +590,7 @@ public void test_operate_rawfields_V2 ()
       try { 
          si.getBlockInputStream();
          fail( "secondary get blockstream failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
+      } catch ( Exception e ) {
          assertTrue( "secondary get blockstream failure: wrong exception", 
                e instanceof IllegalStateException );
       }
@@ -605,26 +599,23 @@ public void test_operate_rawfields_V2 ()
       try { 
          si.getRawFieldReader();
          fail( "secondary get rawfieldreader failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
+      } catch ( Exception e ) {
          assertTrue( "secondary get rawfieldreader failure: wrong exception", 
                e instanceof IllegalStateException );
       }
       
       // dump blockstream content
-      while ( reader.hasNext() )
-      {
+      while ( reader.hasNext() ) {
          raw = (PwsRawField)reader.next();
          System.out.println( "Rawfield: T=" + raw.type + ", L=" + raw.length + ", data=" + 
-               Util.bytesToHex( raw.data ) );
+               Util.bytesToHex( raw.getData() ) );
          
 //         System.out.println( );
       }
       System.out.println();
-   }
-   catch ( Exception e )
-   {
+
+   } catch ( Exception e ) {
+	  e.printStackTrace();
       fail( "IOException: " + e );
    }
 }
@@ -642,7 +633,7 @@ public void test_operate_rawfields_V3 ()
    System.out.println( "---- TEST OPERATION RAWFIELDS ON V3 FILE" ); 
    
    try {
-      input = getPwsInputStream( Global.FILEVERSION_2, key, 1 );
+      input = getPwsInputStream( Global.FILEVERSION_3, key, 1 );
       si = new  PwsFileInputSocket( input );
 
       ok = si.attemptOpen( key );
@@ -654,9 +645,7 @@ public void test_operate_rawfields_V3 ()
       try { 
          si.getBlockInputStream();
          fail( "secondary get blockstream failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
+      } catch ( Exception e ) {
          assertTrue( "secondary get blockstream failure: wrong exception", 
                e instanceof IllegalStateException );
       }
@@ -665,26 +654,23 @@ public void test_operate_rawfields_V3 ()
       try { 
          si.getRawFieldReader();
          fail( "secondary get rawfieldreader failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
+      } catch ( Exception e ) {
          assertTrue( "secondary get rawfieldreader failure: wrong exception", 
                e instanceof IllegalStateException );
       }
       
       // dump blockstream content
-      while ( reader.hasNext() )
-      {
+      while ( reader.hasNext() )  {
          raw = (PwsRawField)reader.next();
          System.out.println( "Rawfield: T=" + raw.type + ", L=" + raw.length + ", data=" + 
-               Util.bytesToHex( raw.data ) );
+               Util.bytesToHex( raw.getData() ) );
          
 //         System.out.println( );
       }
       System.out.println();
-   }
-   catch ( Exception e )
-   {
+
+   } catch ( Exception e ) {
+	  e.printStackTrace();
       fail( "IOException: " + e );
    }
 }
@@ -798,7 +784,7 @@ public void test_operate_rawfields_V1 ()
       {
          raw = (PwsRawField)reader.next();
          System.out.println( "Rawfield: T=" + raw.type + ", L=" + raw.length + ", data=" + 
-               Util.bytesToHex( raw.data ) );
+               Util.bytesToHex( raw.getData() ) );
          
 //         System.out.println( );
       }

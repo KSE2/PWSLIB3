@@ -81,8 +81,9 @@ public Object clone ()
  }
 
 /**
-  * Sets the content of a field. If the field was already present in this list,
-  * the previous content is replaced; otherwise a new field is inserted.
+  * Sets the content of a field. The given field is stored in direct reference. 
+  * If a field of same type was already present in this list, the previous 
+  * content is replaced, otherwise a new field is inserted.
   * 
   * @param field <code>PwsRawField</code> the new field/content
   * @return <code>PwsRawField</code> the previous value of this field if it was 
