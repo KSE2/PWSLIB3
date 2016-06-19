@@ -376,6 +376,23 @@ public static long readLong ( byte[] b, int offs )
 }
 
 /**
+ * Reads a 4-byte integer value from a byte array as 4 sequential bytes in a 
+ * Big-Endian manner (Java-standard).
+ *  
+ * @param b the source byte array
+ * @param offs the start offset in <code>dest</code>
+ * @return int integer as read from the byte sequence
+ */
+public static int readInt ( byte[] b, int offs )
+{
+   return
+   (((int)b[ offs + 0 ] & 0xff) <<  24) |
+   (((int)b[ offs + 1 ] & 0xff) <<  16) |
+   (((int)b[ offs + 2 ] & 0xff) <<   8) |
+   (((int)b[ offs + 3 ] & 0xff) <<   0);
+}
+
+/**
  * Transforms a char array into a byte array by sequentially writing characters.
  * Each char is stored in Little-Endian manner as unsigned short integer value 
  * in the range 0..65535.
@@ -401,9 +418,10 @@ public static byte[] getByteArray ( char[] carr )
 }
 
 /**
- * Destroyes the contents of the parameter byte array by assigning zero to
+ * Destroys the contents of the parameter byte array by assigning zero to
  * all elements.
- * @param v byte array to be destroyed
+ * 
+ * @param v byte array to be destroyed; may be <b>null</b>
  */
 public static void destroyBytes ( byte[] v )
 {
@@ -413,12 +431,14 @@ public static void destroyBytes ( byte[] v )
 }
 
 /**
- * Destroyes the contents of the parameter char array by assigning zero to
+ * Destroys the contents of the parameter char array by assigning zero to
  * all elements.
- * @param v char array to be destroyed
+ * 
+ * @param v char array to be destroyed; may be <b>null</b>
  */
 public static void destroyChars ( char[] v )
 {
+   if ( v != null )
    for ( int i = 0; i < v.length; i++ )
       v[i] = '\u0000';
 }
@@ -432,12 +452,11 @@ public static void destroyChars ( char[] v )
  */
 public static boolean equalArrays ( byte[] a, byte[] b )
 {
-   if ( a.length != b.length )
-      return false;
+   if ( a.length != b.length ) return false;
    
-   for ( int i = 0; i < a.length; i++ )
-      if ( a[i] != b[i] )
-         return false;
+   for ( int i = 0; i < a.length; i++ ) {
+      if ( a[i] != b[i] ) return false;
+   }
    return true;
 }
 
@@ -712,8 +731,7 @@ public static String substituteTextS ( String text, String token,
  * @throws IllegalArgumentException if a and b have differing length
  * @since 2-0-0
  */
-public static final byte[] XOR_buffers ( byte[] a, byte[] b )
-{
+public static final byte[] XOR_buffers ( byte[] a, byte[] b ) {
    byte[] res;
    int i, len;
    
@@ -726,6 +744,27 @@ public static final byte[] XOR_buffers ( byte[] a, byte[] b )
       res[i] = (byte) (a[i] ^ b[i]);
 
    return res;
+}
+
+/**
+ * Modifies parameter a with (a XOR b).
+ *  
+ * @param a input byte array (same length as b)
+ * @param b input byte array (same length as a)
+ * @throws IllegalArgumentException if a and b have differing length
+ * @since 2-6-0
+ */
+public static final void XOR_buffers2 ( byte[] a, byte[] b ) {
+   byte[] res;
+   int i, len;
+   
+   if ( a.length != b.length )
+      throw new IllegalArgumentException( "buffer a,b length must be equal" );
+   
+   len = a.length;
+   res = a;
+   for ( i = 0; i < len; i++ ) 
+      res[i] = (byte) (a[i] ^ b[i]);
 }
 
 /**
@@ -907,4 +946,48 @@ public static char[] excludeCharset ( char[] symbols, char[] exc )
    }
    return result;
 }
+
+/** Makes a scrambles of the user record (buffer) over the specified length only.
+ *  This works resembling to a mirror and can both en-scatter and de-scatter a set 
+ *  of data, depending on the parameter switch <code>enscatter</code>.
+ *  <p>(Note that this algorithm is not bound onto a cyclic block length, while 
+ *  the cipher is.)
+ *  
+ *  @param buffer
+ *  @param length
+ *  @param enscatter boolean switch of the transformation direction. 
+ *         <b>true</b> = enscatter, <b>false</b> = descatter
+ */
+public static void scatter ( byte[] buffer, int length, boolean enscatter ) {
+   int i,j,k,len, plo, phi, shift, loops, mod, offset;
+   byte x;
+
+   // this scatters a series of blocks of 16 bytes length (analogic to encryption)
+   // the last block may be of any lower size
+   
+   shift = enscatter ? 13 : -13;
+   loops = length / 16;
+   mod = length % 16;
+   if ( mod > 0 )
+      loops++;
+   k = 15;
+   len = 4;
+   offset = 0;
+
+   for ( j = 0; j < loops; j++ ) {
+      if ( j == loops-1 && mod > 0 ) {
+         k = mod-1;
+         len = mod/4;
+      }
+      for ( i=0; i<len; i++ ) {
+         plo = i * 2;
+         phi = k - plo;
+         x = buffer[ offset+plo ];
+         buffer[ offset+plo ] = (byte)(buffer[ offset+phi ] + shift);
+         buffer[ offset+phi ] = (byte)(x + shift);
+      }
+      offset += 16;
+   }
+}
+
 }

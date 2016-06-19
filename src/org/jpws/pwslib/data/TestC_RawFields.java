@@ -18,6 +18,15 @@
 
 package org.jpws.pwslib.data;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import org.jpws.pwslib.crypto.PwsCipher;
+import org.jpws.pwslib.crypto.TwofishCipher;
+import org.jpws.pwslib.global.Log;
+import org.jpws.pwslib.global.Util;
+
 import junit.framework.TestCase;
 
 public class TestC_RawFields extends TestCase
@@ -33,7 +42,7 @@ public TestC_RawFields ( String name )
    super( name );
 }
 
-public void test_RawField ()
+public void test_RawField () throws IOException
 {
    PwsRawField f1, f2;
    int type;
@@ -129,15 +138,69 @@ public void test_RawField ()
    assertEquals( "Con-4 get String integrity", f1.getString(null), tstr1 );
    assertEquals( "Con-4 get Passphrase integrity", f1.getPassphrase(null).getString(), tstr1 );
 
-   assertFalse( "Con-4 \"equals\" integrity A", f1.equals( f2 ) );
-   assertFalse( "Con-4 \"hashcode\" integrity", f1.hashCode() == f2.hashCode() );
-   f2 = new PwsRawField( 255, tstr1.getBytes() );
-   assertTrue( "Con-4 \"equals\" integrity B", f1.equals( f2 ) );
-   assertTrue( "Con-4 \"hashcode\" integrity", f1.hashCode() == f2.hashCode() );
-   System.out.println( "PwsRawField hashcode == " + f1.hashCode() );
+//   assertFalse( "Con-4 \"equals\" integrity A", f1.equals( f2 ) );
+//   assertFalse( "Con-4 \"hashcode\" integrity", f1.hashCode() == f2.hashCode() );
+//   f2 = new PwsRawField( 255, tstr1.getBytes() );
+//   assertTrue( "Con-4 \"equals\" integrity B", f1.equals( f2 ) );
+//   assertTrue( "Con-4 \"hashcode\" integrity", f1.hashCode() == f2.hashCode() );
+//   System.out.println( "PwsRawField hashcode == " + f1.hashCode() );
 
+   // 64 - string data encrypted
+   String e1 = "                             ";
+   f1 = new PwsRawField( 64,  e1.getBytes() );
+   assertTrue("store value mismatch", f1.getString(null).equals(e1));
+   assertTrue("hasData error", f1.hasData());
+   assertTrue("Passphrase integrity", f1.getPassphrase(null).getString().equals(e1));
+   int length = f1.getLength();
+   int blockCt = f1.getBlockCount(3);
+   int blockSz = f1.getBlockedSize(3);
+   int crc = f1.getCrc();
+   byte[] data = f1.getData();
+
+   PwsCipher cipher = new TwofishCipher();
+   test_field_serialisation(f1, cipher);
    
-   
+   // set to encrypted storage (internal)
+   Log.setDebug(true);
+   Log.setDebugLevel(10);
+   Log.setLogging(true);
+   Log.setLogLevel(10);
+   f1.setEncrypted(true);
+   assertTrue("encrypted state: encrypted state", f1.isEncrypted());
+   assertTrue("encrypted state: hasData error", f1.hasData());
+   assertTrue("encrypted state: String value mismatch", f1.getString(null).equals(e1));
+   assertTrue("encrypted state: Passphrase integrity", f1.getPassphrase(null).getString().equals(e1));
+   assertTrue("encrypted state: type mismatch", 64 == f1.getType());
+   assertTrue("encrypted state: length mismatch", length == f1.getLength());
+   assertTrue("encrypted state: blockCount mismatch", blockCt == f1.getBlockCount(3));
+   assertTrue("encrypted state: blockedSize mismatch", blockSz == f1.getBlockedSize(3));
+   assertTrue("encrypted state: CRC mismatch", crc == f1.getCrc());
+   assertTrue("encrypted state: data mismatch", Util.equalArrays(data, f1.getData()));
+   test_field_serialisation(f1, cipher);
+
+   // reset to cleartext storage (internal)
+   f1.setEncrypted(false);
+   assertTrue("decrypted state: encrypted state", !f1.isEncrypted());
+   assertTrue("decrypted state: hasData error", f1.hasData());
+   assertTrue("decrypted state: String value mismatch", f1.getString(null).equals(e1));
+   assertTrue("decrypted state: Passphrase integrity", f1.getPassphrase(null).getString().equals(e1));
+   assertTrue("decrypted state: type mismatch", 64 == f1.getType());
+   assertTrue("decrypted state: length mismatch", length == f1.getLength());
+   assertTrue("decrypted state: blockCount mismatch", blockCt == f1.getBlockCount(3));
+   assertTrue("decrypted state: blockedSize mismatch", blockSz == f1.getBlockedSize(3));
+   assertTrue("decrypted state: CRC mismatch", crc == f1.getCrc());
+   assertTrue("decrypted state: data mismatch", Util.equalArrays(data, f1.getData()));
+   test_field_serialisation(f1, cipher);
+}
+
+private void test_field_serialisation (PwsRawField raw, PwsCipher cipher) throws IOException {
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    raw.writeEncrypted(out, cipher, 3);
+    byte[] serial = out.toByteArray();
+    ByteArrayInputStream in = new ByteArrayInputStream(serial);
+    RawFieldReader reader = new RawFieldReader(in, cipher, 3, null); 
+    PwsRawField f2 = reader.next();
+    assertTrue("RAWFIELD serialisation error", Util.equalArrays(f2.getData(), raw.getData()));
 }
 
 }

@@ -22,14 +22,18 @@ import junit.framework.TestCase;
 
 import org.jpws.pwslib.global.Util;
 
-public class TestC_Ciphers extends TestCase
-{
+public class TestC_Ciphers extends TestCase {
 
-public void test_twofish ()
-{
+public void test_twofish () {
    assertTrue( "TWOFISH Selftest passed", Twofish.self_test() );
    
    assertTrue( "TWOFISH vector-test passed", twofish_ecb() );
+   
+}
+
+
+public void test_scatter () {
+   assertTrue( "SCATTER Selftest passed", ScatterCipher.self_test() );
    
 }
 
@@ -41,15 +45,13 @@ private byte[][][] blow_evdata = {
       { {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00}, {(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFF,(byte)0xFF}, {0x01,0x49,0x33,(byte)0xE0,(byte)0xCD,(byte)0xAF,(byte)0xF6,(byte)0xE4} },
                             };
 
-public void test_blowfish_ecb ()
-{
+public void test_blowfish_ecb () {
    PwsCipher cipher;
    byte[] buf;
    byte[][] vector;
    int i, x;
    
-   for ( i = 0; i < blow_evdata.length; i++ )
-   {
+   for ( i = 0; i < blow_evdata.length; i++ ) {
       vector = blow_evdata[i];
       cipher = new BlowfishCipher( vector[0] );
       buf = vector[1];
@@ -68,16 +70,14 @@ public void test_blowfish_ecb ()
  * Performs a short self-test of the Twofish cipher referring to standard test vectors.
  * @return <b>true</b> if data test vectors were confirmed for this algorithm
  */
-public static boolean twofish_ecb ()
-{
+public static boolean twofish_ecb () {
    byte[] key, pt, ct;
    boolean ok;
    
    try {   
       // Twofish algo selftesting
       ok = Twofish.self_test();
-      if ( !ok )
-      {
+      if ( !ok ) {
          System.out.println( "*** Twofish algorithm selftest failed");
          return false;
       }
@@ -89,16 +89,14 @@ public static boolean twofish_ecb ()
       ct = Util.hexToBytes( "9F589F5CF6122C32B6BFEC2F2AE8C35A" );
       ok = test_ECB_vector( key, pt, ct );
       
-      if ( ok )
-      {
+      if ( ok ) {
          // permutation 1
          pt = ct;
          ct = Util.hexToBytes( "D491DB16E7B1C39E86CB086B789F5419" );
          ok = test_ECB_vector( key, pt, ct );
       }
 
-      if ( ok )
-      {
+      if ( ok ) {
          // permutation 2
          key = pt;
          pt = ct;
@@ -106,8 +104,7 @@ public static boolean twofish_ecb ()
          ok = test_ECB_vector( key, pt, ct );
       }
 
-      if ( ok )
-      {
+      if ( ok ) {
          // 192 key length
          key = Util.hexToBytes( "0123456789ABCDEFFEDCBA98765432100011223344556677" );
          pt = new byte[ 16 ];
@@ -115,16 +112,14 @@ public static boolean twofish_ecb ()
          ok = test_ECB_vector( key, pt, ct );
       }
       
-      if ( ok )
-      {
+      if ( ok ) {
          // 256 key length
          key = Util.hexToBytes( "0123456789ABCDEFFEDCBA987654321000112233445566778899AABBCCDDEEFF" );
          ct = Util.hexToBytes( "37527BE0052334B89F0CFCCAE87CFA20" );
          ok = test_ECB_vector( key, pt, ct );
       }
       
-      if ( !ok )
-      {
+      if ( !ok ) {
          System.out.println( "*** Twofish ECB test failed");
          return false;
       }
@@ -136,9 +131,7 @@ public static boolean twofish_ecb ()
       ct = Util.hexToBytes( "3CC3B181E1495D0495D652B66921DA0F" );
       ok = test_CBC_vector_E( key, iv, pt, ct );
 */      
-   }
-   catch ( Exception e )
-   {
+   } catch ( Exception e ) {
       System.out.println( "*** SUNDRA TWOFISH TEST FAILURE");
       e.printStackTrace();
       return false;
@@ -147,8 +140,7 @@ public static boolean twofish_ecb ()
    return ok;
 }
 
-private static boolean test_ECB_vector ( byte[] key, byte[] pt, byte[] ct )
-{
+private static boolean test_ECB_vector ( byte[] key, byte[] pt, byte[] ct ) {
    TwofishCipher ci;
    byte[] ctt;
    boolean ok1, ok2;
@@ -164,6 +156,68 @@ private static boolean test_ECB_vector ( byte[] key, byte[] pt, byte[] ct )
    ok2 = Util.equalArrays( pt, ctt );
    
    return ok1 & ok2;
+}
+
+public void test_performance () {
+	PwsCipher ci1, ci2;
+	
+	ci1 = new TwofishCipher();
+	test_cipher_performance(ci1);
+
+	ci1 = new BlowfishCipher();
+	test_cipher_performance(ci1);
+	
+	ci1 = new ScatterCipher();
+	test_cipher_performance(ci1);
+	
+	ci1 = new NullCipher();
+	test_cipher_performance(ci1);
+}
+
+
+private void test_cipher_performance(PwsCipher ci) {
+
+	PwsCipher cbc = new CipherModeCBC(ci);
+	int bs = cbc.getBlockSize();
+	report("\nCIPHER-PERFORMANCE for ".concat(ci.getName()));
+	
+	// test 4 MB data 
+	int length = 4000000 / bs * bs;
+	byte[] data = Util.randomBytes(length);
+	long start = System.currentTimeMillis();
+	byte[] ebuf = cbc.encrypt(data);
+	long time = System.currentTimeMillis() - start;
+	report("\n4,000,000 bytes block encryption: " + time + " ms");
+
+	cbc = new CipherModeCBC(ci);
+	start = System.currentTimeMillis();
+	byte[] dbuf = cbc.decrypt(ebuf);
+	time = System.currentTimeMillis() - start;
+	report("\n4,000,000 bytes block decryption: " + time + " ms");
+	report("\nCorrectness: " + Util.equalArrays(data, dbuf));
+
+	// test 25 MB data 
+	length = 25000000 / bs * bs;
+	data = Util.randomBytes(length);
+	cbc = new CipherModeCBC(ci);
+	start = System.currentTimeMillis();
+	ebuf = cbc.encrypt(data);
+	time = System.currentTimeMillis() - start;
+	report("\n25,000,000 bytes block encryption: " + time + " ms");
+
+	cbc = new CipherModeCBC(ci);
+	start = System.currentTimeMillis();
+	dbuf = cbc.decrypt(ebuf);
+	time = System.currentTimeMillis() - start;
+	report("\n25,000,000 bytes block decryption: " + time + " ms");
+	report("\nCorrectness: " + Util.equalArrays(data, dbuf));
+
+	report("\n");
+}
+
+
+private void report(String string) {
+	System.out.print(string);
 }
 
 }

@@ -200,17 +200,16 @@ private long normalisedTime (long time) {
  * @return Object record clone (<code>PwsRecord</code>)
  */
    @Override
-   public Object clone () 
-   {
+   public Object clone () {
       try { 
     	 PwsRecord rec = (PwsRecord)super.clone();
 
          // deep clone of unknown fields
     	 if ( otherValues != null ) {
-	         rec.otherValues = null;
+	         rec.otherValues = new RawFieldList();
 	         for (Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
 	        	PwsRawField fld = it.next();
-	            rec.addUnknownField(fld.type, fld.getData());
+	            rec.otherValues.setField((PwsRawField)fld.clone());
 	         }
     	 }
          
@@ -829,8 +828,7 @@ private long normalisedTime (long time) {
    /** Adds an unknown field value to this record for the purpose of conservation.
     *  In contrast to <code>setExtraField()</code> no validation is performed on
     *  the type value. Does nothing if <code>value</code> is <b>null</b>.
-    *  <p>Note that this value is stored internally in cleartext during 
-    *  program session.
+    *  <p>Note: this value is stored encrypted internally during program session.
     * 
     * @param type int, field type number (0..255)
     * @param value byte array, field value (exact length)
@@ -841,7 +839,27 @@ private long normalisedTime (long time) {
       if ( otherValues == null ) {
          otherValues = new RawFieldList();
       }
-      otherValues.setField( new PwsRawField( type, value ) );
+      PwsRawField raw = new PwsRawField( type, value );
+      raw.setEncrypted(true);
+      otherValues.setField( raw );
+   }
+   
+   /** Adds an unknown field value to this record for the purpose of conservation.
+    *  In contrast to <code>setExtraField()</code> no validation is performed on
+    *  the type value. Does nothing if <code>value</code> is <b>null</b>.
+    *  <p>Note: this value is stored encrypted internally during program session.
+    *  The given field is stored in direct reference.
+    * 
+    * @param field PwsRawField, may be <b>null</b>
+    */
+   protected void addUnknownField ( PwsRawField field) {
+      if ( field == null ) return;
+      
+      if ( otherValues == null ) {
+         otherValues = new RawFieldList();
+      }
+      field.setEncrypted(true);
+      otherValues.setField( field );
    }
    
    /** Puts a data field into this record which forms a non-canonical field 
@@ -858,6 +876,25 @@ private long normalisedTime (long time) {
     * @param format the referenced file format version or 0 for default
     */
    public void setExtraField ( int type, byte[] value, int format ) {
+	   setExtraField(type, value, 0, value == null ? 0 : value.length, format);
+   }
+   
+   /** Puts a data field into this record which forms a non-canonical field 
+    * identified by its integer type code. Only non-canonical field types
+    * may be entered; use the <b>null</b> value to clear the field from the list
+    * of unknown fields.
+    * <small>Notes: This value is stored internally in cleartext during 
+    * program session. This method replaces a previous occurrence of same type
+    * in the unknown field list. Whether a field value is canonical can be 
+    * tested by <code>PwsFileFactory.isCanonicalField()</code>.</small>
+    * 
+    * @param type int, non-canonical field type number within 0..255
+    * @param value field value, or <b>null</b> to remove the field
+    * @param start int data offset in value
+    * @param length data length
+    * @param format the referenced file format version or 0 for default
+    */
+   public void setExtraField ( int type, byte[] value, int start, int length, int format ) {
       // control field type
       if ( PwsFileFactory.isCanonicalField( type, format ) )
          throw new IllegalArgumentException( "canonical field type" );
@@ -875,7 +912,8 @@ private long normalisedTime (long time) {
 
       // add / replace new value
       } else {
-    	 PwsRawField newValue = new PwsRawField(type, value);
+    	 PwsRawField newValue = new PwsRawField(type, value, start, length);
+    	 newValue.setEncrypted(true);
      	 PwsRawField oldValue = otherValues.setField( newValue );
      	 controlValue(oldValue, newValue, "EXTRAFIELD " + type);
       }
@@ -885,8 +923,7 @@ private long normalisedTime (long time) {
     *  
     * @return <code>Iterator</code> of element type <code>PwsRawField</code>
     */
-   public Iterator<PwsRawField> getUnknownFields ()
-   {
+   public Iterator<PwsRawField> getUnknownFields () {
 	  if ( otherValues == null || otherValues.size() == 0 ) {
 		  return emptyFieldIterator;
 	  }
@@ -899,8 +936,7 @@ private long normalisedTime (long time) {
     * 
     * @return int size of unknown field list
     */
-   public int getUnknownFieldCount ()
-   {
+   public int getUnknownFieldCount () {
       return otherValues == null ? 0 : otherValues.size();
    }
    
@@ -1039,16 +1075,14 @@ private long normalisedTime (long time) {
     *        considered
     * @return long, data size of "unknown" fields
     */
-   public long getUnknownFieldSize ( int format )
-   {
+   public long getUnknownFieldSize ( int format ) {
       return otherValues == null ? 0 : otherValues.dataSize( format );
    }
    
    /**
     * Permanently removes all unknown (or "extra") fields from this record. 
     */
-   public void clearExtraFields ()
-   {
+   public void clearExtraFields () {
       if ( otherValues != null ) {
          otherValues.clear();
       }
@@ -1061,8 +1095,7 @@ private long normalisedTime (long time) {
     * @return byte[], cleartext field value or <b>null</b> if field is not 
     *         available
     */
-   public byte[] getExtraField ( int type )
-   {
+   public byte[] getExtraField ( int type ) {
       PwsRawField fld;
       
       if ( otherValues != null && (fld = otherValues.getField( type )) != null )
@@ -1076,8 +1109,7 @@ private long normalisedTime (long time) {
     *  
     *  @return String normalised value or <b>null</b>
     */ 
-   protected static String normalisedStringParam ( String param )
-   {
+   protected static String normalisedStringParam ( String param ) {
       if ( param != null ) {
          param = param.trim();
          if ( param.length() == 0 ) {
@@ -1243,7 +1275,7 @@ private long normalisedTime (long time) {
          for ( Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
         	PwsRawField ufld = it.next();
             out.write( ufld.type );
-            out.write( ufld.data );
+            out.write( ufld.getCrc() );
          }
          out.close();
          
@@ -1319,7 +1351,7 @@ private long normalisedTime (long time) {
          for ( Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
         	PwsRawField ufld = it.next();
             out.write( ufld.type );
-            out.write( ufld.data );
+            out.write( ufld.getCrc() );
          }
          out.close();
 

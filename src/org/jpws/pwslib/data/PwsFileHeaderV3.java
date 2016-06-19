@@ -582,7 +582,7 @@ public class PwsFileHeaderV3
 		                                   int iterations )
    {
       SHA256 sha = new SHA256();
-      byte[] key = passphrase.getBytes( null );
+      byte[] key = passphrase.getBytes( "UTF-8" );
 
       // calculate foot value (integrating salt) 
       sha.update( key );

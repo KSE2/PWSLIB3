@@ -1222,12 +1222,11 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * @return byte[] 32 byte signature value (SHA-256 digest) 
     */
    @Override
-   public byte[] getSignature ()
-   {
+   public byte[] getSignature () {
       SHA256 sha = new SHA256();
       sha.update( super.getSignature() );
       for ( Iterator<PwsRawField> it = headerFields.iterator(); it.hasNext(); ) {
-         sha.update( it.next().data );
+         sha.update( it.next().getCrc() );
       }
       return sha.digest();
    }
@@ -1299,8 +1298,9 @@ public class PwsFile extends PwsRecordList implements Cloneable
       @Override
       public PwsRawField setField ( PwsRawField field ) {
          PwsRawField f = super.setField( field );
-         if ( !field.equals( f ) ) {
+         if ( f == null || field.getCrc() != f.getCrc() ) {
             contentModified();
+//            Log.log(10, "(PFHeaderFieldList.setField) ----- content modified!"); 
          }
          return f;
       }

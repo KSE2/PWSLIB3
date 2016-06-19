@@ -28,8 +28,7 @@ import org.jpws.pwslib.global.Util;
  * Methods of this class are not synchronised!
  * 
  */
-class TwofishECB implements PwsCipher
-{
+class TwofishECB implements PwsCipher {
 
    private static String CIPHER_NAME = "Twofish";
     
@@ -38,8 +37,7 @@ class TwofishECB implements PwsCipher
 /**
  * Creates a Twofish ECB cipher with a reasonable 256-bit random key.
  */   
-public TwofishECB () 
-{
+public TwofishECB () {
    try { 
 	   sk = Twofish.makeKey( Util.getCryptoRand().nextBytes( 32 ) ); 
    } catch ( InvalidKeyException e ) { 
@@ -53,8 +51,7 @@ public TwofishECB ()
  * @param key byte[] user key material (8, 16, 24 or 32 bytes)
  * @throws IllegalArgumentException if key is invalid (length)
  */
-public TwofishECB ( byte[] key )
-{
+public TwofishECB ( byte[] key ) {
    try { 
 	   sk = Twofish.makeKey( key ); 
    } catch ( InvalidKeyException e ) { 
@@ -70,8 +67,7 @@ public TwofishECB ( byte[] key )
  * @param length int length in key to be used (8, 16, 24 or 32 bytes)
  * @throws IllegalArgumentException if key is invalid (length)
  */
-public TwofishECB ( byte[] key, int offset, int length )
-{
+public TwofishECB ( byte[] key, int offset, int length ) {
    try {
 	  byte[] buf = new byte[ length ];
       System.arraycopy( key, offset, buf, 0, length );
@@ -82,25 +78,21 @@ public TwofishECB ( byte[] key, int offset, int length )
 }
 
 @Override
-public byte[] decrypt ( byte[] buffer, int start, int length )
-{
+public byte[] decrypt ( byte[] buffer, int start, int length ) {
    return crypting( buffer, start, length, true );
 }
 
 @Override
-public byte[] encrypt ( byte[] buffer, int start, int length )
-{
+public byte[] encrypt ( byte[] buffer, int start, int length ) {
    return crypting( buffer, start, length, false );
 }
 
 @Override
-public int getBlockSize ()
-{
+public int getBlockSize () {
    return Twofish.BLOCK_SIZE;
 }
 
-private byte[] crypting ( byte[] buffer, int start, int length, boolean dec )
-{
+private byte[] crypting ( byte[] buffer, int start, int length, boolean dec ) {
    byte[] one, result;
    int i, pos, loops;
    
@@ -113,8 +105,7 @@ private byte[] crypting ( byte[] buffer, int start, int length, boolean dec )
    result = new byte[ length ];
    one = null;
    pos = start;
-   for ( i = 0; i < loops; i++ )
-   {
+   for ( i = 0; i < loops; i++ ) {
       one = dec ? Twofish.blockDecrypt( buffer, pos, sk ) 
             : Twofish.blockEncrypt( buffer, pos, sk );
       System.arraycopy( one, 0, result, pos - start, Twofish.BLOCK_SIZE );
@@ -125,14 +116,12 @@ private byte[] crypting ( byte[] buffer, int start, int length, boolean dec )
 }
 
 @Override
-public byte[] decrypt ( byte[] buffer )
-{
+public byte[] decrypt ( byte[] buffer ) {
    return decrypt( buffer, 0, buffer.length );
 }
 
 @Override
-public byte[] encrypt ( byte[] buffer )
-{
+public byte[] encrypt ( byte[] buffer ) {
    return encrypt( buffer, 0, buffer.length );
 }
 

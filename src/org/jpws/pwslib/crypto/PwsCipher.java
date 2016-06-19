@@ -27,6 +27,9 @@ package org.jpws.pwslib.crypto;
  */
 public interface PwsCipher
 {
+   public static final int ENCRYPTING = 1;
+   public static final int DECRYPTING = 2;
+
    /**
     *  Decrypts a buffer of data and returns the result in a new buffer. 
     *  Input buffer data will not be altered.
