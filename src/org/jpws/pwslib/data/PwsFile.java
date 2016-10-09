@@ -1243,12 +1243,20 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * 
     * @return byte[] 32 byte signature value (SHA-256 digest) 
     */
-   public byte[] getDataSignature ()
-   {
+   public byte[] getDataSignature () {
       return super.getSignature();
    }
    
-
+   /** Returns the logical database name if it is defined, <b>null</b>
+    *  otherwise. This name is an element of the file's header fields.
+    *  
+    *  @return logical database name or <b>null</b> if undefined
+    */
+   public String getDatabaseName () {
+      // use header field for logical name 
+	  PwsRawField fld = getHeaderFields().getField( PwsFileHeaderV3.FILE_NAME_TYPE );
+      return fld == null ? null : fld.getString( "utf-8" );
+   }
 
    /**
     * Loads a PWS file of any format from the local file system.

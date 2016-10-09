@@ -207,14 +207,14 @@ public void test_merge () throws NoSuchRecordException {
    // merge 2 disparate lists
    li3 = li1.copy();
    modus = PwsRecordList.MERGE_PLAIN;
-   li4 = li3.merge(li2, modus, false);
+   li4 = li3.merge(li2, modus, false)[0];
    assertTrue("unexpected record exclusion", li4.isEmpty());
    assertTrue("false resulting size", li3.size() == size*2);
 
    // merge same list (plain)
    li3 = li1.copy();
    modus = PwsRecordList.MERGE_PLAIN;
-   li4 = li3.merge(li3, modus, false);
+   li4 = li3.merge(li3, modus, false)[0];
    assertTrue("unexpected record exclusion", li4.size() == 0);
    assertTrue("false resulting size", li3.size() == size);
 
@@ -225,13 +225,13 @@ public void test_merge () throws NoSuchRecordException {
    rec.setTitle("Krummer Hund");
    li3.updateRecord(rec);
    modus = PwsRecordList.MERGE_PLAIN;
-   li4 = li3.merge(li1, modus, false);
+   li4 = li3.merge(li1, modus, false)[0];
    assertTrue("unsufficient record exclusion", li4.size() == 1);
    assertTrue("missing excluded record", li4.contains(uuid));
 
    // merge list copy with modifications (exclude)
    modus = PwsRecordList.MERGE_INCLUDE;
-   li4 = li3.merge(li1, modus, false);
+   li4 = li3.merge(li1, modus, false)[0];
    assertTrue("unexpected record exclusion", li4.isEmpty());
    assertTrue("missing included record", li3.contains(uuid));
    assertTrue("false resulting size", li3.size() == size);
@@ -1887,7 +1887,7 @@ public void test_list_events () throws DuplicateEntryException, NoSuchRecordExce
 	listener.reset();
 	col2 = getRecordCollection(3);
 	li2 = new PwsRecordList(col2);
-	li3 = li1.merge(li2, PwsRecordList.MERGE_INCLUDE, false);
+	li3 = li1.merge(li2, PwsRecordList.MERGE_INCLUDE, false)[0];
 	assertTrue("incomplete merge", li3.isEmpty());
 	assertTrue("merge not successful", li1.containsRecordList(li2));
 	Log.debug(1, "merge list, size == " + li1.size());

@@ -1782,25 +1782,30 @@ public class PwsRecordList implements Cloneable
     *  parameter a set of conflict solving policies can be enabled. If more than
     *  one policy is set up, they are conjuncted with logical AND. That means
     *  if one of the policies indicates exclusion, the record is excluded.
-    *  <p>Records added by this method receive the transient property "IMPORTED" or 
-    *  "IMPORTED_CONFLICT", depending on how they were added. A returned record
-    *  list informs the caller about records which have been excluded. The value
-    *  0 is equivalent to MERGE_PLAIN.
+    *  <p>Records added or modified by this method receive the transient 
+    *  property "IMPORTED" or "IMPORTED_CONFLICT". A set of returned record 
+    *  lists informs the caller about records which have been excluded, replaced
+    *  or modified. 
     * 
-    * @param list <code>PwsRecordList</code> the list of records to be added
+    * @param recList <code>PwsRecordList</code> the list of records to be added
     * @param modus int the merge conflict solving policy;
-    *        policy constants of this class may be combined by adding them
+    *        policy constants of this class may be combined by adding them;
+    *        the value 0 is equivalent to MERGE_PLAIN
     * @param allowInvalids boolean determines whether invalid records of the 
-    *        source are excluded (=false) or considered candidates (=true)     
-    * @return <code>PwsRecordList</code> holding all <b>not</b> included 
-    *         records from the parameter list 
+    *        source are excluded (=false) or considered candidates (=true)   
+    *          
+    * @return <code>PwsRecordList[3]</code> index 0 holds all excluded 
+    *         records from the parameter list, index 1 holds all replaced 
+    *         records of this list with their previous content, index 2 holds 
+    *         all new or modified records of this list
     * @throws IllegalArgumentException if modus value is out of range   
     */
-   public PwsRecordList merge ( PwsRecordList list, int modus, 
-                                boolean allowInvalids )
+   public PwsRecordList[] merge ( PwsRecordList recList, 
+		                          int modus, 
+                                  boolean allowInvalids )
    {
-      PwsRecordList result;
-      PwsRecord rec, thisRec;
+      PwsRecordList omittedList, replacedList, modifiedList;
+      PwsRecord rec, thisRec, remRec;
       boolean merge_plain, merge_modified, merge_passmodified,
               merge_passaccessed, merge_expiry;
       boolean oldEvtPause;
@@ -1819,36 +1824,40 @@ public class PwsRecordList implements Cloneable
       merge_passaccessed = (modus & MERGE_PASSACCESSED) == MERGE_PASSACCESSED; 
       
       // create return record list (failed includes) and activate event pause
-      result = new PwsRecordList();
+      omittedList = new PwsRecordList();
+      replacedList = new PwsRecordList();
+      modifiedList = new PwsRecordList();
       oldEvtPause = getEventPause();
       setEventPause( true );
       
-      for ( Iterator<PwsRecord> it = list.internalIterator(); it.hasNext(); ) {
+      // walk through all records of the parameter list
+      for ( Iterator<PwsRecord> it = recList.internalIterator(); it.hasNext(); ) {
     	  
-         // get next record from merge source list
+         // get next record from merge source
          rec = it.next();
          
-         // exclude record because of its invalid-state 
+         // exclude a record because of its invalid-state 
          // if this filter is opted in parameter
          if ( !(allowInvalids || rec.isValid()) ) {
-            try { result.addRecord( rec ); 
+            try { omittedList.addRecord( rec ); 
             } catch( DuplicateEntryException e ) {
             }
             continue;
          }
          
-         // containment of record in both lists: potential of conflict
+         // containment of record in both lists --> potential of conflict
          thisRec = getRecordShallow( rec.getRecordID() );
          if ( thisRec != null ) {
         	 
-             // if both records have same data, no conflict arises
+            // if both records have same data, no conflict arises
+        	// and we skip this record of the source
             if ( Util.equalArrays( thisRec.getSignature(), rec.getSignature() )) {
             	continue;
             }
          
             // conflict case
             try {
-               // criteria for record exclusion
+               // test criteria for record exclusion
                if (  merge_plain ||
                     (merge_modified && rec.getModifiedTime() 
                            <= thisRec.getModifiedTime()) ||
@@ -1860,14 +1869,29 @@ public class PwsRecordList implements Cloneable
                            <= thisRec.getPassLifeTime())
                   )  {
             	   
-                  // exclusion: add excluded record to fail-list
-                  result.addRecord( rec ); 
+                  // EXCLUSION: add excluded record to excluded-list
+                   try { omittedList.addRecord( rec ); 
+                   } catch( DuplicateEntryException e ) {
+                   }
 
                } else {
-                  // inclusion: update included record into this list
-                  removeRecord( rec );
+                  // INCLUSION: update included record into this list
+            	  // add removed record to second result list
+                  remRec = removeRecord( rec );
+                  if ( remRec != null ) {
+                      try { replacedList.addRecord( remRec ); 
+                      } catch( DuplicateEntryException e ) {
+                      }
+                  }
+
+                  // add deviant record to this list /w CONFLICT marker
                   rec = addRecordIntern( rec, "(merge conflict)" ); 
                   rec.setImportStatus( PwsRecord.IMPORTED_CONFLICT );
+                  
+                  // add deviant record to modified-list
+                  try { modifiedList.addRecord( rec ); 
+                  } catch( DuplicateEntryException e ) {
+                  }
                }
 
             } catch ( DuplicateEntryException e1 ) {
@@ -1876,18 +1900,23 @@ public class PwsRecordList implements Cloneable
             continue;
          }
 
-         // regular include (no-conflict)
+         // regular include new record (non-conflict)
          try { 
+        	// add new record to this list
             rec = addRecordIntern( rec, "(merge import)" ); 
             rec.setImportStatus( PwsRecord.IMPORTED );
 
+            // add new record to modified-list
+            try { modifiedList.addRecord( rec ); 
+            } catch( DuplicateEntryException e ) {
+            }
          } catch ( DuplicateEntryException e ) {
         	 e.printStackTrace();
          }
       }  // for
 
       setEventPause( oldEvtPause );
-      return result;
+      return new PwsRecordList[] {omittedList, replacedList, modifiedList};
    }  // merge
    
    // *******  INNER CLASSES  ************
