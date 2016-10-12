@@ -53,6 +53,14 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
    public static final int IMPORTED = 1;
    /** Import status value. */
    public static final int IMPORTED_CONFLICT = 2;
+   /** Sort direction Ascending */
+   public static final int ASCENDING = 0;
+   /** Sort direction Descending */
+   public static final int DESCENDING = 1;
+   
+   
+   public enum SortField {group, title, username, email, url, create_tm, modify_tm, 
+	                      expire_tm, used_tm, passmod_tm};
 
    /** May be set by the application to allow improved "toString()" output.
     *  This content is used when the record field TITLE is void. 
@@ -68,7 +76,9 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
    private String sortValue;
    private int index = -1;
    private int expiry;
-   private int importry;;
+   private int importry;
+   private boolean isDecending;
+   private SortField sort1, sort2, sort3;
 
 	/**
 	 * Constructor completely defining this record representation.
@@ -84,6 +94,9 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
           throw new NullPointerException( "record void" );
        
       this.record = record;
+      sort1 = SortField.group;
+      sort2 = SortField.title;
+      sort3 = SortField.modify_tm;
       refresh();
       setLocale( loc );
    }
@@ -92,8 +105,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
      * Makes a deep clone of this wrapper object.
      */
     @Override
-	public Object clone ()
-    {
+	public Object clone () {
        DefaultRecordWrapper obj;
        
        try { obj = (DefaultRecordWrapper) super.clone(); }
@@ -105,6 +117,44 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
        return obj;
     }
 
+    /** Sets the sorting principle for this record-wrapper as a set of 
+     * sort fields, ranging from primary to tertiary sort value.
+     * 
+     * @param primary <code>SortField</code> first ranking sort value
+     * @param secondary <code>SortField</code> second ranking sort value
+     * @param tertiary <code>SortField</code> third ranking sort value
+     */
+    public void setSorting ( SortField primary, 
+    		                 SortField secondary,
+    		                 SortField tertiary ) {
+    	
+    	// avoid inefficient action
+    	if (primary == sort1 && secondary == sort2 && tertiary == sort3) return;
+    	
+    	sort1 = primary;
+    	sort2 = secondary;
+    	sort3 = tertiary;
+    	refresh();
+    }
+    
+    /** Sets the sorting direction, either ASCENDING or DESCENDING. Default
+     * value is ASCENDING.
+     * 
+     * @param direction int 
+     */
+    public void setSortDirection (int direction) {
+    	isDecending = direction != ASCENDING;
+    }
+    
+    /** Returns the sorting direction, either ASCENDING or DESCENDING. Default
+     * value is ASCENDING.
+     * 
+     * @return direction int 
+     */
+    public int getSortDirection () {
+    	return isDecending ? DESCENDING : ASCENDING;
+    }
+    
     /**
      * Creates an array of wrappers for a given set of PwsRecord. (Records used
      * in direct reference.) If the parameter <code>recs</code> is <b>null</b>, 
@@ -114,8 +164,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
      * @param loc Locale used in the wrapper objects; <b>null</b> for VM default
      * @return array of <code>DefaultRecordWrapper</code> or <b>null</b>
      */
-    public static DefaultRecordWrapper[] makeWrappers (PwsRecord[] recs, Locale loc)
-    {
+    public static DefaultRecordWrapper[] makeWrappers (PwsRecord[] recs, Locale loc) {
        if ( recs == null ) return null;
        
        DefaultRecordWrapper[] result = new DefaultRecordWrapper[ recs.length ]; 
@@ -130,8 +179,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     *  
     *  @param expireScope long time duration in milliseconds (delta)
     */
-   public void refreshExpiry ( long expireScope )
-   {
+   public void refreshExpiry ( long expireScope ) {
       expiry = record.hasExpired() ? EXPIRED :
          record.willExpire( System.currentTimeMillis() + expireScope ) ? 
          EXPIRE_SOON : 0;
@@ -143,7 +191,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     *
     */
    public void refresh () {
-      sortValue = sortValueOf( record );
+      sortValue = sortValueOf( record, sort1, sort2, sort3 );
       importry = record.getImportStatus();
       refreshExpiry( Global.DEFAULT_EXPIRESCOPE );
       if ( locale != null ) {
@@ -171,26 +219,73 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * 
     *  @return <code>Locale</code>
     */
-   public Locale getLocale ()
-   {
+   public Locale getLocale () {
       return locale;
    }
    
-   /** Returns the standard sort value of the parameter record.
-    *  This is a concatenation of group and title fields.
+//   /** Returns the standard sort value of the parameter record.
+//    *  This is a concatenation of group and title field.
+//    *  
+//    *  @param rec <code>PwsRecord</code>
+//    *  @return String record sort value
+//    */
+//   public static String defaultSortValueOf ( PwsRecord rec ) {
+//	   String hstr = sortValueOf(rec, SortField.group, SortField.title, null); 
+//	   return hstr;
+//   }
+   
+   /** Returns a sort value of the parameter PWS-record reflecting the given
+    * keys for sort fields. The keys are values from the ENUM type <code>
+    * SortField</code> which defines the set of possible sort fields.
     *  
     *  @param rec <code>PwsRecord</code>
+    *  @param primary SortField the primary sort value
+    *  @param secondary SortField the secondary sort value, may be null (cond.)
+    *  @param tertiary SortField the tertiary sort value,  may be null
     *  @return String record sort value
     */
-   public static String sortValueOf ( PwsRecord rec )
-   {
-      String group = rec.getGroup();
-      String title = rec.getTitle();
+   public static String sortValueOf ( PwsRecord rec, 
+		                              SortField primary,
+		                              SortField secondary,
+		                              SortField tertiary ) {
+	  // control of legitimate null parameters
+	  if (primary == null ) 
+		  throw new IllegalArgumentException("primary sort field must not be null");
+	  if (secondary == null & tertiary != null) 
+		  throw new IllegalArgumentException("secondary sort field must not be null if tertiary is given");
+	   
+      String pri = fieldSortValue(rec, primary);
+      String sec = fieldSortValue(rec, secondary);
+      String ter = fieldSortValue(rec, tertiary);
       String recid = getRecordIdent(rec);
-      
-      if ( group == null ) group = "";
-      if ( title == null ) title = "";
-      return group + ":" + title + ":" + recid;
+      String result = pri + ":" + sec + ":" + ter + ":" + recid;
+      return result;
+   }
+   
+   /** Returns a specific field sort value for a given PWS-record.
+    * 
+    * @param rec PwsRecord
+    * @param field SortField enum value
+    * @return String the field sort value
+    */
+   private static String fieldSortValue (PwsRecord rec, SortField field) {
+	   String v = null;
+
+	   if ( field != null ) {
+		  switch (field) {
+		  case group:     v = rec.getGroup(); break;
+		  case title:     v = rec.getTitle(); break;
+		  case username:  v = rec.getUsername(); break;
+		  case expire_tm: v = String.valueOf(rec.getPassLifeTime()/1000); break;
+		  case modify_tm: v = String.valueOf(rec.getModifiedTime()/1000); break;
+		  case email:     v = rec.getEmail(); break;
+		  case url:       v = rec.getUrl(); break;
+		  case passmod_tm: v = String.valueOf(rec.getPassModTime()/1000); break;
+		  case used_tm:   v = String.valueOf(rec.getAccessTime()/1000); break;
+		  case create_tm: v = String.valueOf(rec.getCreateTime()/1000); break;
+		  }
+	   }
+	   return v == null ? "" : v;
    }
    
    private static synchronized String getRecordIdent (PwsRecord rec) {
@@ -208,8 +303,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * @param arr <code>DefaultRecordWrapper[]</code>
     * @return <code>DefaultRecordWrapper[]</code> deep clone of parameter
     */
-   public static DefaultRecordWrapper[] cloneArray ( DefaultRecordWrapper[] arr )
-   {
+   public static DefaultRecordWrapper[] cloneArray ( DefaultRecordWrapper[] arr ) {
       DefaultRecordWrapper[] res = new DefaultRecordWrapper[ arr.length ];
       for ( int i = 0; i < arr.length; i++ ) {
          res[ i ] = (DefaultRecordWrapper)arr[ i ].clone();
@@ -222,8 +316,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
 	 * 
 	 * @return <code>PwsRecord</code>
 	 */
-	public PwsRecord getRecord()
-	{
+	public PwsRecord getRecord() {
 		return record;
 	}
 
@@ -232,8 +325,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
      * 
      * @return <code>UUID</code> record UUID
      */
-    public UUID getRecordID()
-    {
+    public UUID getRecordID() {
         return record.getRecordID();
     }
 
@@ -243,8 +335,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * 
     * @return String record GROUP value or empty string 
     */
-   public String getGroup()
-   {
+   public String getGroup() {
       String hstr = record.getGroup();
       return hstr == null ? "" : hstr;
    }
@@ -284,33 +375,26 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * @return int compare result 
     */
    @Override
-   public int compareTo ( DefaultRecordWrapper obj )
-   {
-      return key.compareTo( obj.key );
+   public int compareTo ( DefaultRecordWrapper obj ) {
+	  int v = key.compareTo( obj.key );
+      return isDecending ? -v : v;
    }
    
-//   /** Wrappers compare to each other along their record sort-values.
-//    * 
-//    * @param obj a <code>DefaultRecordWrapper</code> object
-//    * @return int compare result 
-//    */
-//   public int compareTo ( Object obj )
-//   {
-//      return compareTo( (DefaultRecordWrapper)obj );
-//   }
-   
-   /** Returns the sort-value of the record. */
-	public String getSortValue ()
-   {
+   /** Returns the sort-value of this record-wrapper.
+    * 
+    *  @return String sort value (variant length)
+    */
+	public String getSortValue () {
 	   return sortValue;
    }
 
    /** Returns the collation key representing the sort value of this wrapper.
     *  The collation key is valid relative to the Locale set up for this wrapper.
+    *  
+    *  @return <code>CollationKey</code>
     */
    @Override
-   public CollationKey getCollationKey ()
-   {
+   public CollationKey getCollationKey () {
       return key;
    }
    
@@ -323,8 +407,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
 	* @return String title
 	*/
 	@Override
-	public String toString()
-	{
+	public String toString() {
        String username = record.getUsername();
        String title = record.getTitle();
        if ( title == null ) {
@@ -336,21 +419,18 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     
    /** Sets the index position belonging to a sorted order. (Informational)
     */  
-   void setIndex ( int i )
-   {
+   void setIndex ( int i ) {
       index = i;
    }
    
    /** Returns the index position information belonging to a sorted order.
     *  This is only a procedural information and not of validity to the public! 
     */  
-   int getIndex ()
-   {
+   int getIndex () {
       return index;
    }
    
-   private boolean isBoundingChar ( char c )
-   {
+   private boolean isBoundingChar ( char c ) {
       return !Character.isLetterOrDigit( c );
    }
    
@@ -430,8 +510,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
-         if ( check )
-            return true;
+         if ( check ) return true;
       }
       
       // NOTES
@@ -439,8 +518,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
-         if ( check )
-            return true;
+         if ( check ) return true;
       }
       
       // URL
@@ -448,8 +526,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
-         if ( check )
-            return true;
+         if ( check ) return true;
       }
       
       // EMAIL
@@ -457,8 +534,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
          buf = pass.getValue();
          check = textMatch( buf, pat, cs, wd );
          Util.destroyChars( buf );
-         if ( check )
-            return true;
+         if ( check ) return true;
       }
       
       return false;
