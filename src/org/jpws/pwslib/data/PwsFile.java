@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 
 import org.jpws.pwslib.crypto.SHA256;

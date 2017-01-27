@@ -18,6 +18,7 @@
 
 package org.jpws.pwslib.order;
 
+import java.io.UnsupportedEncodingException;
 import java.text.CollationKey;
 import java.text.Collator;
 import java.util.Locale;
@@ -72,7 +73,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
    private Locale locale;
    private CollationKey key;
    
-   private PwsRecord	record;
+   private PwsRecord record;
    private String sortValue;
    private int index = -1;
    private int expiry;
@@ -475,6 +476,19 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
       }
       return false;
    }
+
+   /** Appends the character contents of the given passphrase
+    * object into the given string buffer (cleartext).
+    * 
+    * @param sbuf StringBuffer
+    * @param pass PwsPassphrase, may be null
+    */
+   private void append (StringBuffer sbuf, PwsPassphrase pass) {
+	   if (pass == null) return;
+       char[] buf = pass.getValue();
+       sbuf.append(buf);
+       Util.destroyChars(buf);
+   }
    
  /** 
  *  Whether this record contains the search text as specified.
@@ -485,58 +499,59 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
  * @return boolean <b>true</b> if and only if the search text is contained in 
  *         any one text field except the password 
  */
-   public boolean hasText ( String text, boolean cs, boolean wd )
-   {
-      PwsPassphrase pass;
+   public boolean hasText ( String text, boolean cs, boolean wd ) {
+	  StringBuffer sbuf = new StringBuffer(64);
       String hstr;
+      int len;
       char[] buf, pat;
-      boolean check;
+      boolean match;
 
       // original or standardised pattern
       pat = (cs ? text : text.toLowerCase()).toCharArray();
 
+      // concatenate all relevant text elements of the record
       // GROUP
-      if ( (hstr = record.getGroup()) != null &&
-           textMatch( hstr.toCharArray(), pat, cs, wd ) )
-         return true;
-
+      hstr = record.getGroup();
+      if ( hstr != null ) {
+         sbuf.append( hstr );
+      }
+      
       // TITLE
-      if ( (hstr = record.getTitle()) != null &&
-            textMatch( hstr.toCharArray(), pat, cs, wd ) )
-         return true;
-
+      hstr = record.getTitle();
+      if ( hstr != null ) {
+         sbuf.append( hstr );
+      }
+      
       // USERNAME
-      if ( (pass = record.getUsernamePws()) != null ) {
-         buf = pass.getValue();
-         check = textMatch( buf, pat, cs, wd );
-         Util.destroyChars( buf );
-         if ( check ) return true;
-      }
-      
-      // NOTES
-      if ( (pass = record.getNotesPws()) != null ) {
-         buf = pass.getValue();
-         check = textMatch( buf, pat, cs, wd );
-         Util.destroyChars( buf );
-         if ( check ) return true;
-      }
-      
+      append(sbuf, record.getUsernamePws());
+       
       // URL
-      if ( (pass = record.getUrlPws()) != null ) {
-         buf = pass.getValue();
-         check = textMatch( buf, pat, cs, wd );
-         Util.destroyChars( buf );
-         if ( check ) return true;
-      }
-      
+      append(sbuf, record.getUrlPws());
+       
       // EMAIL
-      if ( (pass = record.getEmailPws()) != null ) {
-         buf = pass.getValue();
-         check = textMatch( buf, pat, cs, wd );
-         Util.destroyChars( buf );
-         if ( check ) return true;
-      }
+      append(sbuf, record.getEmailPws());
+
+      // NOTES
+      append(sbuf, record.getNotesPws());
       
-      return false;
+      // record options
+      byte[] arr = record.getExtraField(65);
+      if ( arr != null ) {
+    	  try {	sbuf.append( new String(arr, "UTF-8") );
+		  } catch (UnsupportedEncodingException e) {}
+      }
+
+      // investigate content matching
+      len = sbuf.length();
+      buf = new char[ len ];
+      sbuf.getChars(0, len, buf, 0);
+      match = textMatch( buf, pat, cs, wd );
+      
+      // annihilate cleartext revealing
+      Util.destroyChars(buf); 
+      sbuf.replace(0, len, new String(new char[len]));
+
+      return match;
    }
+
 }

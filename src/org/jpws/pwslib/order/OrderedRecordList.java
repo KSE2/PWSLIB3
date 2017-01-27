@@ -235,6 +235,7 @@ public void updateItem ( DefaultRecordWrapper record ) {
 public void insertItem ( DefaultRecordWrapper record ) {
    DefaultRecordWrapper wrap = record;
    wrap.setSorting(sort1, sort2, sort3);
+   wrap.setSortDirection(sortDirection);
    verifyBondage( wrap );
    boolean replace = sortedSet.remove(wrap);
    sortedSet.add(wrap);
@@ -440,6 +441,12 @@ public void setSorting ( SortField primary, SortField secondary, SortField terti
 	    (secondary != null && secondary == tertiary) )
 	  throw new IllegalArgumentException("some sort fields appear duplicates");
    
+   String hstr = "";
+   if (primary != null) hstr = "P=".concat(primary.toString());
+   if (secondary != null) hstr += "; S=".concat(secondary.toString());
+   if (tertiary != null) hstr += "; T=".concat(tertiary.toString());
+   Log.log(8, "(OrderedRecordList.setSorting) setting SORTING to ".concat(hstr));
+   
    // avoid unnecessary activity
    if ( primary == sort1 && secondary == sort2 && tertiary == sort3 ) return;
    
@@ -511,6 +518,7 @@ protected boolean acceptEntry ( DefaultRecordWrapper rec ) {
 public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale ) {
    DefaultRecordWrapper wrap = new DefaultRecordWrapper(rec, locale);
    wrap.setSorting(sort1, sort2, sort3);
+   wrap.setSortDirection(sortDirection);
    if ( expireScope >= 0 ) {
       wrap.refreshExpiry( expireScope );
    }
@@ -535,8 +543,7 @@ public int totalSize () {
  * @return <code>DefaultRecordWrapper</code> if <code>index</code> is in
  *         defined range, or <b>null</b> otherwise
  */
-public DefaultRecordWrapper getItemAt ( int index )
-{
+public DefaultRecordWrapper getItemAt ( int index ) {
    return index > -1 && index < list.size() ? list.get(index) : null;
 }
 
@@ -550,8 +557,7 @@ public DefaultRecordWrapper getItemAt ( int index )
  *        group name
  * @return array of <code>DefaultRecordWrapper</code>
  */
-public DefaultRecordWrapper[] getGroup ( String group, boolean exact )
-{
+public DefaultRecordWrapper[] getGroup ( String group, boolean exact ) {
    ArrayList<DefaultRecordWrapper> outlist;
    DefaultRecordWrapper rec;
    String grpval;
@@ -635,8 +641,7 @@ protected int sortIndexOf ( DefaultRecordWrapper rec ) {
  *  de-synchronisation of list and database. This method does not remove a 
  *  record from the database!
  */
-protected void removeItemIndex ( int index )
-{
+protected void removeItemIndex ( int index ) {
    if ( index > -1 && index < list.size() ) {
 	  DefaultRecordWrapper item = list.get( index );
       list.remove( index );
@@ -653,8 +658,7 @@ protected void removeItemIndex ( int index )
  * 
  * @param wrap <code>DefaultRecordWrapper</code> record to remove; may be null
  */
-public void removeItem ( DefaultRecordWrapper wrap ) 
-{
+public void removeItem ( DefaultRecordWrapper wrap ) {
    Log.log(10, "(OrderedRecordList.removeItem) REMOVE record from list ".concat(wrap.getRecord().toString()));
    sortedSet.remove( wrap );
    elementSet.remove( wrap );
@@ -664,8 +668,7 @@ public void removeItem ( DefaultRecordWrapper wrap )
 
 /** Removes all elements from this list. 
  */
-public void clear ()
-{
+public void clear () {
    sortedSet.clear();	
    elementSet.clear();
    if ( size() > 0 ) {
@@ -676,8 +679,7 @@ public void clear ()
 
 /** Removes all elements from this list without issuing a list event. 
  */
-protected void clearIntern ()
-{
+protected void clearIntern () {
    list.clear();
    sortedSet.clear();
    elementSet.clear();
@@ -715,8 +717,7 @@ public void setRecordSelector ( RecordSelector selector ) {
  *  
  * @param lis <code>OrderedListListener</code> object
  */ 
-public void addOrderedListListener ( OrderedListListener lis )
-{
+public void addOrderedListListener ( OrderedListListener lis ) {
 	synchronized (listeners ) {
 		listeners.add( lis );
 	}
@@ -726,8 +727,7 @@ public void addOrderedListListener ( OrderedListListener lis )
  * 
  * @param listener <code>OrderedListListener</code>
  */
-public void removeOrderedListListener ( OrderedListListener listener )
-{
+public void removeOrderedListListener ( OrderedListListener listener ) {
 	synchronized (listeners ) {
 		listeners.remove( listener );
 	}
@@ -740,8 +740,7 @@ protected ArrayList<OrderedListListener> getListeners () {
 	}
 }
 
-protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper rec )
-{
+protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper rec ) {
    OrderedListEvent event = new OrderedListEvent( this, type, index, rec );
    ArrayList<OrderedListListener> copy = getListeners();
    for ( int i = 0; i < copy.size(); i++ ) {
@@ -755,8 +754,7 @@ protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper 
  * 
  * @param out <code>PrintStream</code>
  */ 
-public void printout ( PrintStream out )
-{
+public void printout ( PrintStream out ) {
    out.println();
    String hstr = "- record list -";
    if ( boundDbf != null && boundDbf instanceof PwsFile ) {
@@ -778,8 +776,7 @@ public void printout ( PrintStream out )
    /** Implementation the <code>PwsFileListener</code> interface for this class. 
     */
    @Override
-   public void fileStateChanged ( PwsFileEvent evt )
-   {
+   public void fileStateChanged ( PwsFileEvent evt ) {
       int type = evt.getType();
       PwsRecord record = evt.getRecord();
       
@@ -797,7 +794,6 @@ public void printout ( PrintStream out )
       else if ( type == PwsFileEvent.RECORD_UPDATED ) {
      	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received RECORD_UPDATED");
     	 DefaultRecordWrapper wrap = makeRecordWrapper( record, locale );
-//    	 DefaultRecordWrapper oldWrap = makeRecordWrapper( evt.getOldRecord(), locale );
      	 updateItem(wrap);
       }
       
