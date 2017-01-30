@@ -94,7 +94,7 @@ import org.jpws.pwslib.order.OrderedRecordList;
  *  @see PwsFileListener
  *  @see org.jpws.pwslib.order.OrderedRecordList
  */
-public class PwsRecordList implements Cloneable
+public class PwsRecordList implements Cloneable, Iterable<PwsRecord>
 {
    /** On merge conflict exclude the record.
     */
@@ -2046,5 +2046,15 @@ public class PwsRecordList implements Cloneable
             }
          }
       }  // class GroupFileIterator
+
+    /** Set the given IMPORT-STATUS marker on all records of this list.
+     *  
+     * @param importStatus int import status (values of PwsRecord)
+     */
+	public void setImportMarkers ( int importStatus ) {
+		for (Iterator<PwsRecord> it = internalIterator(); it.hasNext();) {
+			it.next().setImportStatus(importStatus);
+		}
+	}
 
 }

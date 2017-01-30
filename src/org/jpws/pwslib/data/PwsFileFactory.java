@@ -260,6 +260,7 @@ public final class PwsFileFactory
       // update persistent state definition in file
       dbf.setApplication( file.getAdapter() );
       dbf.setFilePath( file.getFilepath() );
+      dbf.setTimeStamp( file.modifyTime() );
         
       dbf.resetModified();
       return dbf;
@@ -325,6 +326,7 @@ throws IOException, PasswordSafeException
    // update persistent state definition in file
    file.setApplication( application );
    file.setFilePath( filepath );
+   file.setTimeStamp( application.getModifiedTime(filepath) );
 
    file.resetModified();
    return file;

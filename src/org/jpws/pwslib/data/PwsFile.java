@@ -159,6 +159,10 @@ public class PwsFile extends PwsRecordList implements Cloneable
    /** Number of calculation loops during file access authentication */
    private int             securityLoops = SECURITY_ITERATIONS_MINIMUM;
    
+   /** A time-stamp for this file; normally meant to reflect the external 
+    *  state time */
+   private long timeStamp;
+   
    /** Whether the V3 file trailing checksum was verified OK;
     * (true for V2 and V1 files) 
     */
@@ -391,6 +395,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
       super.replaceFrom( f );
       application = f.application;
       filePath = f.filePath;
+      timeStamp = f.timeStamp;
       checksumOK = f.checksumOK;
       preserveOld = f.preserveOld;
       formatVersionMajor = f.formatVersionMajor;
@@ -675,8 +680,9 @@ public class PwsFile extends PwsRecordList implements Cloneable
 
           PwsFileFactory.saveFile( internalIterator(), application, filePath, ps, headerFields, 
                 securityLoops, formatVersionMajor );
+   	      timeStamp = application.getModifiedTime(filePath);
    	      resetModified();
-          Log.log( 4, "(PwsFile) file save finished (before event dispatch)");
+          Log.log( 4, "(PwsFile) file save finished (before event dispatch), " + timeStamp);
          
           fireFileEvent( PwsFileEvent.LIST_SAVED, null );
           Log.debug( 2, "(PwsFile.save) file saved to: " + hstr ); 
@@ -1331,4 +1337,18 @@ public class PwsFile extends PwsRecordList implements Cloneable
          return fld;
       }
    }
+
+/** Returns the time-stamp for the external data state of this file. This is a
+ * procedural datum and not element of the stored file. PWSLIB sets this value
+ * when a file instance is loaded from or saved to the external state. 
+ * 
+ * @return long time
+ */
+public long getTimeStamp() {
+	return timeStamp;
+}
+
+public void setTimeStamp (long timeStamp) {
+	this.timeStamp = timeStamp;
+}
 }
