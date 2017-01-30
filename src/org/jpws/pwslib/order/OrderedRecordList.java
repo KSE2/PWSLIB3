@@ -21,7 +21,6 @@ package org.jpws.pwslib.order;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.SortedSet;
@@ -33,7 +32,7 @@ import org.jpws.pwslib.data.PwsFileListener;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
 import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.UUID;
+import org.jpws.pwslib.order.DefaultRecordWrapper.SortField;
 
 /**
  *  Represents an ordered list of <code>DefaultRecordWrapper</code> objects
@@ -73,6 +72,12 @@ import org.jpws.pwslib.global.UUID;
  */
 public class OrderedRecordList implements PwsFileListener
 {
+   /** Sort direction Ascending */
+   public static final int ASCENDING = DefaultRecordWrapper.ASCENDING;
+   
+   /** Sort direction Descending */
+   public static final int DESCENDING = DefaultRecordWrapper.DESCENDING;
+
    /** The PWS record database to which this ordered list is related. */ 
    protected PwsRecordList boundDbf;
    
@@ -100,13 +105,16 @@ public class OrderedRecordList implements PwsFileListener
    private Locale locale = Locale.getDefault();
    private ArrayList<OrderedListListener> listeners = new ArrayList<OrderedListListener>();
    private long expireScope;
+   private int sortDirection = ASCENDING;
+   private SortField sort1 = SortField.group, 
+		             sort2 = SortField.title, 
+		             sort3 = SortField.modify_tm;
 
    
 /** Constructor for an ordered record list without database bondage
  *  for the current default locale.
  */ 
-public OrderedRecordList ()
-{
+public OrderedRecordList () {
 }  // constructor
    
 /** Constructor for an ordered record list without database bondage
@@ -114,8 +122,7 @@ public OrderedRecordList ()
  * 
  *  @param locale activated locale for sorting 
  */ 
-public OrderedRecordList ( Locale locale )
-{
+public OrderedRecordList ( Locale locale ) {
    if ( locale != null ) {
       this.locale = locale;
    }
@@ -131,8 +138,7 @@ public OrderedRecordList ( Locale locale )
  * @param f the <code>PwsRecordList</code> to which the records 
  *        of this odered list must belong 
  */
-public OrderedRecordList ( PwsRecordList f )
-{
+public OrderedRecordList ( PwsRecordList f ) {
    if ( f == null )
       throw new IllegalArgumentException();
    
@@ -150,8 +156,7 @@ public OrderedRecordList ( PwsRecordList f )
  *        of this odered list must belong 
  * @param locale activated locale for sorting 
  */
-public OrderedRecordList ( PwsRecordList f, Locale locale )
-{
+public OrderedRecordList ( PwsRecordList f, Locale locale ) {
    if ( f == null )
       throw new IllegalArgumentException();
    
@@ -161,14 +166,13 @@ public OrderedRecordList ( PwsRecordList f, Locale locale )
    }
 }  // constructor
 
-/** Tests if the parameter record complys with database bondage of this list.
+/** Tests if the parameter record complies with database bondage of this list.
  *  In case of non-compliance an exception is thrown.
  * 
  *  @param wrap <code>DefaultRecordWrapper</code> record to be evaluated
  *  @throws IllegalArgumentException ("unrelated record") if bondage violation
  */
-protected void verifyBondage ( DefaultRecordWrapper wrap )
-{
+protected void verifyBondage ( DefaultRecordWrapper wrap ) {
    PwsRecord rec = wrap.getRecord();	
    if ( boundDbf != null && !boundDbf.contains( rec ) )
       throw new IllegalArgumentException( "unrelated record: ".concat(rec.toString()) );
@@ -179,6 +183,7 @@ protected void verifyBondage ( DefaultRecordWrapper wrap )
  * 
  * @param record <code>DefaultRecordWrapper</code>
  */
+@SuppressWarnings("unused")
 public void updateItem ( DefaultRecordWrapper record ) {
 	String hstr = record.getRecord().toString() + ", sort " + record.getSortValue();
 	if ( !elementSet.containsKey(record) ) 
@@ -227,9 +232,10 @@ public void updateItem ( DefaultRecordWrapper record ) {
  *  @param record DefaultRecordWrapper record to be inserted
  *  @throws IllegalArgumentException if the record fails to conform
  */
-public void insertItem ( DefaultRecordWrapper record )
-{
+public void insertItem ( DefaultRecordWrapper record ) {
    DefaultRecordWrapper wrap = record;
+   wrap.setSorting(sort1, sort2, sort3);
+   wrap.setSortDirection(sortDirection);
    verifyBondage( wrap );
    boolean replace = sortedSet.remove(wrap);
    sortedSet.add(wrap);
@@ -272,8 +278,7 @@ public Iterator<DefaultRecordWrapper> elementIterator() {
  *  @param wrap <code>DefaultRecordWrapper</code> record representation
  *  @param index int index position in filtered list
  */  
-protected void insertRecordIndex ( DefaultRecordWrapper wrap, int index )
-{
+protected void insertRecordIndex ( DefaultRecordWrapper wrap, int index ) {
    if ( index > -1 && index < list.size()+1 ) {
 	   list.add( index, wrap );
 	   wrap.setIndex( index );
@@ -298,8 +303,7 @@ protected void insertRecordIndex ( DefaultRecordWrapper wrap, int index )
  * 
  *  @throws IllegalArgumentException if the parameter does not fit the bound dbf
  */   
-public void loadDatabase ( PwsRecordList rlist, long expireScope )
-{
+public void loadDatabase ( PwsRecordList rlist, long expireScope ) {
    if ( boundDbf != null && boundDbf instanceof PwsFile && 
         !((PwsFile)boundDbf).equalResource( (PwsFile)rlist ) )
       throw new IllegalArgumentException( "unrelated database: " + 
@@ -311,16 +315,14 @@ public void loadDatabase ( PwsRecordList rlist, long expireScope )
    rlist.addFileListener( this );
    
    // clear all content and rebuild from parameter record list (sorted map)
-   sortedSet.clear();
    elementSet.clear();
    for ( Iterator<PwsRecord> it = rlist.iterator(); it.hasNext(); ) {
 	  DefaultRecordWrapper wrap = makeRecordWrapper(it.next(), locale);
-	  sortedSet.add(wrap);
 	  elementSet.put(wrap, wrap);
    }
 
    // use sorted map to create filtered index + issue "reloaded" or "cleared" event
-   refresh();
+   refreshSorting();
 }
 
 /** Recreates the filtered list index according to current filter settings
@@ -343,12 +345,140 @@ protected void reindex () {
  * <p>Note: This has to be performed when a filtering agent has been modified
  * which was added by the user through  <code>setRecordSelector()</code>.
  */
-public void refresh () {
+public void refreshFilter () {
    reindex();
 	   
    // issue either LIST_CLEARED or LIST_RELOADED depending on resulting list size
    int evt = size() == 0 ? OrderedListEvent.LIST_CLEARED : OrderedListEvent.LIST_RELOADED;
    fireOrderedListEvent( evt, -1, null );
+}
+
+/** Pushes the given sort field into the hierarchy of the three sort values at
+ * 'primary' position. This resorts and re-indexes with a LIST_RELOADED event.
+ * The field may be a duplicate of any currently set sort field, the resulting
+ * field order is, however, free of duplicates.
+ * 
+ * @param sort <code>SortField</code> 
+ */
+public void pushSortField (SortField sort) {
+	if (sort == null) 
+	   throw new IllegalArgumentException("sort field must not be null");
+
+	// check for equalities
+	if (sort == sort1) return;
+	if (sort == sort2) {
+		sort2 = sort3;
+	}
+
+	// push the line, the last is bitten
+	sort3 = sort2;
+	sort2 = sort1;
+	sort1 = sort;
+	
+	refreshSorting();
+}
+
+/** Sets the sorting direction, either ASCENDING or DESCENDING. Default
+ * value is ASCENDING.
+ * 
+ * @param direction int 
+ */
+public void setSortDirection (int direction) {
+	int old = sortDirection;
+	sortDirection = direction == DESCENDING ? DESCENDING : ASCENDING;
+
+	if ( old != sortDirection ) {
+		refreshSorting();
+	}
+}
+
+/** Returns the sorting direction, either ASCENDING or DESCENDING. Default
+ * value is ASCENDING.
+ * 
+ * @return direction int 
+ */
+public int getSortDirection () {
+	return sortDirection;
+}
+
+/** Sets the sorting order for this record list by an array of minimum three
+ * sort fields. The used indexes are: 0 = primary, 1 = secondary, 2 = tertiary.
+ * The primary field is mandatory, others can be <b>null</b> provided its 
+ * successor is also <b>null</b>. There must not appear duplicate field settings. 
+ * This resorts and re-indexes with a LIST_RELOADED event unless the given
+ * sort field sequence does not modify the already in place sorting, in which
+ * case no activity occurs. 
+ * 
+ * @param sort <code>SortField[]</code> array of 3 sort field values
+ * @throws IllegalArgumentException if the parameter was inconsistent
+ * @throws NullPointerException
+ */
+public void setSorting ( SortField[] sort) {
+	if ( sort.length < 3 )
+		throw new IllegalArgumentException("insufficient field array, 3 elements required");
+	setSorting(sort[0], sort[1], sort[2]);
+}
+
+/** Sets the sorting order for this record list. The primary field is mandatory,
+ * others can be <b>null</b> provided its successor is also <b>null</b>. There 
+ * must not appear duplicate field settings. 
+ * This resorts and re-indexes with a LIST_RELOADED event unless the given
+ * sort field sequence does not modify the already in place sorting, in which
+ * case no activity occurs. 
+ * 
+ * @param primary <code>SortField</code> first ranking sort value
+ * @param secondary <code>SortField</code> second ranking sort value
+ * @param tertiary <code>SortField</code> third ranking sort value
+ * @throws IllegalArgumentException if a parameter value was set falsely
+ */
+public void setSorting ( SortField primary, SortField secondary, SortField tertiary) {
+   // control of legitimate null parameters
+   if (primary == null ) 
+	  throw new IllegalArgumentException("primary sort field must not be null");
+   if (secondary == null & tertiary != null) 
+	  throw new IllegalArgumentException("secondary sort field must not be null if tertiary is given");
+   if ( primary == secondary | primary == tertiary | 
+	    (secondary != null && secondary == tertiary) )
+	  throw new IllegalArgumentException("some sort fields appear duplicates");
+   
+   String hstr = "";
+   if (primary != null) hstr = "P=".concat(primary.toString());
+   if (secondary != null) hstr += "; S=".concat(secondary.toString());
+   if (tertiary != null) hstr += "; T=".concat(tertiary.toString());
+   Log.log(8, "(OrderedRecordList.setSorting) setting SORTING to ".concat(hstr));
+   
+   // avoid unnecessary activity
+   if ( primary == sort1 && secondary == sort2 && tertiary == sort3 ) return;
+   
+   sort1 = primary;
+   sort2 = secondary;
+   sort3 = tertiary;
+   refreshSorting();
+}
+
+/** Returns an array of 3 <code>SortField</code> values comprising current
+ * settings of this list for primary (0), secondary (1) and tertiary (2) sort 
+ * fields.
+ * 
+ * @return <code>SortField[]</code>
+ */
+public SortField[] getSorting () {
+	return new SortField[] {sort1, sort2, sort3};
+}
+
+/** Resorts and re-indexes this list according to current sort field settings.
+ * After this a LIST_RELOADED event is issued. 
+ */
+private void refreshSorting () {
+	sortedSet.clear();
+	
+	for (DefaultRecordWrapper wrap : elementSet.values()) {
+		wrap.setSorting(sort1, sort2, sort3);
+		wrap.setSortDirection(sortDirection);
+		sortedSet.add(wrap);
+	}
+
+	refreshFilter();
 }
 
 /**
@@ -357,8 +487,7 @@ public void refresh () {
  * and will issue a LIST_RELOADED event. Does nothing if there was no list
  * previously loaded. 
  */
-public void reload ()
-{
+public void reload () {
    if ( loadedDbf != null ) {
       loadDatabase( loadedDbf, expireScope );
    }
@@ -388,6 +517,8 @@ protected boolean acceptEntry ( DefaultRecordWrapper rec ) {
  */
 public DefaultRecordWrapper makeRecordWrapper ( PwsRecord rec, Locale locale ) {
    DefaultRecordWrapper wrap = new DefaultRecordWrapper(rec, locale);
+   wrap.setSorting(sort1, sort2, sort3);
+   wrap.setSortDirection(sortDirection);
    if ( expireScope >= 0 ) {
       wrap.refreshExpiry( expireScope );
    }
@@ -412,8 +543,7 @@ public int totalSize () {
  * @return <code>DefaultRecordWrapper</code> if <code>index</code> is in
  *         defined range, or <b>null</b> otherwise
  */
-public DefaultRecordWrapper getItemAt ( int index )
-{
+public DefaultRecordWrapper getItemAt ( int index ) {
    return index > -1 && index < list.size() ? list.get(index) : null;
 }
 
@@ -427,8 +557,7 @@ public DefaultRecordWrapper getItemAt ( int index )
  *        group name
  * @return array of <code>DefaultRecordWrapper</code>
  */
-public DefaultRecordWrapper[] getGroup ( String group, boolean exact )
-{
+public DefaultRecordWrapper[] getGroup ( String group, boolean exact ) {
    ArrayList<DefaultRecordWrapper> outlist;
    DefaultRecordWrapper rec;
    String grpval;
@@ -466,7 +595,7 @@ public final Locale getLocale () {
  *  @return index position or -1 if the record is not in the filtered list
  */ 
 public int indexOf ( PwsRecord rec ) {
-   return rec == null ? -1 : list.indexOf( makeRecordWrapper( rec, locale ));
+   return rec == null ? -1 : list.indexOf( makeRecordWrapper(rec, locale) );
 }
 
 /** Returns the current index position of the parameter record in the filtered
@@ -490,8 +619,7 @@ public int indexOf ( DefaultRecordWrapper rec ) {
  *  @return index position or -1 if the parameter was null or not in the 
  *          filtered index
  */ 
-protected int sortIndexOf ( DefaultRecordWrapper rec )
-{
+protected int sortIndexOf ( DefaultRecordWrapper rec ) {
    if ( rec == null || !acceptEntry(rec) ) return -1;
    
    int index = list.size();
@@ -513,8 +641,7 @@ protected int sortIndexOf ( DefaultRecordWrapper rec )
  *  de-synchronisation of list and database. This method does not remove a 
  *  record from the database!
  */
-protected void removeItemIndex ( int index )
-{
+protected void removeItemIndex ( int index ) {
    if ( index > -1 && index < list.size() ) {
 	  DefaultRecordWrapper item = list.get( index );
       list.remove( index );
@@ -531,8 +658,7 @@ protected void removeItemIndex ( int index )
  * 
  * @param wrap <code>DefaultRecordWrapper</code> record to remove; may be null
  */
-public void removeItem ( DefaultRecordWrapper wrap ) 
-{
+public void removeItem ( DefaultRecordWrapper wrap ) {
    Log.log(10, "(OrderedRecordList.removeItem) REMOVE record from list ".concat(wrap.getRecord().toString()));
    sortedSet.remove( wrap );
    elementSet.remove( wrap );
@@ -542,8 +668,7 @@ public void removeItem ( DefaultRecordWrapper wrap )
 
 /** Removes all elements from this list. 
  */
-public void clear ()
-{
+public void clear () {
    sortedSet.clear();	
    elementSet.clear();
    if ( size() > 0 ) {
@@ -554,8 +679,7 @@ public void clear ()
 
 /** Removes all elements from this list without issuing a list event. 
  */
-protected void clearIntern ()
-{
+protected void clearIntern () {
    list.clear();
    sortedSet.clear();
    elementSet.clear();
@@ -567,8 +691,7 @@ protected void clearIntern ()
  * 
  *  @param time time period in milliseconds
  */
-public void setExpireScope ( long time )
-{
+public void setExpireScope ( long time ) {
    if ( sortedSet.size() > 0 ) {
       for ( Iterator<DefaultRecordWrapper> it = sortedSet.iterator(); it.hasNext(); ) {
          it.next().refreshExpiry( time );
@@ -585,8 +708,7 @@ public void setExpireScope ( long time )
  * 
  * @param selector <code>RecordSelector</code>, may be null
  */
-public void setRecordSelector ( RecordSelector selector )
-{
+public void setRecordSelector ( RecordSelector selector ) {
 	this.selector = selector; 
 }
 
@@ -595,8 +717,7 @@ public void setRecordSelector ( RecordSelector selector )
  *  
  * @param lis <code>OrderedListListener</code> object
  */ 
-public void addOrderedListListener ( OrderedListListener lis )
-{
+public void addOrderedListListener ( OrderedListListener lis ) {
 	synchronized (listeners ) {
 		listeners.add( lis );
 	}
@@ -606,8 +727,7 @@ public void addOrderedListListener ( OrderedListListener lis )
  * 
  * @param listener <code>OrderedListListener</code>
  */
-public void removeOrderedListListener ( OrderedListListener listener )
-{
+public void removeOrderedListListener ( OrderedListListener listener ) {
 	synchronized (listeners ) {
 		listeners.remove( listener );
 	}
@@ -620,8 +740,7 @@ protected ArrayList<OrderedListListener> getListeners () {
 	}
 }
 
-protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper rec )
-{
+protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper rec ) {
    OrderedListEvent event = new OrderedListEvent( this, type, index, rec );
    ArrayList<OrderedListListener> copy = getListeners();
    for ( int i = 0; i < copy.size(); i++ ) {
@@ -635,8 +754,7 @@ protected void fireOrderedListEvent ( int type, int index, DefaultRecordWrapper 
  * 
  * @param out <code>PrintStream</code>
  */ 
-public void printout ( PrintStream out )
-{
+public void printout ( PrintStream out ) {
    out.println();
    String hstr = "- record list -";
    if ( boundDbf != null && boundDbf instanceof PwsFile ) {
@@ -658,8 +776,7 @@ public void printout ( PrintStream out )
    /** Implementation the <code>PwsFileListener</code> interface for this class. 
     */
    @Override
-   public void fileStateChanged ( PwsFileEvent evt )
-   {
+   public void fileStateChanged ( PwsFileEvent evt ) {
       int type = evt.getType();
       PwsRecord record = evt.getRecord();
       
@@ -677,7 +794,6 @@ public void printout ( PrintStream out )
       else if ( type == PwsFileEvent.RECORD_UPDATED ) {
      	 Log.log(8, "(OrderedRecordList.fileStateChanged) -- received RECORD_UPDATED");
     	 DefaultRecordWrapper wrap = makeRecordWrapper( record, locale );
-//    	 DefaultRecordWrapper oldWrap = makeRecordWrapper( evt.getOldRecord(), locale );
      	 updateItem(wrap);
       }
       

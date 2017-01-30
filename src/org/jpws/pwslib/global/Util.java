@@ -444,15 +444,18 @@ public static void destroyChars ( char[] v )
 }
 
 /** Whether two byte arrays have equal contents.
+ *  Returns true if both arguments are null.
  * 
- * @param a first byte array to compare
- * @param b second byte array to compare
- * @return <b>true</b> if and only if a) a and b have the same length, and 
- *          b) for all indices i for 0 to length holds a[i] == b[i]
+ * @param a byte[] first byte array to compare; may be null
+ * @param b byte[] second byte array to compare; may be null
+ * @return <b>true</b> if and only if a) a and b are null or
+ *          b) a and b have the same length, and 
+ *          c) for all indices i e (0 .. length) holds a[i] == b[i]
  */
-public static boolean equalArrays ( byte[] a, byte[] b )
-{
-   if ( a.length != b.length ) return false;
+public static boolean equalArrays ( byte[] a, byte[] b ) {
+   if ( a == b ) return true;
+   if ( a == null || b == null || a.length != b.length ) 
+	   return false;
    
    for ( int i = 0; i < a.length; i++ ) {
       if ( a[i] != b[i] ) return false;
@@ -460,23 +463,24 @@ public static boolean equalArrays ( byte[] a, byte[] b )
    return true;
 }
 
-/** Whether two byte arrays have equal contents in a specified section.
+/** Whether byte array a is contained in byte array b
+ * at a specified location. Returns true if both arguments are null.
  * 
- * @param a first byte array to compare
- * @param b second byte array to compare (sectional element)
- * @param offset offset in b where to start comparison
+ * @param a byte[] first byte array to compare; may be null
+ * @param b byte[] second byte array to compare; may be null
+ * @param offset int offset in b where to start comparison
  * @return <b>true</b> if and only if 1) b has a minimum length of a.length + offset,
  *          and 2) content of a equals b[ offset..offset+a.length ]
- * @since 2-0-0
  */
-public static boolean equalArrays ( byte[] a, byte[] b, int offset )
-{
-   if ( b.length < a.length + offset )
+public static boolean equalArrays ( byte[] a, byte[] b, int offset ) {
+   if ( a == b ) return true;
+   if ( a == null || b == null || b.length < a.length + offset )
       return false;
    
-   for ( int i = 0; i < a.length; i++ )
+   for ( int i = 0; i < a.length; i++ ) {
       if ( a[i] != b[i+offset] )
          return false;
+   }
    return true;
 }
 
