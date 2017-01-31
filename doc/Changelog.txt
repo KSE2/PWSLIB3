@@ -1,14 +1,36 @@
-KSE PWSLIB 2-6-0
+KSE PWSLIB 2-7-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 19 Jun 2016
+Text Date: 31 Jan 2017
 
 
-Actual Release 2-6-0, Date: 19 Jun. 2016
+Actual Release 2-7-0, Date: 01 Feb. 2017
 ----------------------------------------
+
+- this is a major release including interface and some behaviour changes. Thorough testing
+  of usage is required when replacing previous versions!
+
+- introduction of a multi-field (3) sort facility in OrderedRecordList including sort
+  directions ASCENDING and DESCENDING. Enum DefaultRecordWrapper.SortField describes
+  available datafields as sort options.
+
+- PwsRecordList.merge has a new return type of 3 record lists which make traceable what
+  has happened during merge.
+
+- the logical database name is made more easily available through new method 
+  PwsFile.getDatabaseName().
+
+- introduction of a time-stamp value for PwsFile representing a real or assumed
+  time marker of the external state (used for detecting file save conflicts).
+
+- minor corrections; PwsRecordList made Iterable
+
+
+Release 2-6-0, Date: 19 Jun. 2016
+---------------------------------
 
 - this is a major release including interface and some behaviour changes. Thorough testing
   of usage is required when replacing previous versions!
