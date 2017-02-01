@@ -436,8 +436,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
    }
    
    private boolean textMatch ( char[] domain, char[] pattern,
-         boolean cs, boolean wd )
-   {
+         boolean cs, boolean wd ) {
       int i, j, slen;
       boolean found, check;
 
@@ -452,16 +451,20 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
       }
       
       // investigate domain for matching pattern
+      // (naive text search algorithm)
       slen = domain.length - pattern.length + 1;
       for ( i = 0; i < slen; i++ ) {
       
+    	 // identify matching character sequence
          found = true;
-         for ( j = 0; j < pattern.length; j++ )
+         for ( j = 0; j < pattern.length; j++ ) {
             if ( domain[ i+j ] != pattern[ j ] ) {
                found = false;
                break;
             }
+         }
 
+         // if requested, suppress match if it is not a whole word
          if ( found ) {
             if ( wd ) {
                // left bound
@@ -481,13 +484,24 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
     * object into the given string buffer (cleartext).
     * 
     * @param sbuf StringBuffer
-    * @param pass PwsPassphrase, may be null
+    * @param obj Object, may be null
     */
-   private void append (StringBuffer sbuf, PwsPassphrase pass) {
-	   if (pass == null) return;
-       char[] buf = pass.getValue();
-       sbuf.append(buf);
-       Util.destroyChars(buf);
+   private void append (StringBuffer sbuf, Object obj) {
+	   if (obj == null) return;
+
+	   if ( obj instanceof String ) {
+		   sbuf.append((String)obj);
+		   sbuf.append(' ');
+
+	   } else if ( obj instanceof PwsPassphrase ) {
+		   char[] buf = ((PwsPassphrase)obj).getValue();
+		   sbuf.append( buf );
+		   sbuf.append(' ');
+	       Util.destroyChars(buf);
+
+	   } else {
+		   throw new IllegalArgumentException("cannot digest object type");
+	   }
    }
    
  /** 
@@ -501,7 +515,6 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
  */
    public boolean hasText ( String text, boolean cs, boolean wd ) {
 	  StringBuffer sbuf = new StringBuffer(64);
-      String hstr;
       int len;
       char[] buf, pat;
       boolean match;
@@ -511,16 +524,10 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
 
       // concatenate all relevant text elements of the record
       // GROUP
-      hstr = record.getGroup();
-      if ( hstr != null ) {
-         sbuf.append( hstr );
-      }
+      append(sbuf, record.getGroup());
       
       // TITLE
-      hstr = record.getTitle();
-      if ( hstr != null ) {
-         sbuf.append( hstr );
-      }
+      append(sbuf, record.getTitle());
       
       // USERNAME
       append(sbuf, record.getUsernamePws());
@@ -543,7 +550,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
 
       // investigate content matching
       len = sbuf.length();
-      buf = new char[ len ];
+      buf = new char[len];
       sbuf.getChars(0, len, buf, 0);
       match = textMatch( buf, pat, cs, wd );
       

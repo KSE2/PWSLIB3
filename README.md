@@ -1,9 +1,9 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
 
-Current status: RELEASE 2-6-0
+Current status: RELEASE 2-7-0
 
-Release date: 19 Jun 2016
+Release date: 01 Feb 2017
 
 Platform: Java 1.6 or higher
 
@@ -20,9 +20,26 @@ Available Supplements:
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
 
-Release 2-6-0
+Release 2-7-0
 
-- major release for JPasswords 0-8-0; interface additions and behaviour changes.
+- major release; interface additions and behaviour changes
+
+New Features with 2-7-0
+
+- introduction of a multi-field (3) sort facility in OrderedRecordList including sort
+  directions ASCENDING and DESCENDING. Enum DefaultRecordWrapper.SortField describes
+  available datafields as sort options.
+
+- PwsRecordList.merge has a new return type of 3 record lists which make traceable what
+  has happened during merge.
+
+- the logical database name is made more easily available through new method 
+  PwsFile.getDatabaseName().
+
+- introduction of a time-stamp value for PwsFile representing a real or assumed
+  time marker of the external state (used for detecting file save conflicts).
+
+- minor corrections; PwsRecordList made Iterable
 
 New Features with 2-6-0
 
