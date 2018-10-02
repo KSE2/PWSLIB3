@@ -18,10 +18,14 @@
 
 package org.jpws.pwslib.order;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.text.CollationKey;
 import java.text.Collator;
 import java.util.Locale;
+import java.util.Properties;
 
 import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.data.PwsPassphrase;
@@ -46,6 +50,8 @@ import org.jpws.pwslib.global.Util;
 public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>, 
              Collatable, Cloneable
 {
+   private static final int OPTIONS_DATAFIELD = 65;
+	   
    /** Expiry status value. */
    public static final int EXPIRED = 1;
    /** Expiry status value. */
@@ -72,6 +78,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
    
    private Locale locale;
    private CollationKey key;
+   private Properties recordProperties;
    
    private PwsRecord record;
    private String sortValue;
@@ -197,6 +204,10 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
       refreshExpiry( Global.DEFAULT_EXPIRESCOPE );
       if ( locale != null ) {
          key = Collator.getInstance( locale ).getCollationKey( sortValue );
+      }
+      
+      if (recordProperties != null) {
+    	  createProperties();
       }
    }
    
@@ -330,6 +341,40 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
         return record.getRecordID();
     }
 
+    private void createProperties () {
+		recordProperties = new Properties();
+		
+		// extract record field containing options 
+		// and load the utf-8 encoded value if available
+        byte[] data = record.getExtraField(OPTIONS_DATAFIELD);
+        if (data != null) {
+			try {
+				String input = new String(data, "utf-8");
+	     		Reader reader = new StringReader(input);
+				recordProperties.load(reader);
+				
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+        }
+    	
+    }
+
+    /** Returns the Properties instance representing the record properties
+     * as derived from the associated record data field. This always returns 
+     * a valid instance. Modifications to the instance do not strike through
+     * to the record value. The value is updated from the underlying record
+     * via the "refresh()" method. This method is inexpensive in repeated use.
+     * 
+     * @return <code>Properties</code>
+     */
+    public Properties getProperties () {
+    	if (recordProperties == null) {
+    		createProperties();
+    	}
+    	return recordProperties;
+    }
+    
    /**
     * Returns the GROUP field value of the record. Other than at the record 
     * directly, a void value results in an empty string.

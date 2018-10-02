@@ -23,6 +23,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StreamCorruptedException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -455,7 +456,7 @@ throws IOException, PasswordSafeException
     *  @throws IOException
     */
    private static void readRecordsV23 ( PwsFile file, PwsRawFieldReader reader, 
-                                        String charset, int version )
+                                        String charset, int version ) throws StreamCorruptedException
    {
       PwsRecord rec;
       PwsPassphrase passphrase;
@@ -471,7 +472,11 @@ throws IOException, PasswordSafeException
       // read all fields until next EOR signal (or EOF)
       while ( reader.hasNext() ) {
          // read one FIELD
-         raw = (PwsRawField)reader.next();
+    	 try {
+    		 raw = (PwsRawField)reader.next();
+    	 } catch ( Exception e ) {
+    		 throw new StreamCorruptedException(e.toString());
+    	 }
 
          // handle FIELD
          switch ( raw.getType() )
@@ -706,6 +711,7 @@ throws IOException, PasswordSafeException
     * @throws IOException
     */
    private static void readRecordsV1 ( PwsFile file, PwsRawFieldReader reader )
+   				throws StreamCorruptedException
    {
       PwsRecord     rec;
       PwsPassphrase passphrase;
@@ -721,7 +727,11 @@ throws IOException, PasswordSafeException
       while ( reader.hasNext() ) {
 
     	 // read one FIELD 
-         raw = (PwsRawField)reader.next();
+     	 try {
+    		 raw = (PwsRawField)reader.next();
+    	 } catch ( Exception e ) {
+    		 throw new StreamCorruptedException(e.toString());
+    	 }
          counter++;
 
          // handle FIELD
