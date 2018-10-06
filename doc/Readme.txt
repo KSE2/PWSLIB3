@@ -1,4 +1,4 @@
-KSE PWSLIB 2-7-0
+KSE PWSLIB 2-8-0
 
 KSE Password Safe V3 Library
 README FILE
@@ -23,21 +23,18 @@ System Compatibility Format: PWS 3.13 (Password Safe)
 Reference Format Documents: formatV3.txt, formatV2.txt, formatV1.txt
 Javadoc API documentation available
 
-Release Date: 01 Feb 2017
-Text updated: 30 Jan 2017
+Release Date: 05 Oct 2018
 
 Available Executable Packages
-    pws-engine-kse-2-7-0.jar		Core, BSD-like license
-    pws-suppl-ftp-2-7-0.jar		FTP module, LGPL 2
+    pws-engine-kse-2-8-0.jar		Core, BSD-like license
+    pws-suppl-ftp-2-8-0.jar		FTP module, LGPL 2
 
 Documentary and Development Packages    
-    pws-engine-kse-2-7-0.zip		executables + documentation
-    pws-engine-source-2-7-0.zip		source code + libraries + documentation
+    pws-engine-kse-2-8-0.zip		executables + documentation
+    pws-engine-source-2-8-0.zip		source code + libraries + documentation
 
 Release Type
-2-7-0 is a major release including interface and some behaviour changes. 
-Thorough testing of usage is required when replacing previous versions!
-
+2-8-0 is a minor release introducing small advancements to suit JPWS 1.1.0.
 
 -------------------------------
 

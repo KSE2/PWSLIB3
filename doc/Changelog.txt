@@ -1,14 +1,21 @@
-KSE PWSLIB 2-7-0
+KSE PWSLIB 2-8-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 31 Jan 2017
+Text Date: 05 Oct 2018
 
 
-Actual Release 2-7-0, Date: 01 Feb. 2017
+Actual Release 2-8-0, Date: 05 Oct. 2018
 ----------------------------------------
+
+- Loading files now can throw the StreamCorruptedException.
+- DefaultRecordWrapper now holds the record properties as a Properties instance.
+
+
+Release 2-7-0, Date: 01 Feb. 2017
+---------------------------------
 
 - this is a major release including interface and some behaviour changes. Thorough testing
   of usage is required when replacing previous versions!
