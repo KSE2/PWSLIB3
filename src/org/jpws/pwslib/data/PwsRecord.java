@@ -152,8 +152,7 @@ public class PwsRecord implements Cloneable
  *  Creates a new PWS record with a new Record-ID (UUID). The ID is 
  *  automatically generated.  
  */
-public PwsRecord ()
-{
+public PwsRecord () {
    recordID = new UUID();
    createTime = normalisedTime(System.currentTimeMillis());
    modifyTime = createTime;
@@ -166,8 +165,7 @@ public PwsRecord ()
  *  
  *  @param time long epoch time value (milliseconds)
  */
-public PwsRecord ( long time )
-{
+public PwsRecord ( long time ) {
    recordID = new UUID();
    createTime = normalisedTime(time);
    modifyTime = createTime;
@@ -180,8 +178,7 @@ public PwsRecord ( long time )
  *  @param recID <code>UUID</code>
  *  @throws NullPointerException if the parameter is <b>null</b>  
  */
-public PwsRecord ( UUID recID )
-{
+public PwsRecord ( UUID recID ) {
    if ( recID == null )
       throw new NullPointerException();
    
@@ -227,8 +224,7 @@ private long normalisedTime (long time) {
     * 
     * @return <code>PwsRecord</code>
     */
-   public PwsRecord copy ()
-   {
+   public PwsRecord copy () {
       PwsRecord r = (PwsRecord)clone();
       r.setRecordID( new UUID() );
       return r;
@@ -237,8 +233,7 @@ private long normalisedTime (long time) {
    /**
     * Sets all record fields to zero values, except for Record-ID and CREATETIME.
     */
-   public void clear ()
-   {
+   public void clear () {
       setTitle( null );
       setEmail( (PwsPassphrase)null );
       setUsername( (PwsPassphrase)null );
@@ -271,8 +266,7 @@ private long normalisedTime (long time) {
    /**
     * Sets the modified time of this record to the current time.
     */
-   protected void modified ()
-   {
+   protected void modified () {
       if ( !initializing ) {
          modifyTime = normalisedTime(System.currentTimeMillis());
       }
@@ -283,8 +277,7 @@ private long normalisedTime (long time) {
  * @return boolean <b>true</b> if and only if this record has a valid ID, 
  *         a password and a title
  */    
-   public boolean isValid ()
-   {
+   public boolean isValid () {
       return getRecordID() != null &&
              getPassword() != null &&
              getTitle() != null;
@@ -299,8 +292,7 @@ private long normalisedTime (long time) {
     *         identical data signatures (<code>getSignature()</code>; includes 
     *         identity of record-ID)
     */    
-   public boolean isIdentical ( PwsRecord rec )
-   {
+   public boolean isIdentical ( PwsRecord rec ) {
       return rec != null && Util.equalArrays( rec.getSignature(), this.getSignature() );
    }
 
@@ -309,8 +301,7 @@ private long normalisedTime (long time) {
     *  
     *  @return String
     */
-   public String getInvalidText ()
-   {
+   public String getInvalidText () {
       if ( getRecordID() == null )
          return "UUID missing";
       if ( getTitle() == null )

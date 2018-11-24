@@ -486,7 +486,7 @@ throws IOException, PasswordSafeException
             } catch ( IllegalArgumentException e ) {
                // bad UUID value
                Log.error( 3, "(PwsFileFactory.readRecordsV2) bad record UUID: " 
-                     + Util.bytesToHex(raw.getDataDirect()) + 
+                     + Util.bytesToHex(raw.getDataDirect(), 0, Math.min(64, raw.getLength())) + 
                      "\r\ncreated new UUID: " + rec );
                file.setPreserveOld( true );
             }
@@ -1399,8 +1399,7 @@ private static void saveTextFieldV2 ( int type, String text,
    
    try {
 	  byte[] data = text.getBytes(charset);
-	  PwsRawField raw = new PwsRawField(type, data);
-      Util.destroyBytes(data);
+	  PwsRawField raw = new PwsRawField(type, data, false);
       writer.writeRawField(raw);
       raw.destroy();
 
@@ -1454,7 +1453,7 @@ private static void saveTimeField (int type,
    // for reasons of compatibility with PWS format definition  
    byte[] barr = new byte[4];
    Util.writeIntLittle( (int)(time/1000), barr, 0 );
-   writer.writeRawField( new PwsRawField(type, barr) );
+   writer.writeRawField( new PwsRawField(type, barr, false) );
 }  // saveTextField
 
 /** Stores a 4-byte integer value in Little-Endian format as a data field 
@@ -1475,7 +1474,7 @@ private static void saveIntegerField ( int type, int value,
 
    byte[] barr = new byte[4];
    Util.writeIntLittle(value, barr, 0);
-   writer.writeRawField( new PwsRawField( type, barr ) );
+   writer.writeRawField( new PwsRawField( type, barr, false ) );
 }  // saveTextField
 
 /** Stores a boolean value in a data field. 
@@ -1494,7 +1493,7 @@ private static void saveBooleanField (int type, boolean value,
    
    byte[] b = new byte[1];
    b[0] = (byte)(value ? 0xff : 0);
-   writer.writeRawField( new PwsRawField(type, b) );
+   writer.writeRawField( new PwsRawField(type, b, false) );
 }  // saveBooleanField
 
 /** Extracts an integer value from a rawfield. It is assumed that
@@ -1554,9 +1553,8 @@ private static void saveByteArray ( int type, byte[] data,
 {
    if ( data == null ) return;
    
-   PwsRawField raw = new PwsRawField( type, data );
+   PwsRawField raw = new PwsRawField( type, data, false );
    writer.writeRawField( raw );
-   raw.destroy();
 }  // saveByteArray
 
    

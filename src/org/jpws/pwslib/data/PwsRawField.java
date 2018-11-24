@@ -89,7 +89,26 @@ public class PwsRawField implements Cloneable {
     */
    public PwsRawField (int type, byte[] data) {
       int len = data == null ? 0 : data.length;
-      init(type, len, data);
+      init(type, len, data, true);
+   }
+   
+   /**
+    * Constructor for a raw-field with a length value and content identical to
+    * the parameter byte array. The byte array may be of any size. This 
+    * constructor can create a data content in direct reference, depending
+    * on the boolean parameter.
+    *      
+    * @param type int 0..255; the field's data type 
+    *                 (convention of the PWS format definition)
+    * @param data byte array, content of the field (any length); may be 
+    *             <b>null</b> in which case length 0 is assumed
+    * @param copy boolean true = a copy of the given data is used, false =
+    *             data consists of the given reference
+    *     
+    */
+   public PwsRawField (int type, byte[] data, boolean copy) {
+      int len = data == null ? 0 : data.length;
+      init(type, len, data, copy);
    }
    
    /**
@@ -103,7 +122,7 @@ public class PwsRawField implements Cloneable {
     *        supplemented by zero bytes); may be <b>null</b>    
     */
    public PwsRawField (int type, int length, byte[] data) {
-      init(type, length, data);
+      init(type, length, data, false);
    }
 
    /**
@@ -139,7 +158,7 @@ public class PwsRawField implements Cloneable {
       }
    }
    
-   private void init ( int type, int length, byte[] data ) {
+   private void init ( int type, int length, byte[] data, boolean copy ) {
 	   if ( length < 0 )
 	      throw new IllegalArgumentException( "illegal field length : " + length );
 	   if ( (type & ~0xff) != 0 )
@@ -148,8 +167,13 @@ public class PwsRawField implements Cloneable {
 	   // store values
 	   this.type = type;
 	   this.length = length;
+	   
 	   if ( data != null && length > 0 ) {
-	      this.data =  Util.arraycopy(data, length);
+		  if ( copy || length != data.length ) {
+			  this.data =  Util.arraycopy(data, length);
+		  } else {
+			  this.data = data;
+		  }
 	   } else if ( length > 0 ) {
 		  this.data = new byte[length];
 	   }
@@ -256,9 +280,9 @@ public class PwsRawField implements Cloneable {
    public Object clone () {
       try { 
     	 PwsRawField field = (PwsRawField)super.clone(); 
-    	 if ( field.data != EMPTY_BLOCK ) {
-            field.data = (byte[])this.data.clone();
-    	 }
+//    	 if ( field.data != EMPTY_BLOCK ) {
+//            field.data = (byte[])this.data.clone();
+//    	 }
          return field;
 
       } catch ( CloneNotSupportedException e ) {
@@ -646,7 +670,7 @@ public class PwsRawField implements Cloneable {
     *  After this, the field has no further meaning, sensitive data been 
     *  effectively cleaned out.
     */
-   public void destroy () {
+   void destroy () {
       type = 0;
       length = 0;
       crcValue = 0;

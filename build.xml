@@ -19,9 +19,9 @@
 	<property name="java1.6-runtime" value="/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-8-0" />
+	<property name="ver" value="2-8-1" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value="05 Oct 2018"/>
+        <property name="release date" value="06 Dec 2018"/>
         <property name="release year" value="2018"/>
         <property name="release type" value="Intern, Minor"/>
         <property name="system format" value="3.13"/>
@@ -67,7 +67,7 @@
   <fileset dir="${suppl}/src">
     <exclude name="**/Test*.*"/>
   </fileset>
-  <bottom><![CDATA[<i>Copyright &#169; ${release year} Wolfgang Keller (KSE). All Rights Reserved. Contact kse@sourceforge.net</i>]]></bottom>
+  <bottom><![CDATA[<i>Copyright &#169; ${release year} Wolfgang Keller (KSE), Munich Germany. All Rights Reserved.</i>]]></bottom>
   <Header><![CDATA[<b>KSE PWSLIB ${ver}</b>]]></Header>
   <Doctitle><![CDATA[PasswordSafe V${system format} Library<p>KSE PWSLIB ${ver}
           <p>Release Date: ${release date}</p>]]></Doctitle>

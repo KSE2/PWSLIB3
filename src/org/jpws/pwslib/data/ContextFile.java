@@ -18,6 +18,7 @@
 
 package org.jpws.pwslib.data;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -390,6 +391,25 @@ public void copyTo ( String path ) throws IOException, ApplicationFailureExcepti
 public boolean setModifyTime ( long modifyTime ) throws IOException
 {
    return adapter.setModifiedTime( filepath, modifyTime );
+}
+
+/** This file is replaced by the given data content.
+ * 
+ * @param data byte[]
+ * @throws IOException 
+ * @throws NullPointerException if parameter is null
+ */
+public void receiveContent (byte[] data) throws IOException {
+	if (data == null)
+		throw new NullPointerException("data is null");
+	
+	OutputStream out = getOutputStream();
+	ByteArrayInputStream in = new ByteArrayInputStream(data);
+	try {
+		Util.transferData(in, out, 4096);
+	} finally {
+		out.close();
+	}
 }
 
 }

@@ -40,6 +40,14 @@ import java.io.IOException;
     */
    public void writeRawField ( PwsRawField rawField ) throws IOException;
 
+//   /** Writes the raw data onto the stream. Does nothing if data is null.
+//    * 
+//    * @param type int data type
+//    * @param data byte[] data block
+//    * @throws IOException
+//    */
+//   public void writeData (int type, byte[] data) throws IOException;
+   
    /** 
     * The number of written blocks in the underlying output stream.
     *  
