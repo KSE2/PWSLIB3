@@ -31,7 +31,7 @@ import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.Util;
 
 /**
- *  Enhanced random generator for cryptographical purposes. Claims to be 
+ *  Enhanced random generator for cryptographic purposes. Claims to be 
  *  thread-safe. 
  *  <p>This random generator is based on the SHA-512 function which is assumed 
  *  to generate a set of cryptologically qualifying random values on any given
@@ -67,8 +67,7 @@ public class CryptoRandom
  * Constructs a random generator under standard values for refresh cycle 
  * and random seed. The default cycle period is 8.
  */
-public CryptoRandom ()
-{
+public CryptoRandom () {
    init( null );
 }
 
@@ -79,8 +78,7 @@ public CryptoRandom ()
  * 
  * @param cycle int number of loops to use a single data pool incarnation
  */
-public CryptoRandom ( int cycle )
-{
+public CryptoRandom ( int cycle ) {
    this( cycle, null );
 }
 
@@ -90,8 +88,7 @@ public CryptoRandom ( int cycle )
  * 
  * @param init byte[] initial random seed data, may be <b>null</b>
  */
-public CryptoRandom ( byte[] init )
-{
+public CryptoRandom ( byte[] init ) {
    init( init );
 }
 
@@ -103,8 +100,7 @@ public CryptoRandom ( byte[] init )
  * @param cycle int number of loops to use a single pool incarnation
  * @param init byte[] initial random seed data (may be <b>null</b>)
  */
-public CryptoRandom ( int cycle, byte[] init )
-{
+public CryptoRandom ( int cycle, byte[] init ) {
    if ( cycle < 1 )
       throw new IllegalArgumentException();
    
@@ -112,16 +108,14 @@ public CryptoRandom ( int cycle, byte[] init )
    init( init );
 }
 
-private void init ( byte[] init )
-{
+private void init ( byte[] init ) {
    instanceID = instanceCounter++;
    rand.nextBytes( data );
    collectPool( init );
    recalculate();
 }
 
-private void collectPool ( byte[] init )
-{
+private void collectPool ( byte[] init ) {
    Toolkit tk;
    Dimension dim;
    ByteArrayOutputStream out;
@@ -228,8 +222,7 @@ private void collectPool ( byte[] init )
  * 
  * @return byte[] random seeds
  */
-public byte[] getUserSeed ()
-{
+public byte[] getUserSeed () {
    return null;
 }
 
@@ -238,14 +231,12 @@ public byte[] getUserSeed ()
  * 
  *  @param init byte[] user seed data or <b>null</b>
  */
-public synchronized void recollect ( byte[] init )
-{
+public synchronized void recollect ( byte[] init ) {
    collectPool( init );
 }
 
 /** Creates a new 2*HASHSIZE bytes random data block. */
-private void recalculate ()
-{
+private void recalculate () {
    SHA512 sha;
    byte[] buf, prevData;
    int hashLen;
@@ -283,8 +274,7 @@ private void recalculate ()
  * 
  *  @return byte
  */
-public synchronized byte nextByte ()
-{
+public synchronized byte nextByte () {
    return nextByteIntern();
 }
 
@@ -292,8 +282,7 @@ public synchronized byte nextByte ()
  * 
  *  @return byte
  */
-private byte nextByteIntern ()
-{
+private byte nextByteIntern () {
    if ( pos == data.length ) {
       recalculate();
    }
@@ -307,8 +296,7 @@ private byte nextByteIntern ()
  *  @param n int size of value range 
  *  @return int random value
  */
-public synchronized int nextInt ( int n )
-{
+public synchronized int nextInt ( int n ) {
    if (n<=0)
       throw new IllegalArgumentException("n <= 0");
 
@@ -323,8 +311,7 @@ public synchronized int nextInt ( int n )
  * 
  *  @return int random value
  */
-public synchronized int nextInt ()
-{
+public synchronized int nextInt () {
    return nextIntIntern();
 }
 
@@ -332,8 +319,7 @@ public synchronized int nextInt ()
  * 
  *  @return long random value
  */
-public synchronized long nextLong ( )
-{
+public synchronized long nextLong () {
    return ((long)nextIntIntern() << 32) | ((long)nextIntIntern() & 0xFFFFFFFFL);
 }
 
@@ -343,8 +329,7 @@ public synchronized long nextLong ( )
  * @param num int length of output byte array
  * @return byte[] random bytes
  */
-public synchronized byte[] nextBytes ( int num )
-{
+public synchronized byte[] nextBytes ( int num ) {
    if ( num < 0 )
       throw new IllegalArgumentException("num < 0");
    
@@ -360,8 +345,7 @@ public synchronized byte[] nextBytes ( int num )
  * 
  *  @return boolean random value
  */
-public boolean nextBoolean ()
-{
+public boolean nextBoolean () {
    return nextByte() < 0;
 }
 
@@ -370,8 +354,7 @@ public boolean nextBoolean ()
  * 
  *  @return int random value
  */
-private int nextIntIntern ()
-{
+private int nextIntIntern () {
    return
    (int)nextByteIntern() << 24 |
    ((int)nextByteIntern() & 0xFF) << 16 |

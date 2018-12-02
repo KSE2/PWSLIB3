@@ -30,25 +30,25 @@ public class ByteArrayOutputStreamPws extends ByteArrayOutputStream
 {
 
 /**
- * 
+ * Creates a new ByteArrayOutputStreamPws with an initial buffer size or 32 
+ * bytes. 
  */
-public ByteArrayOutputStreamPws ()
-{
+public ByteArrayOutputStreamPws () {
    super();
 }
 
 /**
- * @param size
+ * Creates a new ByteArrayOutputStreamPws with the given initial buffer size. 
+ *  
+ * @param size int initial buffer size
  */
-public ByteArrayOutputStreamPws ( int size )
-{
-   super( size );
+public ByteArrayOutputStreamPws (int size) {
+   super(size);
 }
 
 /** Erases the internal byte buffer and resets the object. */
-public void clear ()
-{
-   Util.destroyBytes( this.buf );
+public void clear () {
+   Util.destroyBytes(this.buf);
    this.reset();
 }
 

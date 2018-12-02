@@ -4,13 +4,13 @@ KSE PWSLIB 2-8-1
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 24 Nov 2018
+Text Date: 01 Dec 2018
 
 
 Actual Release 2-8-1, Date: 06 Dec. 2018
 ----------------------------------------
 
-- improved data-complexity for writing a database file
+- improved data-complexity in readind and writing the database file
 - PwsRawField improved behaviour of cloning
 - PwsRawField now allows data direct reference to external block
 

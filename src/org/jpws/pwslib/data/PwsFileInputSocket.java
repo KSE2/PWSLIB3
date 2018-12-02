@@ -26,7 +26,6 @@ import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.exception.UnsupportedFileVersionException;
 import org.jpws.pwslib.exception.WrongFileVersionException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.PwsChecksum;
 import org.jpws.pwslib.global.UUID;
 
 
@@ -478,7 +477,7 @@ public HeaderFieldList getHeaderFields ()
  {
     PwsRawField raw = headerFields != null ? 
     	  headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE ) : null;
-    return raw == null ? null : new UUID( raw.getData() );
+    return raw == null ? null : new UUID( raw.getDataDirect() );
  }
 
 }

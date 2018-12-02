@@ -1259,7 +1259,7 @@ private static void saveUnknownFields ( PwsRecord rec, PwsRawFieldWriter writer 
             if ( Log.getDebugLevel() > 5 ) {
                String hstr = "-- saving UNKNOWN FIELD (" + rec + ") id=" + 
                       Util.byteToHex( ufld.type ) + ", val=" + Util.bytesToHex( 
-                      limitedBytes(ufld.getData(), 512) );
+                      limitedBytes(ufld.getDataDirect(), 512) );
                Log.debug(6, hstr);
             }
          

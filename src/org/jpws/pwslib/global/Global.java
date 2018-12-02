@@ -52,7 +52,7 @@ import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 public final class Global
 {
 
-public static final String LIBRARY_VERSION = "2.8.0";  
+public static final String LIBRARY_VERSION = "2.8.1";  
 public static final String LIBRARY_IDENT = "KSE-PWSLIB " + LIBRARY_VERSION;  
 
 /** Milliseconds of a day.
@@ -98,8 +98,7 @@ static {
 /** The identifier for the application program using this library.
  *  By default this is the library name.
  */
-public static String getProgramName ()
-{
+public static String getProgramName () {
    return programName;
 }
 
@@ -108,8 +107,7 @@ public static String getProgramName ()
  *  
  *  @param name String with max. 60 char
  */
-public static void setProgramName ( String name )
-{
+public static void setProgramName ( String name ) {
    if ( name != null ) {
       if ( name.length() > 60 ) {
          name = name.substring( 0, 60 );
@@ -123,8 +121,7 @@ public static void setProgramName ( String name )
  *  
  *  @param adp <code>ApplicationAdapter</code> new standard adapter, may be null
  */
-public static void setStandardApplication ( ApplicationAdapter adp )
-{
+public static void setStandardApplication ( ApplicationAdapter adp ) {
    haveApplications = adp != null;
    standardApplication = adp;
    
@@ -142,8 +139,7 @@ public static void setStandardApplication ( ApplicationAdapter adp )
  * 
  *  @return <code>ApplicationAdapter</code> or <b>null</b>
  */
-public static ApplicationAdapter getStandardApplication ()
-{
+public static ApplicationAdapter getStandardApplication () {
    return standardApplication;
 }
 
@@ -154,8 +150,7 @@ public static ApplicationAdapter getStandardApplication ()
  * 
  *  @return <code>PwsCipher</code>
  */
-public static PwsCipher getStandardCipher ()
-{
+public static PwsCipher getStandardCipher () {
    return standardCipher;
 }
 
@@ -164,23 +159,19 @@ public static PwsCipher getStandardCipher ()
  *  
  * @return Dimension, width = major, height = minor version number 
  */
-public static Dimension getImplicitFileVersion ()
-{
+public static Dimension getImplicitFileVersion () {
    return new Dimension( FILEVERSION_LATEST_MAJOR, FILEVERSION_LATEST_MINOR);
 }
 
 /** The currently active default character set of the Java Virtual Machine. */
-public static String getDefaultCharset ()
-{
+public static String getDefaultCharset () {
 	return Charset.defaultCharset().name();
-//   return new OutputStreamWriter(new ByteArrayOutputStream()).getEncoding();
 }
 
 /** Whether user names shall be displayed together with record titles.
  *  The default value is <b>false</b>.
  *  */
-public static boolean isDisplayUsernames ()
-{
+public static boolean isDisplayUsernames () {
    return displayUsernames;
 }
 
@@ -197,8 +188,7 @@ public static boolean haveApplications () {
  *  
  *  @param v boolean <b>true</b> == display user names
  */
-public static void setDisplayUsernames ( boolean v )
-{
+public static void setDisplayUsernames ( boolean v ) {
    displayUsernames = v;
 }
 
@@ -220,7 +210,6 @@ private static void init () {
 	  String text = "CAUTION! Security-test failed! Package may be unusable";
 	  boolean ok = securityTest();
 	  if ( ok ) {
-//		  standardCipher = new TwofishCipher();
 		  standardCipher = new TwofishCipher();
 		  text = "standard cipher: ".concat(standardCipher.getName());
 	  }
@@ -256,8 +245,8 @@ private static boolean securityTest () {
 }
 
 
-private Global ()
-{}
+private Global () {
+}
    
 /**
  * This performs a short self-testing verification of crucial library functions.
@@ -266,7 +255,6 @@ private Global ()
  */   
 public static void main ( String[] args ) {
    Log.setLogLevel(10);
-//   Log.log(0, getProgramName());
    Log.log(0, "Default Charset: ".concat(getDefaultCharset()));
    Log.log(0, "Standard Cipher: ".concat(getStandardCipher().getName()));
    Dimension ver = getImplicitFileVersion();

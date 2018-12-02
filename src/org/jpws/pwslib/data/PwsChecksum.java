@@ -16,10 +16,10 @@
  FOR A PARTICULAR PURPOSE. See the license for more details.
 */
 
-package org.jpws.pwslib.global;
+package org.jpws.pwslib.data;
 
 import org.jpws.pwslib.crypto.SHA256;
-import org.jpws.pwslib.data.PwsRawField;
+import org.jpws.pwslib.global.Util;
 
 /**
  *  A checksum factory conforming to RFC-2104. 
@@ -36,21 +36,18 @@ public class PwsChecksum implements Cloneable
  *  
  * @param seed byte[] key data up to length 64 bytes
  */
-public PwsChecksum ( byte[] seed )
-{
-   int i, bs;
+public PwsChecksum ( byte[] seed ) {
    byte[] key, ipad;
    
    // verify conditions
-   bs = sha.getBlockSize();
+   int bs = sha.getBlockSize();
    if ( seed.length > bs )
       throw new IllegalArgumentException("seed length exceeding");
 
    // prepare ipad and opad
    ipad = new byte[ bs ];
    opad = new byte[ bs ];
-   for ( i = 0; i < bs; i++ )
-   {      
+   for ( int i = 0; i < bs; i++ ) {      
       ipad[ i ] = 0x36;
       opad[ i ] = 0x5C;
    }
@@ -63,39 +60,31 @@ public PwsChecksum ( byte[] seed )
    sha.update( ipad );
 }
 
-public void update ( byte[] data )
-{
-   if ( data != null ) 
-   {
+public void update ( byte[] data ) {
+   if ( data != null ) {
       update(data, 0, data.length);
    }
 }
 
 public void update(byte[] data, int offset, int length) {
-   if ( data != null )
-   {
+   if ( data != null ) {
 //      Log.debug(8, "(PwsChecksum.update) updating (" +
 //          length + "): " + Util.bytesToHex(data, offset, length));
       sha.update( data, offset, length );
    }
 }
 
-public void update ( PwsRawField raw )
-{
-   if ( raw != null )
-   {
-      byte[] buffer = raw.getData();
-      update( buffer );
-      Util.destroyBytes( buffer );
+public void update ( PwsRawField raw ) {
+   if ( raw != null ) {
+      byte[] buffer = raw.getDataDirect();
+      update( buffer, 0, raw.getLength() );
    }
 }
 
-public byte[] digest ()
-{
+public byte[] digest () {
    byte[] dg;
    
-   if ( digest == null )
-   {
+   if ( digest == null ) {
       dg = sha.digest();
       sha.reset();
       sha.update( opad );
@@ -117,7 +106,4 @@ public Object clone() {
    }
    return sum;
 }
-
-
-
 }

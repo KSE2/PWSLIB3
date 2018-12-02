@@ -20,8 +20,6 @@ package org.jpws.pwslib.data;
 
 import java.io.IOException;
 
-import org.jpws.pwslib.global.PwsChecksum;
-
 /**
  * Interface defines a low-level read streaming device of data blocks
  * of a fixed length. Depending on the encryption technology used in the linked

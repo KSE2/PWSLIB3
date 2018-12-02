@@ -23,7 +23,6 @@ import java.io.InputStream;
 import java.util.NoSuchElementException;
 
 import org.jpws.pwslib.crypto.PwsCipher;
-import org.jpws.pwslib.global.PwsChecksum;
 
 /**
  * Class forming an iterator over {@link PwsRawField} objects

@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.PwsChecksum;
 import org.jpws.pwslib.global.UUID;
 import org.jpws.pwslib.global.Util;
 

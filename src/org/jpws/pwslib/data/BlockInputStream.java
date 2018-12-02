@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.io.StreamCorruptedException;
 
 import org.jpws.pwslib.crypto.PwsCipher;
-import org.jpws.pwslib.global.PwsChecksum;
 import org.jpws.pwslib.global.Util;
 
 /**

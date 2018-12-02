@@ -1149,13 +1149,13 @@ public class PwsFile extends PwsRecordList implements Cloneable
     	 PwsRawField fld = it.next();
          headerFields.setField( fld );
          if ( Log.getDebugLevel() > 6 )
-            Log.debug( 7, "    id=" + fld.type + "  data=" + Util.bytesToHex( fld.getData() ) );
+            Log.debug( 7, "    id=" + fld.type + "  data=" + Util.bytesToHex( fld.getDataDirect() ) );
       }
       
       // update file format property if supplied
       PwsRawField fld = headerFields.getField( PwsFileHeaderV3.FILE_FORMAT_TYPE );
       if ( fld != null ) {
-    	 byte[] buf = fld.getData();
+    	 byte[] buf = fld.getDataDirect();
          if ( buf.length >= 2 ) {
             formatVersionMajor = buf[1];
             formatVersionMinor = buf[0];

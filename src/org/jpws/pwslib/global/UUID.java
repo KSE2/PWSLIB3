@@ -32,13 +32,12 @@ import org.jpws.pwslib.crypto.SHA1;
  * By convention it is constructed as a 16 byte bit-array. This implementation
  * uses time, random bytes and SHA1 to reach at a qualified unique value.
  * 
- * @author Kevin Preece
  * @author Wolfgang Keller
  */
 public final class UUID implements Cloneable, Comparable<UUID>, Serializable
 {
-	private final byte []		uidValue	= new byte[ 16 ];
-	private       int          hashcode;
+	private final byte []	uidValue = new byte[16];
+	private       int       hashcode;
 
 	/**
 	 * Constructs this object as a a new random UUID.
@@ -46,9 +45,8 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
     * @throws IllegalStateException if creation fails
     *         (should happen only on out of memory) 
 	 */
-	public UUID()
-	{
-	   ByteArrayOutputStream bstream;
+	public UUID() {
+	  ByteArrayOutputStream bstream;
       DataOutputStream stream;
       SHA1 sha;
       byte[]   result;
@@ -74,10 +72,8 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
          System.arraycopy( result, 0, uidValue, 0, uidValue.length );
          hashcode = Util.arrayHashcode(uidValue);
 //System.out.println( "UUID value: " + toString() );      
-      }
 
-      catch ( Exception e )
-      {        
+      } catch ( Exception e ) {        
          e.printStackTrace();
          throw new IllegalStateException("corrupted UUID creation");
       }
@@ -89,8 +85,7 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
 	 * @param uuid the 16 bytes array to use as the UUID
      * @throws IllegalArgumentException
 	 */
-	public UUID( byte [] uuid )
-	{
+	public UUID( byte [] uuid )	{
 		if ( uuid == null || uuid.length != uidValue.length )
 			throw new IllegalArgumentException();
 
@@ -106,8 +101,7 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
      * @throws IllegalArgumentException
      * @since 0-4-0        
      */
-    public UUID( String ids )
-    {
+    public UUID( String ids ) {
        byte[] uuid;
        
        uuid = Util.hexToBytes( ids );
@@ -127,8 +121,7 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
     *         are equal
 	 */
 	@Override
-	public boolean equals( Object obj )
-	{
+	public boolean equals( Object obj )	{
       if ( obj == null || !(obj instanceof UUID) )
          return false;
       
@@ -138,32 +131,31 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
 	/** A hashcode coherent with <code>equals()</code>.
 	 */ 
    @Override
-   public int hashCode()
-   {
+   public int hashCode() {
       return hashcode;
    }
 
    //  * @since 2-1-0
 	@Override
-	public int compareTo ( UUID o )
-   {
+	public int compareTo ( UUID o ) {
        UUID obj = (UUID)o;
        int i = 0;
-       while ( i < uidValue.length && uidValue[ i ] == obj.uidValue[ i ] )
+       while ( i < uidValue.length && uidValue[ i ] == obj.uidValue[ i ] ) {
           i++;
-       if ( i == uidValue.length )
+       }
+       if ( i == uidValue.length ) {
           return 0;
+       }
        return uidValue[ i ] - obj.uidValue[ i ];
-   }
+    }
 
-   /**
+    /**
 	 * Returns a byte array containing a copy of the 16 byte value
-    * of this UUID.
+     * of this UUID.
 	 * 
 	 * @return byte array (length 16)
 	 */
-	public byte [] getBytes()
-	{
+	public byte [] getBytes() {
 		return (byte[]) uidValue.clone();
 	}
 
@@ -172,20 +164,18 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
      * of this UUID.
      * @return String
      */
-    public String toHexString ()
-    {
+    public String toHexString () {
        return Util.bytesToHex( uidValue );
     }
     
    /**
-    * Makes a deep clone of this UUID object.
+    * Clone of this UUID object.
     */
    @Override
-   public Object clone ()
-   {
-      try {  return super.clone();  }
-      catch ( CloneNotSupportedException e )
-      {
+   public Object clone () {
+      try {  
+    	  return super.clone(); 
+      } catch ( CloneNotSupportedException e ) {
          return null;
       }
    }
@@ -197,21 +187,19 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
 	 * @return <code>String</code> representation of this <code>UUID</code>
 	 */
 	@Override
-	public String toString()
-	{
+	public String toString() {
 		return toString( uidValue );
 	}
 
 	/**
 	 * Converts a <code>uuid</code> value into human-readable form.  The resulting
-    * string has the format: {01234567-89ab-cdef-0123-456789abcdef}.
+     * string has the format: {01234567-89ab-cdef-0123-456789abcdef}.
 	 * 
 	 * @param uuid the 16 byte array to convert; must be of length 16! 
 	 * @return <code>String</code> representation of the parameter <code>UUID</code>
-    *         value
+     *         value
 	 */
-	public static String toString( byte[] uuid )
-	{
+	public static String toString( byte[] uuid ) {
 		if ( uuid.length != 16 )
 			throw new IllegalArgumentException();
 

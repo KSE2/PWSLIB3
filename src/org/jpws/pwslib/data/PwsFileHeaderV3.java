@@ -31,7 +31,6 @@ import org.jpws.pwslib.crypto.TwofishCipher;
 import org.jpws.pwslib.exception.UnsupportedFileVersionException;
 import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.PwsChecksum;
 import org.jpws.pwslib.global.UUID;
 import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.persist.V3_InputStream;
@@ -320,7 +319,7 @@ public class PwsFileHeaderV3
     public UUID getFileID ()
     {
        PwsRawField raw = hdrFields.getField( FILE_UUID_TYPE );
-       return raw == null ? null : new UUID( raw.getData() );
+       return raw == null ? null : new UUID( raw.getDataDirect() );
     }
     
     /**
@@ -556,8 +555,10 @@ public class PwsFileHeaderV3
             
             // else read a rawfield
             PwsRawField raw = new PwsRawField(blockStream, Global.FILEVERSION_3);
-            Log.log( 5, "** read HEADER FIELD: t=" + raw.getType() + ", c=" + Util.bytesToHex( raw.getData() ));
-            Log.log( 5, "                            " + Util.printableString( raw.getString( "UTF-8" ) ));
+            if (Log.getLogLevel() > 4) {
+            	Log.log( 5, "** read HEADER FIELD: t=" + raw.getType() + ", c=" + Util.bytesToHex( raw.getDataDirect() ));
+            	Log.log( 5, "                            " + Util.printableString( raw.getString( "UTF-8" ) ));
+            }
             setHeaderField( raw );
             readHmac.update( raw );
          }
