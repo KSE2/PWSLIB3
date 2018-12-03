@@ -1,9 +1,9 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
 
-Current status: RELEASE 2-7-0
+Current status: RELEASE 2-8-1
 
-Release date: 01 Feb 2017
+Release date: 06 Dec 2018
 
 Platform: Java 1.6 or higher
 
@@ -19,6 +19,16 @@ Available Supplements:
 
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
+
+Release 2-8-1
+
+- maintenance release; optimisations in data complexity
+
+- PwsRawField improved behaviour of cloning
+
+- PwsRawField now allows data direct reference to external block
+
+New Features with 2-7-0
 
 Release 2-7-0
 
