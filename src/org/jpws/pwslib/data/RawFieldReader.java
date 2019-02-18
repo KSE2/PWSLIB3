@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.util.NoSuchElementException;
 
 import org.jpws.pwslib.crypto.PwsCipher;
+import org.jpws.pwslib.global.Global;
 
 /**
  * Class forming an iterator over {@link PwsRawField} objects
@@ -93,15 +94,13 @@ class RawFieldReader implements PwsRawFieldReader
     * @throws IOException
     */
    public RawFieldReader ( InputStream input, PwsCipher cipher, int format, 
-		                   PwsChecksum hmac  ) throws IOException
-   {
-      blockStream = new BlockInputStream( input, cipher );
+		                   PwsChecksum hmac  ) throws IOException {
+      blockStream = new BlockInputStream( input, cipher, Global.BLOCK_BUFFER_FACTOR );
       init( blockStream, format, hmac );
    }
 
    private void init ( PwsBlockInputStream bs, int format, PwsChecksum hmac ) 
-		             throws IOException
-   {
+		             throws IOException {
       blockStream = bs;
       fileVersion = format;
       this.hmac = hmac;
@@ -109,27 +108,23 @@ class RawFieldReader implements PwsRawFieldReader
    }
    
    @Override
-   public int getBlocksize ()
-   {
+   public int getBlocksize () {
       return blockStream.getBlockSize();
    }
    
    @Override
-   public void close ()
-   {
+   public void close () {
       nextField = null;
       blockStream = null;
    }
 
    @Override
-   public boolean hasNext ()
-   {
+   public boolean hasNext () {
       return nextField != null;
    }
 
    @Override
-   public PwsRawField next ()
-   {
+   public PwsRawField next () {
       PwsRawField field = nextField;
       if ( field != null ) {
          try { 
@@ -147,13 +142,11 @@ class RawFieldReader implements PwsRawFieldReader
    }
 
    @Override
-   public void remove ()
-   {
+   public void remove () {
       throw new UnsupportedOperationException();
    }
    
-   private void readNextRawField () throws IOException
-   {
+   private void readNextRawField () throws IOException {
       // clear instance member
       nextField = null;
 

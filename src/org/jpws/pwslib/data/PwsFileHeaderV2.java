@@ -237,7 +237,7 @@ class PwsFileHeaderV2
       try {
          // we have the correct passphrase here
     	 PwsCipher cipher = makeFileCipher( passphrase );
-         blockStream = new BlockInputStream( input, cipher );
+         blockStream = new BlockInputStream( input, cipher, Global.BLOCK_BUFFER_FACTOR );
        
          // now reading the V2 administration block
          // read the version ID field

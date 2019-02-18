@@ -66,13 +66,25 @@ public class ScatterCipher implements PwsCipher {
 	}
 
 	@Override
-	public byte[] decrypt(byte[] buffer, int start, int length) {
+	public byte[] decrypt (byte[] buffer, int start, int length) {
 		if ( length % blocksize != 0 )
 	         throw new IllegalArgumentException("illegal cryptblock length");
 		
 		byte[] buf = Util.arraycopy(buffer, start, length);
-		Util.scatter(buf, length,  false);
+		Util.scatter(buf, 0, length,  false);
 		return buf;
+	}
+
+	@Override
+	public void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+		System.arraycopy(input, inOffs, output, outOffs, length);
+		Util.scatter(output, outOffs, length,  false);
+	}
+
+	@Override
+	public void encrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+		System.arraycopy(input, inOffs, output, outOffs, length);
+		Util.scatter(output, outOffs, length,  true);
 	}
 
 	@Override
@@ -81,12 +93,12 @@ public class ScatterCipher implements PwsCipher {
 	}
 
 	@Override
-	public byte[] encrypt(byte[] buffer, int start, int length) {
+	public byte[] encrypt (byte[] buffer, int start, int length) {
 		if ( length % blocksize != 0 )
 	         throw new IllegalArgumentException("illegal cryptblock length");
 
 		byte[] buf = Util.arraycopy(buffer, start, length);
-		Util.scatter(buf, length,  true);
+		Util.scatter(buf, 0, length,  true);
 		return buf;
 	}
 

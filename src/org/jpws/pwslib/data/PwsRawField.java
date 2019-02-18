@@ -429,9 +429,9 @@ public class PwsRawField implements Cloneable {
       int targetSize = offset+blockedLen;
       if ( data.length < targetSize ) {
     	  data = Util.arraycopy(data, targetSize);
-    	  Log.log(10, "(PwsRawField.getBlockedDataIntern) data array-copy, length=" + targetSize);
+//    	  Log.log(10, "(PwsRawField.getBlockedDataIntern) data array-copy, length=" + targetSize);
       } else {
-    	  Log.log(10, "(PwsRawField.getBlockedDataIntern) avoided data copy, length=" + targetSize);
+//    	  Log.log(10, "(PwsRawField.getBlockedDataIntern) avoided data copy, length=" + targetSize);
       }
 
       // create ByteBuffer and fill segment over size with random data
@@ -584,7 +584,6 @@ public class PwsRawField implements Cloneable {
       if ( bbuf != null ) {
          byte[] buf2 = cipher.encrypt(bbuf.array(), bbuf.position(), bbuf.remaining());
          out.write(buf2);
-         Util.destroyBytes(buffer);
       }
       
       // update checksum
@@ -609,8 +608,7 @@ public class PwsRawField implements Cloneable {
     * @throws IOException
     */
    private void readStream ( PwsBlockInputStream blockStream, int format ) 
-		   throws IOException
-   {
+		   throws IOException {
       FieldHeader header;
       byte[] block;
       
@@ -620,7 +618,6 @@ public class PwsRawField implements Cloneable {
       
       // determine field header block values and number of data blocks to be read
       header = new FieldHeader(block, format);
-      Util.destroyBytes(block);
 
       // create field elements
       length = header.length;
@@ -631,21 +628,17 @@ public class PwsRawField implements Cloneable {
          int offset = 0;
 
          // collect header block data segment (V3 files)
-	     if ( header.data != null ) {
-	        offset = header.data.length;
-	        System.arraycopy(header.data, 0, data, 0, offset);
-	     }
+         if ( format == Global.FILEVERSION_3 ) {
+	        offset = header.writeDataSegment(data, 0);
+         }
 	
-	     // collect following (V3: additional) data blocks
-	     block = blockStream.readBlocks( header.blocks );
-	     if ( block == null ) {
-	        throw new EOFException();
-	     }
-	     System.arraycopy(block, 0, data, offset, header.length - offset);
-	     Util.destroyBytes(block);
+	     // collect following data blocks if required
+         int remains = length - offset;
+         if ( remains > 0 ) {
+        	 // write field data from following blocks   
+	         blockStream.writeBlocks(data, offset, remains);
+         }
       }
-      
-      header.clear();
    }  // readStream
    
    /** Whether this raw field contains data. A length value of zero is 

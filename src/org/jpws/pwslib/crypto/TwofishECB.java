@@ -77,44 +77,26 @@ public TwofishECB ( byte[] key, int offset, int length ) {
    }
 }
 
-@Override
-public byte[] decrypt ( byte[] buffer, int start, int length ) {
-   return crypting( buffer, start, length, true );
-}
-
-@Override
-public byte[] encrypt ( byte[] buffer, int start, int length ) {
-   return crypting( buffer, start, length, false );
-}
-
-@Override
-public int getBlockSize () {
-   return Twofish.BLOCK_SIZE;
-}
-
-private byte[] crypting ( byte[] buffer, int start, int length, boolean dec ) {
-   byte[] one, result;
-   int i, pos, loops;
-   
-   if ( start < 0 | length < 0 | start + length > buffer.length )
-      throw new IllegalArgumentException( "illegal parameter setting" );
-   if ( length % Twofish.BLOCK_SIZE > 0 )
-      throw new IllegalArgumentException( "illegal data blocklength" );
-   
-   loops = length / Twofish.BLOCK_SIZE;
-   result = new byte[ length ];
-   one = null;
-   pos = start;
-   for ( i = 0; i < loops; i++ ) {
-      one = dec ? Twofish.blockDecrypt( buffer, pos, sk ) 
-            : Twofish.blockEncrypt( buffer, pos, sk );
-      System.arraycopy( one, 0, result, pos - start, Twofish.BLOCK_SIZE );
-      Util.destroyBytes(one);
-      pos += Twofish.BLOCK_SIZE;
-   }
-   return result;
-}
-
+//private byte[] crypting ( byte[] buffer, int start, int length, boolean dec ) {
+//   if ( start < 0 | length < 0 | start + length > buffer.length )
+//      throw new IllegalArgumentException( "illegal parameter setting" );
+//   if ( length % Twofish.BLOCK_SIZE > 0 )
+//      throw new IllegalArgumentException( "illegal data blocklength" );
+//   
+//   int loops = length / Twofish.BLOCK_SIZE;
+//   byte[] result = new byte[ length ];
+//   byte[] one = null;
+//   int pos = start;
+//   for ( int i = 0; i < loops; i++ ) {
+//      one = dec ? Twofish.blockDecrypt( buffer, pos, sk ) 
+//            : Twofish.blockEncrypt( buffer, pos, sk );
+//      System.arraycopy( one, 0, result, pos - start, Twofish.BLOCK_SIZE );
+//      Util.destroyBytes(one);
+//      pos += Twofish.BLOCK_SIZE;
+//   }
+//   return result;
+//}
+//
 @Override
 public byte[] decrypt ( byte[] buffer ) {
    return decrypt( buffer, 0, buffer.length );
@@ -126,8 +108,53 @@ public byte[] encrypt ( byte[] buffer ) {
 }
 
 @Override
+public byte[] decrypt ( byte[] buffer, int start, int length ) {
+   byte[] result = new byte[ length ];
+   decrypt( buffer, start, result, 0, length );
+   return result;
+}
+
+@Override
+public byte[] encrypt ( byte[] buffer, int start, int length ) {
+   byte[] result = new byte[ length ];
+   encrypt( buffer, start, result, 0, length );
+   return result;
+}
+
+@Override
+public void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+   if ( length % Twofish.BLOCK_SIZE > 0 )
+      throw new IllegalArgumentException( "illegal data blocklength" );
+	   
+   int loops = length / Twofish.BLOCK_SIZE;
+   int delta = 0;
+   for ( int i = 0; i < loops; i++ ) {
+      Twofish.blockDecrypt( input, inOffs+delta, output, outOffs+delta, sk );
+      delta += Twofish.BLOCK_SIZE;
+   }
+}
+
+@Override
+public void encrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+   if ( length % Twofish.BLOCK_SIZE > 0 )
+      throw new IllegalArgumentException( "illegal data blocklength" );
+		   
+   int loops = length / Twofish.BLOCK_SIZE;
+   int delta = 0;
+   for ( int i = 0; i < loops; i++ ) {
+      Twofish.blockEncrypt( input, inOffs+delta, output, outOffs+delta, sk );
+      delta += Twofish.BLOCK_SIZE;
+   }
+}
+
+@Override
 public String getName() {
 	return CIPHER_NAME;
+}
+
+@Override
+public int getBlockSize () {
+   return Twofish.BLOCK_SIZE;
 }
 
 }

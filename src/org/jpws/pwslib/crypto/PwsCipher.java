@@ -37,6 +37,7 @@ public interface PwsCipher
     * @param buffer byte[] encrypted data; length must be an integer multiple
     *        of the cipher's blocksize
     * @return byte[] decrypted data block (same length as <code>buffer</code>) 
+    * @throws IllegalStateException if a DIRECTION failure occurs 
     */
    public byte[] decrypt ( byte[] buffer );
 
@@ -49,8 +50,24 @@ public interface PwsCipher
     * @param length int length of the encrypted section; must be an integer
     *        multiple of the cipher's blocksize
     * @return byte[] decrypted data block of length <code>length</code> 
+    * @throws IllegalStateException if a DIRECTION failure occurs 
     */
    public byte[] decrypt ( byte[] buffer, int start, int length );
+
+   /**
+    *  Decrypts a section of an input buffer and returns the result in a section
+    *  of the given output block. 
+    *  The input buffer data will not be altered.
+    * 
+    * @param input byte[] cipher-text data; length must be an integer multiple 
+    *        of the cipher's blocksize
+    * @param inOffs int start offset in input
+    * @param output byte[] plain-text data block 
+    * @param inOffs int start offset in output
+    * @param length int length of data to be translated (bytes)
+    * @throws IllegalStateException if a DIRECTION failure occurs 
+    */
+   public void decrypt ( byte[] input, int inOffs, byte[] output, int outOffs, int length );
 
    /**
     *  Encrypts a buffer of data and returns the result in a new buffer. 
@@ -59,8 +76,24 @@ public interface PwsCipher
     * @param buffer byte[] cleartext data; length must be an integer multiple 
     *        of the cipher's blocksize
     * @return byte[] encrypted data block (same length as <code>buffer</code>) 
+    * @throws IllegalStateException if a DIRECTION failure occurs 
     */
    public byte[] encrypt ( byte[] buffer );
+
+   /**
+    *  Encrypts a section of an input buffer and returns the result in a section
+    *  of the given output block. 
+    *  The input buffer data will not be altered.
+    * 
+    * @param input byte[] clear-text data; length must be an integer multiple 
+    *        of the cipher's blocksize
+    * @param inOffs int start offset in input
+    * @param output byte[] encrypted data block (same length as <code>buffer</code>) 
+    * @param outOffs int start offset in output
+    * @param length int length of data to be translated (bytes)
+    * @throws IllegalStateException if a DIRECTION failure occurs 
+    */
+   public void encrypt ( byte[] input, int inOffs, byte[] output, int outOffs, int length );
 
    /**
     *  Encrypts a section of a user data buffer and returns the result in a new
@@ -71,6 +104,7 @@ public interface PwsCipher
     * @param length int length of the cleartext block; must be an integer
     *        multiple of the cipher's blocksize
     * @return byte[] encrypted data block of length <code>length</code> 
+    * @throws IllegalStateException if a DIRECTION failure occurs 
     */
    public byte[] encrypt ( byte[] buffer, int start, int length );
 

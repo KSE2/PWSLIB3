@@ -254,8 +254,7 @@ private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
     * @param output stream where blocks of data will be written to
     * @param cipher cipher by which blocks will be encrypted
     */
-   public BlockWriter ( OutputStream output, PwsCipher cipher, int format )
-   {
+   public BlockWriter ( OutputStream output, PwsCipher cipher, int format ) {
       if ( output == null | cipher == null )
          throw new NullPointerException();
       
@@ -266,32 +265,27 @@ private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
    }
    
    @Override
-   public int getCount ()
-   {
+   public int getCount () {
       return blockCount;
    }
 
    @Override
-   public int getFormat ()
-   {
+   public int getFormat () {
       return fileVersion;
    }
    
    @Override
-   public int getBlockSize ()
-   {
+   public int getBlockSize () {
       return blocksize;
    }
 
    @Override
-   public boolean isClosed ()
-   {
+   public boolean isClosed () {
       return out == null;
    }
    
    @Override
-   public void writeBlocks ( byte[] data, int offset, int length ) throws IOException
-   {
+   public void writeBlocks ( byte[] data, int offset, int length ) throws IOException {
       byte[] buf, buf2;
 
       if ( out == null )
@@ -318,8 +312,7 @@ private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
    }
 
    @Override
-   public void writeBlocks ( byte[] data ) throws IOException
-   {
+   public void writeBlocks ( byte[] data ) throws IOException {
       if ( out == null )
          throw new IllegalStateException( "outputstream closed" );
       
@@ -327,14 +320,12 @@ private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
    }
    
    @Override
-   public void writeRawField ( PwsRawField rawField ) throws IOException
-   {
+   public void writeRawField ( PwsRawField rawField ) throws IOException {
       rawField.writeEncrypted( out, cipher, fileVersion, hmac );
    }  
 
    @Override
-   public void close () throws IOException
-   {
+   public void close () throws IOException {
       if ( fileVersion == Global.FILEVERSION_3 & out != null ) {
          // write V3 appendix
          out.write( Global.FIELDSTREAM_ENDBLOCK_V3 );

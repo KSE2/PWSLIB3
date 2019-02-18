@@ -33,8 +33,7 @@ public class TwofishCipher implements PwsCipher
    /**
     *  Creates a Twofish ECB cipher with a sound random key (256 bit). 
     */
-   public TwofishCipher ()
-   {
+   public TwofishCipher () {
       ciph = new TwofishECB();
    }
 
@@ -44,8 +43,7 @@ public class TwofishCipher implements PwsCipher
     *  @param key byte[] key material (8, 16, 24 or 32 bytes)
     *  @throws IllegalArgumentException if key length is invalid
     */
-   public TwofishCipher ( byte[] key )
-   {
+   public TwofishCipher ( byte[] key ) {
       ciph = new TwofishECB( key );
    }
 
@@ -56,42 +54,46 @@ public class TwofishCipher implements PwsCipher
     *  @param init byte[] CBC IV value (minimum 16 bytes) 
     *  @throws IllegalArgumentException if key or IV length is invalid
     */
-   public TwofishCipher ( byte[] key, byte[] init )
-   {
+   public TwofishCipher ( byte[] key, byte[] init ) {
       ciph = new CipherModeCBC( new TwofishECB( key ), init );
    }
 
    @Override
-   public synchronized byte[] decrypt ( byte[] buffer )
-   {
+   public synchronized byte[] decrypt ( byte[] buffer ) {
       return ciph.decrypt( buffer, 0, buffer.length );
    }
 
    @Override
-   public synchronized byte[] encrypt ( byte[] buffer )
-   {
+   public synchronized byte[] encrypt ( byte[] buffer ) {
       return ciph.encrypt( buffer, 0, buffer.length );
    }
 
    @Override
-   public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
-   {
+   public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
       return ciph.decrypt( buffer, start, length );
    }
+
    @Override
-   public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
-   {
+   public void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+	   ciph.decrypt(input, inOffs, output, outOffs, length);
+   }
+
+   @Override
+   public synchronized byte[] encrypt ( byte[] buffer, int start, int length ) {
       return ciph.encrypt( buffer, start, length );
    }
    
+	@Override
+	public void encrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+		ciph.encrypt(input, inOffs, output, outOffs, length);
+	}
+
    @Override
-   public int getBlockSize ()
-   {
+   public int getBlockSize () {
       return ciph.getBlockSize();
    }
    
-   public synchronized static boolean self_test() 
-   {
+   public synchronized static boolean self_test() {
       return Twofish.self_test();
    }
 

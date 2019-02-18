@@ -957,13 +957,14 @@ public static char[] excludeCharset ( char[] symbols, char[] exc )
  *  <p>(Note that this algorithm is not bound onto a cyclic block length, while 
  *  the cipher is.)
  *  
- *  @param buffer
- *  @param length
+ *  @param buffer byte[]
+ *  @param start int offset in buffer
+ *  @param length int data length
  *  @param enscatter boolean switch of the transformation direction. 
  *         <b>true</b> = enscatter, <b>false</b> = descatter
  */
-public static void scatter ( byte[] buffer, int length, boolean enscatter ) {
-   int i,j,k,len, plo, phi, shift, loops, mod, offset;
+public static void scatter ( byte[] buffer, int start, int length, boolean enscatter ) {
+   int i,j,k,len, plo, phi, shift, loops, mod;
    byte x;
 
    // this scatters a series of blocks of 16 bytes length (analogic to encryption)
@@ -976,7 +977,6 @@ public static void scatter ( byte[] buffer, int length, boolean enscatter ) {
       loops++;
    k = 15;
    len = 4;
-   offset = 0;
 
    for ( j = 0; j < loops; j++ ) {
       if ( j == loops-1 && mod > 0 ) {
@@ -986,11 +986,11 @@ public static void scatter ( byte[] buffer, int length, boolean enscatter ) {
       for ( i=0; i<len; i++ ) {
          plo = i * 2;
          phi = k - plo;
-         x = buffer[ offset+plo ];
-         buffer[ offset+plo ] = (byte)(buffer[ offset+phi ] + shift);
-         buffer[ offset+phi ] = (byte)(x + shift);
+         x = buffer[ start+plo ];
+         buffer[ start+plo ] = (byte)(buffer[ start+phi ] + shift);
+         buffer[ start+phi ] = (byte)(x + shift);
       }
-      offset += 16;
+      start += 16;
    }
 }
 

@@ -478,15 +478,32 @@ if (DEBUG) trace(OUT, "makeKey()");
    }
 
    /**
-    * Encrypt exactly one block (16 bytes) of plaintext.
+    * Encrypt one block (16 bytes) of plain-text and return the result in
+    * a new byte array.
     *
-    * @param in byte[] plaintext data block
-    * @param inOffset int  index in "in" from which to start operation
+    * @param in byte[] plain-text input block
+    * @param inOffset int  index in input from which to start reading
     * @param sessionKey Object Twofish session key to use for encryption
-    * @return byte[] ciphertext data generated from input
+    * @return byte[] cipher-text output block
     */
-   public static byte[] blockEncrypt (byte[] in, int inOffset, Object sessionKey) 
-   {
+   public static byte[] blockEncrypt (byte[] in, int inOffset, Object sessionKey) {
+	   byte[] buffer = new byte[16];
+	   blockEncrypt(in, inOffset, buffer, 0, sessionKey);
+	   return buffer;
+   }
+   
+   /**
+    * Encrypt one block (16 bytes) of plain-text into a section of an output
+    * data array.
+    *
+    * @param in byte[] plain-text input block
+    * @param inOffset int  index in input from which to start reading
+    * @param out byte[] cipher-text output block
+    * @param outOffset int  index in output block from which to start writing
+    * @param sessionKey Object Twofish session key to use for encryption
+    */
+   public static void blockEncrypt (byte[] in, int inOffset, 
+		   byte[] out, int outOffset, Object sessionKey) {
 if (DEBUG) trace(IN, "blockEncrypt("+in+", "+inOffset+", "+sessionKey+")");
       Object[] sk = (Object[]) sessionKey; // extract S-box and session key
       int[] sBox = (int[]) sk[0];
@@ -542,32 +559,48 @@ if (DEBUG && debuglevel > 6) System.out.println("CT"+(R+1)+"="+intToString(x0)+i
       x1 ^= sKey[OUTPUT_WHITEN + 3];
 if (DEBUG && debuglevel > 6) System.out.println("CTw="+intToString(x0)+intToString(x1)+intToString(x2)+intToString(x3));
 
-      byte[] result = new byte[] {
-         (byte) x2, (byte)(x2 >>> 8), (byte)(x2 >>> 16), (byte)(x2 >>> 24),
-         (byte) x3, (byte)(x3 >>> 8), (byte)(x3 >>> 16), (byte)(x3 >>> 24),
-         (byte) x0, (byte)(x0 >>> 8), (byte)(x0 >>> 16), (byte)(x0 >>> 24),
-         (byte) x1, (byte)(x1 >>> 8), (byte)(x1 >>> 16), (byte)(x1 >>> 24),
-      };
+	  int i = outOffset;
+	  out[i++] = (byte) x2; out[i++] = (byte)(x2 >>> 8); out[i++] = (byte)(x2 >>> 16); out[i++] = (byte)(x2 >>> 24);
+	  out[i++] = (byte) x3; out[i++] = (byte)(x3 >>> 8); out[i++] = (byte)(x3 >>> 16); out[i++] = (byte)(x3 >>> 24);
+	  out[i++] = (byte) x0; out[i++] = (byte)(x0 >>> 8); out[i++] = (byte)(x0 >>> 16); out[i++] = (byte)(x0 >>> 24);
+	  out[i++] = (byte) x1; out[i++] = (byte)(x1 >>> 8); out[i++] = (byte)(x1 >>> 16); out[i++] = (byte)(x1 >>> 24);
 
 if (DEBUG && debuglevel > 6) {
-System.out.println("CT="+toString(result));
+System.out.println("CT="+toString(out, outOffset, 16));
 System.out.println();
 }
 if (DEBUG) trace(OUT, "blockEncrypt()");
-      return result;
    }
 
    
    /**
-    * Decrypt exactly one block (16 bytes) of ciphertext.
+    * Decrypt one block (16 bytes) from a cipher-text and return the result
+    * in a new byte array.
     *
     * @param in byte[] ciphertext data block
     * @param inOffset int  index in data block from which to start operation
     * @param sessionKey Object Twofish session key to use for decryption
     * @return byte[] plaintext data generated from input
     */
-   public static byte[] blockDecrypt (byte[] in, int inOffset, Object sessionKey) 
-   {
+   public static byte[] blockDecrypt (byte[] in, int inOffset, Object sessionKey) {
+
+	   byte[] buffer = new byte[16];
+	   blockDecrypt(in, inOffset, buffer, 0, sessionKey);
+	   return buffer;
+   }
+   
+   /**
+    * Decrypt one block (16 bytes) of cipher-text (input( and transfer the 
+    * result into an external data array (output).  
+    *
+    * @param in byte[] cipher-text input block
+    * @param inOffset int  index in input block from which to start reading
+    * @param out byte[] plain-text output block
+    * @param outOffset int  index in output block from which to start writing
+    * @param sessionKey Object Twofish session key to use for decryption
+    */
+   public static void blockDecrypt (byte[] in, int inOffset, 
+				byte[] out, int outOffset, Object sessionKey) {
 if (DEBUG) trace(IN, "blockDecrypt("+in+", "+inOffset+", "+sessionKey+")");
       Object[] sk = (Object[]) sessionKey; // extract S-box and session key
       int[] sBox = (int[]) sk[0];
@@ -623,23 +656,22 @@ if (DEBUG && debuglevel > 6) System.out.println("PT"+(ROUNDS-R-1)+"="+intToStrin
       x3 ^= sKey[INPUT_WHITEN + 3];
 if (DEBUG && debuglevel > 6) System.out.println("PTw="+intToString(x2)+intToString(x3)+intToString(x0)+intToString(x1));
 
-      byte[] result = new byte[] {
-         (byte) x0, (byte)(x0 >>> 8), (byte)(x0 >>> 16), (byte)(x0 >>> 24),
-         (byte) x1, (byte)(x1 >>> 8), (byte)(x1 >>> 16), (byte)(x1 >>> 24),
-         (byte) x2, (byte)(x2 >>> 8), (byte)(x2 >>> 16), (byte)(x2 >>> 24),
-         (byte) x3, (byte)(x3 >>> 8), (byte)(x3 >>> 16), (byte)(x3 >>> 24),
-      };
+	  // transfer result
+	  int i = outOffset;
+      out[i++] = (byte) x0; out[i++] = (byte)(x0 >>> 8); out[i++] = (byte)(x0 >>> 16); out[i++] = (byte)(x0 >>> 24);
+      out[i++] = (byte) x1; out[i++] = (byte)(x1 >>> 8); out[i++] = (byte)(x1 >>> 16); out[i++] = (byte)(x1 >>> 24);
+      out[i++] = (byte) x2; out[i++] = (byte)(x2 >>> 8); out[i++] = (byte)(x2 >>> 16); out[i++] = (byte)(x2 >>> 24);
+      out[i++] = (byte) x3; out[i++] = (byte)(x3 >>> 8); out[i++] = (byte)(x3 >>> 16); out[i++] = (byte)(x3 >>> 24);
 
 if (DEBUG && debuglevel > 6) {
-System.out.println("PT="+toString(result));
+System.out.println("PT="+toString(out, outOffset, 16));
 System.out.println();
 }
 if (DEBUG) trace(OUT, "blockDecrypt()");
 
       // destroy local copy of cleartext
       x0 = x1 = x2 = x3 = 0;
-      return result;
-   }
+   }  // blockDecrypt
 
    /** A basic symmetric encryption/decryption test. */
    public static boolean self_test() { 
@@ -758,13 +790,15 @@ if (DEBUG) trace(IN, "self_test("+keysize+")");
       boolean ok = false;
       try {
          byte[] kb = new byte[keysize];
-         byte[] pt = new byte[BLOCK_SIZE];
+         byte[] pt1 = new byte[BLOCK_SIZE];
          int i;
 
-         for (i = 0; i < keysize; i++)
+         for (i = 0; i < keysize; i++) {
             kb[i] = (byte) i;
-         for (i = 0; i < BLOCK_SIZE; i++)
-            pt[i] = (byte) i;
+         }
+         for (i = 0; i < BLOCK_SIZE; i++) {
+            pt1[i] = (byte) i;
+         }
 
 if (DEBUG && debuglevel > 6) {
 System.out.println("==========");
@@ -779,15 +813,19 @@ if (DEBUG && debuglevel > 6) {
 System.out.println("Intermediate Ciphertext Values (Encryption)");
 System.out.println();
 }
-         byte[] ct = blockEncrypt(pt, 0, key);
+         byte[] ct1 = blockEncrypt(pt1, 0, key);
+         byte[] ct2 = new byte[BLOCK_SIZE]; 
+         blockEncrypt(pt1, 0, ct2, 0, key);
 
 if (DEBUG && debuglevel > 6) {
 System.out.println("Intermediate Plaintext Values (Decryption)");
 System.out.println();
 }
-         byte[] cpt = blockDecrypt(ct, 0, key);
+         byte[] cpt = blockDecrypt(ct1, 0, key);
+         byte[] cpt2 = new byte[BLOCK_SIZE]; 
+         blockDecrypt(ct2, 0, cpt2, 0, key);
 
-         ok = areEqual(pt, cpt);
+         ok = areEqual(pt1, cpt) & areEqual( pt1, cpt2);
          if (!ok)
             throw new RuntimeException("Symmetric operation failed");
       } catch (Exception x) {

@@ -27,28 +27,25 @@ package org.jpws.pwslib.crypto;
 public class NullCipher implements PwsCipher
 {
 
-   public NullCipher ()
-   {}
+   public NullCipher () {
+   }
 
    /** Returns the same content in a new buffer. */
    @Override
-   public synchronized byte[] decrypt ( byte[] buffer )
-   {
+   public synchronized byte[] decrypt ( byte[] buffer ) {
       return decrypt( buffer, 0, buffer.length );
    }
 
    /** Returns the same content in a new buffer. */
    @Override
-   public synchronized byte[] encrypt ( byte[] buffer )
-   {
+   public synchronized byte[] encrypt ( byte[] buffer ) {
       return encrypt( buffer, 0, buffer.length );
    }
 
    
    /** Returns the same content in a new buffer. */
    @Override
-   public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
-   {
+   public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
       byte[] buf = new byte[ length ];
       System.arraycopy( buffer, start, buf, 0, length );
       return buf;
@@ -56,21 +53,29 @@ public class NullCipher implements PwsCipher
    
    /** Returns the same content in a new buffer. */
    @Override
-   public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
-   {
+   public synchronized byte[] encrypt ( byte[] buffer, int start, int length ) {
       byte[] buf = new byte[ length ];
       System.arraycopy( buffer, start, buf, 0, length );
       return buf;
    }
    
    @Override
-   public int getBlockSize ()
-   {
+   public int getBlockSize () {
       return 8;
    }
 
 	@Override
 	public String getName() {
 		return "NullCipher";
+	}
+
+	@Override
+	public void decrypt(byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+	     System.arraycopy( input, inOffs, output, outOffs, length );
+	}
+
+	@Override
+	public void encrypt(byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+	     System.arraycopy( input, inOffs, output, outOffs, length );
 	}
 }

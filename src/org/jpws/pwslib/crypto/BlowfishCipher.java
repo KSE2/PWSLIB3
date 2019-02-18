@@ -38,8 +38,7 @@ public class BlowfishCipher implements PwsCipher
    /**
     *  Creates a Blowfish ECB cipher with a sound random key. 
     */
-   public BlowfishCipher ()
-   {
+   public BlowfishCipher () {
       ciph = new BlowfishECB2( Util.getCryptoRand().nextBytes( 48 ) );
    }
 
@@ -47,8 +46,7 @@ public class BlowfishCipher implements PwsCipher
     *  Blowfish ECB cipher with specified key source.
     *  @param key the key material
     */
-   public BlowfishCipher ( byte[] key )
-   {
+   public BlowfishCipher ( byte[] key ) {
       ciph = new BlowfishECB2( key );
    }
 
@@ -58,43 +56,46 @@ public class BlowfishCipher implements PwsCipher
     *  @param key the key material
     *  @param init the CBC IV value (minimum 8 bytes) 
     */
-   public BlowfishCipher ( byte[] key, byte[] init )
-   {
+   public BlowfishCipher ( byte[] key, byte[] init ) {
       ciph = new CipherModeCBC( new BlowfishECB2( key ), init );
    }
 
    @Override
-   public synchronized byte[] decrypt ( byte[] buffer )
-   {
+   public synchronized byte[] decrypt ( byte[] buffer ) {
       return decrypt( buffer, 0, buffer.length );
    }
 
    @Override
-   public synchronized byte[] encrypt ( byte[] buffer )
-   {
+   public synchronized byte[] encrypt ( byte[] buffer ) {
       return encrypt( buffer, 0, buffer.length );
    }
 
    @Override
-   public synchronized byte[] decrypt ( byte[] buffer, int start, int length )
-   {
+   public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
       return ciph.decrypt( buffer, start, length );
    }
    
    @Override
-   public synchronized byte[] encrypt ( byte[] buffer, int start, int length )
-   {
+   public synchronized byte[] encrypt ( byte[] buffer, int start, int length ) {
       return ciph.encrypt( buffer, start, length );
    }
    
+	@Override
+	public synchronized void decrypt(byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+		ciph.decrypt(input, inOffs, output, outOffs, length);
+	}
+
+	@Override
+	public synchronized void encrypt(byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+		ciph.encrypt(input, inOffs, output, outOffs, length);
+	}
+
    @Override
-   public int getBlockSize ()
-   {
+   public int getBlockSize () {
       return ciph.getBlockSize();
    }
    
-   public static boolean self_test()
-   {
+   public static boolean self_test() {
       return BlowfishECB2.selfTest();
    }
 

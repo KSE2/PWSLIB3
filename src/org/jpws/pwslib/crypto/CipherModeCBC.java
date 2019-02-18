@@ -35,7 +35,7 @@ public class CipherModeCBC implements PwsCipher
    private final int blocksize;
    private int direction;
    private byte[] vector;
-   private final byte[] cbuf;
+   private final byte[] cbuf, plain;
 
 /**
  * Creates a CBC mode cipher from the parameter cipher and the
@@ -60,6 +60,7 @@ public CipherModeCBC ( PwsCipher ci, byte[] iv ) {
    cipher = ci;
    vector = Util.arraycopy( iv, blocksize );
    cbuf = new byte[ blocksize ];
+   plain = new byte[ blocksize ];
 }
 
 /**
@@ -79,9 +80,18 @@ public byte[] decrypt ( byte[] buffer ) {
 
 @Override
 public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
-   byte[] plain, result;
-   int i, loops, pos;
+   if ( direction == ENCRYPTING )
+      throw new IllegalStateException( "mismatching crypting direction" );
    
+   direction = DECRYPTING;
+   
+   byte[] result = new byte[ length ];
+   decrypt( buffer, start, result, 0, length );
+   return result;
+}  // decrypt
+
+@Override
+public void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
    if ( direction == ENCRYPTING )
       throw new IllegalStateException( "mismatching crypting direction" );
    
@@ -90,20 +100,18 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
    if ( length % blocksize != 0 )
       throw new IllegalArgumentException( "illegal data length" );
    
-   result = new byte[ length ];
-   loops = length / blocksize;
-   pos = 0;
-   for ( i = 0; i < loops; i++ ) {
+   int loops = length / blocksize;
+   int pos = 0;
+   for ( int i = 0; i < loops; i++ ) {
       // extract data for this loop from user buffer
-      System.arraycopy( buffer, start + pos, cbuf, 0, blocksize );
+      System.arraycopy( input, inOffs+pos, cbuf, 0, blocksize );
       
-      // decrypt user block and XOR it with vector
-      plain = cipher.decrypt( cbuf );
+      // decrypt one user block and XOR it with vector
+      cipher.decrypt( cbuf, 0, plain, 0, blocksize );
       Util.XOR_buffers2( plain, vector );
 
       // save results of this decryption loop
-      System.arraycopy( plain, 0, result, pos, blocksize );
-      Util.destroyBytes( plain );
+      System.arraycopy( plain, 0, output, outOffs+pos, blocksize );
       
       // create next vector
       System.arraycopy( cbuf, 0, vector, 0, blocksize );
@@ -111,9 +119,8 @@ public synchronized byte[] decrypt ( byte[] buffer, int start, int length ) {
       // propagate pointer
       pos += blocksize;
    }
-   
-   return result;
-}  // decrypt
+   Util.destroyBytes( plain );
+}
 
 @Override
 public byte[] encrypt ( byte[] buffer ) {
@@ -122,9 +129,18 @@ public byte[] encrypt ( byte[] buffer ) {
 
 @Override
 public synchronized byte[] encrypt ( byte[] buffer, int start, int length ) {
-   byte[] buf2, result;
-   int i, loops, pos;
+   if ( direction == DECRYPTING )
+      throw new IllegalStateException( "mismatching crypting direction" );
    
+   direction = ENCRYPTING;
+   
+   byte[] result = new byte[ length ];
+   encrypt( buffer, start, result, 0, length );
+   return result;
+}  // encrypt
+
+@Override
+public void encrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
    if ( direction == DECRYPTING )
       throw new IllegalStateException( "mismatching crypting direction" );
    
@@ -133,27 +149,23 @@ public synchronized byte[] encrypt ( byte[] buffer, int start, int length ) {
    if ( length % blocksize != 0 )
       throw new IllegalArgumentException( "illegal data length" );
    
-   result = new byte[ length ];
-   loops = length / blocksize;
-   pos = 0;
-   for ( i = 0; i < loops; i++ ) {
+   int loops = length / blocksize;
+   int pos = 0;
+   for ( int i = 0; i < loops; i++ ) {
       // extract data for this loop from user buffer
-      System.arraycopy( buffer, start + pos, cbuf, 0, blocksize );
+      System.arraycopy( input, inOffs+pos, cbuf, 0, blocksize );
       
       // XOR user block with vector and encrypt result 
       Util.XOR_buffers2( cbuf, vector );
-      buf2 = cipher.encrypt( cbuf );
+      cipher.encrypt( cbuf, 0, vector, 0, blocksize );
 
       // save results of this encryption loop
-      System.arraycopy( buf2, 0, result, pos, blocksize );
-      vector = buf2;
+      System.arraycopy( vector, 0, output, outOffs+pos, blocksize );
 
       // propagate pointer
       pos += blocksize;
    }
-   
-   return result;
-}  // encrypt
+}
 
 @Override
 public int getBlockSize () {

@@ -52,7 +52,7 @@ import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 public final class Global
 {
 
-public static final String LIBRARY_VERSION = "2.8.1";  
+public static final String LIBRARY_VERSION = "2.8.2";  
 public static final String LIBRARY_IDENT = "KSE-PWSLIB " + LIBRARY_VERSION;  
 
 /** Milliseconds of a day.
@@ -83,6 +83,9 @@ public static final int FILEVERSION_LATEST_MINOR = 13;
 public static final byte[] FIELDSTREAM_ENDBLOCK_V3 = "PWS3-EOFPWS3-EOF".getBytes();
 
 private static final int MAX_DEBUG = 10;
+
+/** Number of file blocks to be buffered in encrypted input streams. */
+public static final int BLOCK_BUFFER_FACTOR = 128;
 
 private static ApplicationAdapter standardApplication;
 private static PwsCipher standardCipher;

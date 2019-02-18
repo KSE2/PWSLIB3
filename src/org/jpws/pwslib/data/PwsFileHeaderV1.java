@@ -194,7 +194,7 @@ class PwsFileHeaderV1
        
          // now try to read first field to discriminate V2 files
          input.reset();
-         blockStream = new BlockInputStream( input, cipher );
+         blockStream = new BlockInputStream( input, cipher, Global.BLOCK_BUFFER_FACTOR );
          try {
             // read possible version ID field
         	PwsRawField raw = new PwsRawField( blockStream, Global.FILEVERSION_1 ); 
@@ -212,7 +212,7 @@ class PwsFileHeaderV1
             // need to reconstruct CBC cipher and blockstream after data reset
             cipher = makeFileCipher( passphrase );
             input.reset();
-            blockStream = new BlockInputStream( input, cipher );
+            blockStream = new BlockInputStream( input, cipher, Global.BLOCK_BUFFER_FACTOR );
          }
 
          // upon verified V1 file

@@ -158,6 +158,74 @@ private static boolean test_ECB_vector ( byte[] key, byte[] pt, byte[] ct ) {
    return ok1 & ok2;
 }
 
+public void test_twofish__CBC () {
+	
+	// create base cipher
+	byte[] key = Util.getCryptoRand().nextBytes(32);
+	TwofishCipher ci = new TwofishCipher( key );
+
+	// create CBC cipher
+	byte[] iv = Util.getCryptoRand().nextBytes( ci.getBlockSize() );
+	CipherModeCBC cbc = new CipherModeCBC(ci, iv);
+	
+	byte[] pt = Util.randomBytes(128);
+	byte[] ct = cbc.encrypt(pt);
+	
+	CipherModeCBC cbc2 = new CipherModeCBC(ci, iv);
+	byte[] cpt = cbc2.decrypt(ct);
+	
+	boolean ok = Util.equalArrays(pt, cpt);
+	assertTrue("CBC encrypt/decrypt test failed", ok);
+	
+	// expected DIRECTION failure
+	try {
+		cbc.decrypt(ct);
+		fail("missing exception for crypting DIRECTION");
+	} catch (IllegalStateException e) {
+	}
+
+	// expected DIRECTION failure (encrypt)
+	try {
+		cbc2.encrypt(ct);
+		fail("missing exception for crypting DIRECTION");
+	} catch (IllegalStateException e) {
+	}
+}
+
+public void test_twofish__CFB () {
+	
+	// create base cipher
+	byte[] key = Util.getCryptoRand().nextBytes(32);
+	TwofishCipher ci = new TwofishCipher( key );
+
+	// create CBC cipher
+	byte[] iv = Util.getCryptoRand().nextBytes( ci.getBlockSize() );
+	CipherModeCFB cbc = new CipherModeCFB(ci, iv);
+	
+	byte[] pt = Util.randomBytes(128);
+	byte[] ct = cbc.encrypt(pt);
+	
+	CipherModeCFB cbc2 = new CipherModeCFB(ci, iv);
+	byte[] cpt = cbc2.decrypt(ct);
+	
+	boolean ok = Util.equalArrays(pt, cpt);
+	assertTrue("CBC encrypt/decrypt test failed", ok);
+	
+	// expected DIRECTION failure (decrypt)
+	try {
+		cbc.decrypt(ct);
+		fail("missing exception for crypting DIRECTION");
+	} catch (IllegalStateException e) {
+	}
+
+	// expected DIRECTION failure (encrypt)
+	try {
+		cbc2.encrypt(ct);
+		fail("missing exception for crypting DIRECTION");
+	} catch (IllegalStateException e) {
+	}
+}
+
 public void test_performance () {
 	PwsCipher ci1, ci2;
 	

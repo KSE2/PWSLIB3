@@ -543,7 +543,7 @@ public class PwsFileHeaderV3
          
          // read content header fields
          v3In = new V3_InputStream( input );
-         blockStream = new BlockInputStream( v3In, fileCipher );
+         blockStream = new BlockInputStream( v3In, fileCipher, Global.BLOCK_BUFFER_FACTOR );
          while ( true ) {
             block = blockStream.peekBlock();
 

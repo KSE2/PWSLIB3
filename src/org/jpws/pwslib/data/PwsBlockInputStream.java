@@ -83,6 +83,19 @@ public byte[] readBlock () throws IOException;
  */
 public byte[] readBlocks ( int blocks ) throws IOException;
 
+/** Writes the given length of data from a number of remaining blocks to the 
+ * specified buffer address. The returned amount of blocks read are dropped from 
+ * the stream.
+ *   
+ * @param buffer byte[] output buffer
+ * @param start int offset in buffer
+ * @param length int number of bytes to be written
+ * @return int number of blocks read from the stream
+ * @throws EOFException if the stream run out of blocks
+ * @throws IOException if a reading error occurs
+ */
+public int writeBlocks ( byte[] buffer, int start, int length ) throws IOException;
+
 /**
  * Reads the next available block from this stream without progressing
  * reading from the source. Repeated calls to this method will render

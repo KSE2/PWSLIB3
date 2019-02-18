@@ -37,19 +37,19 @@ class FieldHeader
    /** Number of data blocks to be read after header block */
    public int blocks;
    
-   /** Field first data segment (V3 files only) */ 
-   public byte[] data; 
-
+   private int segLen;	 // length of header block data segment
+   
+   private byte[] block;
+   
    /**  Creates a header block by interpreting a data block of the PWS file. 
     *
     *  @param block file data block (of version dependent length)
- * @throws StreamCorruptedException 
+    * @throws StreamCorruptedException 
     */
-   public FieldHeader ( byte[] block, int format ) throws StreamCorruptedException
-   {
+   public FieldHeader ( byte[] block, int format ) throws StreamCorruptedException {
       int remLength; // remaining data length in data blocks 
-      int segLen;    // length of header block data capacity (segment)
       int blocklen = block.length;
+      this.block = block;
       
       // read data length value
       length = Util.readIntLittle( block, 0 );
@@ -59,11 +59,11 @@ class FieldHeader
       
       // read type value
       type = (int)block[4] & 0xff;
-      segLen = blocklen - 5;
       
+      // determine length of header owned user data (format 3 only)
       if ( format == Global.FILEVERSION_3 ) {
-         data = Util.arraycopy( block, 5, Math.min( segLen, length ) );
-         remLength = Math.max( 0, length - segLen );
+         segLen = blocklen - 5;
+         remLength = Math.max(0, length - segLen);
       } else {
          remLength = length;
       }
@@ -76,13 +76,18 @@ class FieldHeader
       }
    }  // constructor
    
-   /** Erases all data from this header and reset its values to zero/null. */
-   public void clear () {
-      Util.destroyBytes( data );
-      data = null;
-      length = 0;
-      type = 0;
-      blocks = 0;
+   /** Writes the header's user-data segment into the given buffer address.
+    * (Format 3 only)
+    *  
+    * @param buffer byte[] target data buffer
+    * @param start int target offset
+    * @return int number of bytes written
+    */
+   public int writeDataSegment ( byte[] buffer, int start ) {
+	   if ( segLen == 0 ) return 0;
+	   int writeLen = Math.min(length, segLen);
+       System.arraycopy(block, 5, buffer, start, writeLen);
+       return writeLen;
    }
    
 }
