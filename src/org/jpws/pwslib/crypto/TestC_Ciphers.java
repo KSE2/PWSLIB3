@@ -197,20 +197,31 @@ public void test_twofish__CFB () {
 	// create base cipher
 	byte[] key = Util.getCryptoRand().nextBytes(32);
 	TwofishCipher ci = new TwofishCipher( key );
+	int blocksize = ci.getBlockSize();
 
-	// create CBC cipher
-	byte[] iv = Util.getCryptoRand().nextBytes( ci.getBlockSize() );
+	// create CFB ciphers
+	byte[] iv = Util.getCryptoRand().nextBytes( blocksize );
 	CipherModeCFB cbc = new CipherModeCFB(ci, iv);
+	CipherModeCFB cbc2 = new CipherModeCFB(ci, iv);
+	assertFalse("illegal isConsumed value (init)", cbc.isConsumed());
+	assertTrue("IV retreival error (init)", Util.equalArrays(iv, cbc.getVector()));
 	
+	// TEST encryption/decryption of block-aligned random data
 	byte[] pt = Util.randomBytes(128);
 	byte[] ct = cbc.encrypt(pt);
-	
-	CipherModeCFB cbc2 = new CipherModeCFB(ci, iv);
 	byte[] cpt = cbc2.decrypt(ct);
+	assertFalse("illegal isConsumed value (encrypted)", cbc.isConsumed());
+	assertFalse("illegal isConsumed value (decrypted)", cbc2.isConsumed());
 	
 	boolean ok = Util.equalArrays(pt, cpt);
-	assertTrue("CBC encrypt/decrypt test failed", ok);
+	assertTrue("CBC encrypt/decrypt ALIGNED DATA test failed", ok);
 	
+	// TEST IV vector after process
+	byte[] iv2 = Util.arraycopy(ct, ct.length-blocksize, blocksize);
+	assertTrue("IV retreival error (process)", Util.equalArrays(iv2, cbc.getVector()));
+	assertTrue("IV retreival error (process)", Util.equalArrays(iv2, cbc2.getVector()));
+	
+	// TEST cipher direction failure (exception throwing)
 	// expected DIRECTION failure (decrypt)
 	try {
 		cbc.decrypt(ct);
@@ -222,6 +233,28 @@ public void test_twofish__CFB () {
 	try {
 		cbc2.encrypt(ct);
 		fail("missing exception for crypting DIRECTION");
+	} catch (IllegalStateException e) {
+	}
+	
+	// TEST unaligned data blocks : progress encryption
+	pt = Util.randomBytes(60);
+	ct = cbc.encrypt(pt);
+	cpt = cbc2.decrypt(ct);
+	assertTrue("illegal isConsumed value (encrypted)", cbc.isConsumed());
+	assertTrue("illegal isConsumed value (decrypted)", cbc2.isConsumed());
+
+	ok = Util.equalArrays(pt, cpt);
+	assertTrue("CBC encrypt/decrypt UNALIGNED DATA test failed", ok);
+	
+	// TEST after-consumed failure (exception throwing)
+	try {
+		cbc.encrypt(pt);
+		fail("missing exception using consumed cipher");
+	} catch (IllegalStateException e) {
+	}
+	try {
+		cbc2.decrypt(ct);
+		fail("missing exception using consumed cipher");
 	} catch (IllegalStateException e) {
 	}
 }

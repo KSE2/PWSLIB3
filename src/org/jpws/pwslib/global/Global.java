@@ -52,7 +52,7 @@ import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 public final class Global
 {
 
-public static final String LIBRARY_VERSION = "2.8.2";  
+public static final String LIBRARY_VERSION = "2.9.0";  
 public static final String LIBRARY_IDENT = "KSE-PWSLIB " + LIBRARY_VERSION;  
 
 /** Milliseconds of a day.

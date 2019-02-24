@@ -663,8 +663,9 @@ throws IOException, PasswordSafeException
              break;
 
          default: 
-            rec.addUnknownField( raw );
-            Log.debug(6, "(??) -- adding UNKNOWN FIELD to record (" + rec.getTitle() 
+            rec.addUnknownField( raw.getType(), raw.getDataDirect() );
+            if ( Log.getDebugLevel() > 5 )
+               Log.debug(6, "(??) -- adding UNKNOWN FIELD to record (" + rec.getTitle() 
                       + "): " + raw.toString());
 //System.err.println( "++ reading UNKNOWN FIELD: t=" + raw.getType() + 
 //      ", v=" + Util.bytesToHex( raw.getData() ));
@@ -744,7 +745,9 @@ throws IOException, PasswordSafeException
 
             // read Title and Username (both from field 0)
             hstr = raw.getString( DEFAULT_CHARSET );
-            Log.debug( 10, "V1, read TITLE raw: " + Util.bytesToHex( raw.getData() ));
+            if ( Log.getDebugLevel() > 9 ) {
+            	Log.debug(10, "V1, read TITLE raw: " + Util.bytesToHex(raw.getData()));
+            }
             if ( (i=hstr.indexOf( SPLITCHAR )) > -1 ) {
                rec.setTitle( hstr.substring( 0, i ) );
                rec.setUsername( hstr.substring( i+splitLength ) );
@@ -1019,8 +1022,8 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
                                     HeaderFieldList headerFields,
                                     int iterations,
                                     int format )
-   throws IOException
-{
+            throws IOException {
+	
    PwsFileOutputSocket socket;
    PwsRawFieldWriter writer;
  
@@ -1032,6 +1035,7 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
       format = Global.FILEVERSION_LATEST_MAJOR;
    }
    
+   // substitute empty list for null parameter 
    if ( records == null ) {
       records = new ArrayList<PwsRecord>().iterator();
    }
@@ -1040,9 +1044,7 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
    // create output socket for file creation
 //   Log.log( 5, "(PwsFileFactory) saveFile mark B1" );
    socket = new PwsFileOutputSocket( out, passphrase, headerFields, format );
-//   Log.log( 5, "(PwsFileFactory) saveFile mark B1.1" );
    socket.setIterations( iterations );
-//   Log.log( 5, "(PwsFileFactory) saveFile mark B1.2" );
    writer = socket.getRawFieldWriter();
    
    // save all listed records
@@ -1401,7 +1403,6 @@ private static void saveTextFieldV2 ( int type, String text,
 	  byte[] data = text.getBytes(charset);
 	  PwsRawField raw = new PwsRawField(type, data, false);
       writer.writeRawField(raw);
-      raw.destroy();
 
    } catch ( UnsupportedEncodingException e ) {
       throw new IllegalStateException("*** JPWS big trouble! unsupported text encoding: " 

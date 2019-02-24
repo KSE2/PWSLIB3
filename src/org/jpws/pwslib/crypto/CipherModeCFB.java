@@ -45,8 +45,11 @@ public class CipherModeCFB implements PwsCipher
    private PwsCipher cipher;
    private final int blocksize;
    private int direction;
-   private byte[] vector;
-   private final byte[] cbuf, encvec;
+   private boolean consumed;
+   /** collective operation data vector; holds in sequence (blocksize each):
+    * vector, cbuf, encvec */
+   private byte[] opdat;
+   private int cbufOff, encvecOff;
 
 /**
  * Creates a CFB mode cipher from the parameter cipher and the
@@ -64,14 +67,14 @@ public CipherModeCFB ( PwsCipher ci, byte[] iv ) {
       throw new IllegalArgumentException( "illegal IV data length, must be ".concat( String.valueOf( blocksize )) );
    
    cipher = ci;
-   vector = Util.arraycopy( iv, blocksize );
-   cbuf = new byte[ blocksize ];
-   encvec = new byte[ blocksize ];
+   opdat = Util.arraycopy( iv, 3 * blocksize );
+   cbufOff = blocksize;
+   encvecOff = 2 * blocksize;
 }
 
 /**
  * Creates a CFB mode cipher from the parameter cipher and
- * a block of zeros as initialization vector.
+ * a block of zeros as initialisation vector.
  * 
  * @param ci block-cipher
  */
@@ -91,34 +94,49 @@ public byte[] decrypt ( byte[] buffer, int start, int length ) {
 
 @Override
 public synchronized void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+   if ( consumed )
+	  throw new IllegalStateException( "cipher is consumed (vector invalid)" );
+   
    if ( direction == ENCRYPTING )
       throw new IllegalStateException( "mismatching crypting direction" );
    direction = DECRYPTING;
-   
-   if ( length % blocksize != 0 )
-      throw new IllegalArgumentException( "illegal data length" );
-   
+
+   // calculate block looping and consumed status 
    int loops = length / blocksize;
+   int remains = length % blocksize;
+   if ( remains != 0 ) {
+	   consumed = true;
+	   loops++;
+   }
+
    int pos = 0;
+   int clen = blocksize;
    for ( int i = 0; i < loops; i++ ) {
-      // extract data for this loop from user buffer
-      System.arraycopy( input, inOffs+pos, cbuf, 0, blocksize );
+	  // adjust data copy length for last loop (if consumed)
+	  if ( consumed && i == loops-1 ) {
+		  clen = remains;  
+	  }
+			  
+      // extract data for this loop from user buffer, user data --> cbuf
+      System.arraycopy( input, inOffs+pos, opdat, cbufOff, clen );
       
-      // encrypt vector and XOR with user block  
-      cipher.encrypt( vector, 0, encvec, 0, blocksize );
-      Util.XOR_buffers2( encvec, cbuf );
+      // encrypt vector and XOR with user block,  vector --> encvec
+      cipher.encrypt( opdat, 0, opdat, encvecOff, blocksize );
+      for ( int j = 0; j < blocksize; j++ ) {
+    	  opdat[encvecOff+j] ^= opdat[cbufOff+j]; 
+      }
 
-      // save results of this decryption loop
-      System.arraycopy( encvec, 0, output, outOffs+pos, blocksize );
+      // save results of this decryption loop, encvec --> user data
+      System.arraycopy( opdat, encvecOff, output, outOffs+pos, clen );
 
-      // create next vector
-      System.arraycopy( cbuf, 0, vector, 0, blocksize );
+      // create next vector  --> vector
+      System.arraycopy( opdat, cbufOff, opdat, 0, blocksize );
 
       // propagate pointer
       pos += blocksize;
    }
 	
-   Util.destroyBytes( encvec );
+//   Util.destroyBytes( encvec );
 }  // decrypt
 
 public byte[] encrypt ( byte[] buffer ) {
@@ -133,26 +151,43 @@ public byte[] encrypt ( byte[] buffer, int start, int length ) {
 
 @Override
 public synchronized void encrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
+   if ( consumed )
+	  throw new IllegalStateException( "cipher is consumed (vector invalid)" );
+		   
    if ( direction == DECRYPTING )
       throw new IllegalStateException( "mismatching crypting direction" );
    direction = ENCRYPTING;
    
-   if ( length % blocksize != 0 )
-      throw new IllegalArgumentException( "illegal data length" );
-   
+   // calculate block looping and consumed status 
    int loops = length / blocksize;
-   int pos = 0;
-   for ( int i = 0; i < loops; i++ ) {
-      // extract data for this loop from user buffer
-      System.arraycopy( input, inOffs+pos, cbuf, 0, blocksize );
-      
-      // encrypt vector and XOR with user block  
-      cipher.encrypt( vector, 0, encvec, 0, blocksize );
-      Util.XOR_buffers2( encvec, cbuf );
+   int remains = length % blocksize;
+   if ( remains != 0 ) {
+	   consumed = true;
+	   loops++;
+   }
 
-      // save results of this encryption loop
-      System.arraycopy( encvec, 0, output, outOffs+pos, blocksize );
-      System.arraycopy( encvec, 0, vector, 0, blocksize );
+   int pos = 0;
+   int clen = blocksize;
+   for ( int i = 0; i < loops; i++ ) {
+      // adjust data copy length for last loop (if consumed)
+	  if ( consumed && i == loops-1 ) {
+		  clen = remains;  
+	  }
+				  
+      // extract data for this loop from user buffer, user data --> cbuf
+      System.arraycopy( input, inOffs+pos, opdat, cbufOff, clen );
+      
+      // encrypt vector and XOR with user block, vector --> encvec  
+      cipher.encrypt( opdat, 0, opdat, encvecOff, blocksize );
+      for ( int j = 0; j < blocksize; j++ ) {
+    	  opdat[encvecOff+j] ^= opdat[cbufOff+j]; 
+      }
+
+      // save results of this encryption loop, encvec --> user data
+      System.arraycopy( opdat, encvecOff, output, outOffs+pos, clen );
+
+      // build next vector, encvec --> vector
+      System.arraycopy( opdat, encvecOff, opdat, 0, blocksize );
 
       // propagate pointer
       pos += blocksize;
@@ -171,13 +206,22 @@ public int getDirection () {
    return direction;
 }
 
+/** If true this cipher cannot be used any more as its vector has rendered
+ * invalid. The crypting methods will throw exceptions.
+ *  
+ * @return boolean true = cipher is invalid, false = cipher is valid
+ */
+public boolean isConsumed () {
+	return consumed;
+}
+
 /**
- * Returns the cipher's encryption vector as a direct reference.
+ * Returns the cipher's encryption vector in a copy.
  * 
  * @return byte[] of cipher's blocksize length
  */
 public byte[] getVector () {
-   return vector;
+   return Util.arraycopy(opdat, 0, blocksize);
 }
 
 @Override

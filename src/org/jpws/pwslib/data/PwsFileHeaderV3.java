@@ -151,8 +151,7 @@ public class PwsFileHeaderV3
      * Creates an empty V3 file header. This may be used to create a new PWS file
      * of the V3 format.
      */
-    public PwsFileHeaderV3()
-    {
+    public PwsFileHeaderV3() {
        this( (HeaderFieldList)null );
     }
 
@@ -164,8 +163,7 @@ public class PwsFileHeaderV3
      * @param headerFields <code>HeaderFieldList</code> file header data-fields;
      *        may be <b>null</b>
 	 */
-	public PwsFileHeaderV3( HeaderFieldList headerFields )
-	{
+	public PwsFileHeaderV3( HeaderFieldList headerFields ) {
        Log.log( 5, "(PwsFileHeaderV3) initializer (headerFields)" );
        if ( headerFields != null ) {
           hdrFields = headerFields;
@@ -176,8 +174,7 @@ public class PwsFileHeaderV3
     /** Writes actual values to some of the standard header fields;
      * ensures existence and correct values of minimum header fields.
      */
-    private void ensureHeaderDefaults ()
-    {
+    private void ensureHeaderDefaults () {
        Log.log( 5, "(PwsFileHeaderV3) ensureHeaderDefaults, 0" );
 
        // remove deprecated fields
@@ -218,10 +215,9 @@ public class PwsFileHeaderV3
      * @throws UnsupportedFileVersionException if the file is not a V3 file
 	 */
 	public PwsFileHeaderV3( InputStream input )  
-       throws IOException, UnsupportedFileVersionException
-	{
+       throws IOException, UnsupportedFileVersionException {
+		
        this();
-       
        this.input = input;
        DataInputStream in = new DataInputStream( input );
 
@@ -252,11 +248,9 @@ public class PwsFileHeaderV3
      * @param i int, iterations (minimum == 2048)
      * @throws IllegalArgumentException if parameter is less than the minimum
      */
-    public void setIterations ( int i )
-    {
+    public void setIterations ( int i ) {
        if ( i < 2048 )
           throw new IllegalArgumentException();
-       
        iter = i;
     }
     
@@ -267,8 +261,7 @@ public class PwsFileHeaderV3
     * 
     * @return <code>PwsBlockInputStream</code>
     */
-   public PwsBlockInputStream getBlockStream ()
-   {
+   public PwsBlockInputStream getBlockStream () {
       return blockStream;
    }
 
@@ -277,8 +270,7 @@ public class PwsFileHeaderV3
      *  
      *  @return int calculation loops
      */ 
-    public int getIterations ()
-    {
+    public int getIterations () {
        return iter;
     }
     
@@ -288,8 +280,7 @@ public class PwsFileHeaderV3
      *  
      *  @return byte[] of length 32 or null if unavailable
      */ 
-    public byte[] getHashSeed ()
-    {
+    public byte[] getHashSeed () {
        return hseed;
     }
 
@@ -304,8 +295,7 @@ public class PwsFileHeaderV3
     * @return byte[] hmac of length 32 or <b>null</b> if this information 
     *                is unavailable
     */ 
-    public byte[] getReadChecksum ()
-    {
+    public byte[] getReadChecksum () {
        return v3In == null ? null : v3In.getHashMac();
     }
     
@@ -316,8 +306,7 @@ public class PwsFileHeaderV3
      * 
      * @return file UUID or <b>null</b> if this information is not available
      */
-    public UUID getFileID ()
-    {
+    public UUID getFileID () {
        PwsRawField raw = hdrFields.getField( FILE_UUID_TYPE );
        return raw == null ? null : new UUID( raw.getDataDirect() );
     }
@@ -330,8 +319,7 @@ public class PwsFileHeaderV3
      * 
      * @return <code>HeaderFieldList</code>
      */
-    public HeaderFieldList getHeaderFields ()
-    {
+    public HeaderFieldList getHeaderFields () {
        return hdrFields;
     }
     
@@ -344,8 +332,7 @@ public class PwsFileHeaderV3
      * @param field <code>PwsRawField</code> the new field or field content
      * @throws IllegalArgumentException if field is of illegal type 255 
      */
-    public void setHeaderField ( PwsRawField field )
-    {
+    public void setHeaderField ( PwsRawField field ) {
        hdrFields.setField( field );
     }
     
@@ -354,8 +341,7 @@ public class PwsFileHeaderV3
      *  @param type int, the header field type
      *  @return <code>PwsRawField</code> or null
      */ 
-    public PwsRawField getHeaderField ( int type )
-    {
+    public PwsRawField getHeaderField ( int type ) {
        return hdrFields.getField( type );
     }
     
@@ -366,8 +352,7 @@ public class PwsFileHeaderV3
      * @param type int, header field type (0..254)
      * @return <code>PwsRawField</code> or <b>null</b>
      */
-    public PwsRawField removeHeaderField ( int type )
-    {
+    public PwsRawField removeHeaderField ( int type ) {
        return hdrFields.removeField( type );
     }
     
@@ -386,8 +371,7 @@ public class PwsFileHeaderV3
     * @throws NullPointerException on missing parameter
     */
 	public PwsCipher save ( OutputStream output, PwsPassphrase passphrase ) 
-                     throws IOException
-	{
+                     throws IOException {
       Log.log( 5, "(PwsFileHeaderV3) save" );
       OutputStream out = output;
       PwsCipher cipher = update( passphrase );
@@ -428,8 +412,7 @@ public class PwsFileHeaderV3
      * 
      * @return <code>PwsChecksum</code> or <b>null</b> if unavailable
      */
-    public PwsChecksum getWriteHmac ()
-    {
+    public PwsChecksum getWriteHmac () {
        return writeHmac;
     }
 
@@ -440,8 +423,7 @@ public class PwsFileHeaderV3
      * 
      * @return <code>PwsChecksum</code> or <b>null</b> if unavailable
      */
-    public PwsChecksum getReadHmac ()
-    {
+    public PwsChecksum getReadHmac () {
        return readHmac;
     }
     
@@ -456,8 +438,7 @@ public class PwsFileHeaderV3
 	 * @return <code>PwsCipher</code>
      * @throws NullPointerException if passphrase is null
 	 */
-	private PwsCipher update( PwsPassphrase passphrase )
-	{
+	private PwsCipher update( PwsPassphrase passphrase ) {
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
 
@@ -507,8 +488,8 @@ public class PwsFileHeaderV3
     * @throws IllegalStateException if the header is not read in
     *         or already has been verified before
     */ 
-   public PwsBlockInputStream verifyPass ( PwsPassphrase passphrase ) throws IOException
-   {
+   public PwsBlockInputStream verifyPass ( PwsPassphrase passphrase ) 
+		   throws IOException {
 	  // control parameter and correct header state 
       if ( passphrase == null )
          throw new NullPointerException("passphrase missing");
@@ -605,8 +586,7 @@ public class PwsFileHeaderV3
     * @param pkey byte[]
     * @return byte[] cryptographic hash value 
     */
-   private static byte[] genRandHash ( byte[] pkey )
-   {
+   private static byte[] genRandHash ( byte[] pkey ) {
       SHA256 sha = new SHA256();
       sha.update( pkey );
       byte[] result = sha.digest();

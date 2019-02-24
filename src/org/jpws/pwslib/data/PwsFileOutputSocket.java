@@ -286,17 +286,16 @@ private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
    
    @Override
    public void writeBlocks ( byte[] data, int offset, int length ) throws IOException {
-      byte[] buf, buf2;
-
       if ( out == null )
          throw new IllegalStateException( "outputstream closed" );
       
       // prepare data (ensure correct block length)
+      byte[] buf2;
       int blocks = length / blocksize;
       if ( length - blocks * blocksize > 0 ) {
     	 // "enrich" block space 
          blocks++;
-         buf = Util.arraycopy( data, offset, blocks * blocksize );
+         byte[] buf = Util.arraycopy( data, offset, blocks * blocksize );
          buf2 = cipher.encrypt( buf );
          hmac.update(buf);
          Util.destroyBytes(buf);

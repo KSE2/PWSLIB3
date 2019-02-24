@@ -27,6 +27,7 @@ import java.nio.charset.IllegalCharsetNameException;
 import java.util.zip.CRC32;
 
 import org.jpws.pwslib.crypto.CipherModeCBC;
+import org.jpws.pwslib.crypto.CipherModeCFB;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.ScatterCipher;
 import org.jpws.pwslib.global.Global;
@@ -184,22 +185,18 @@ public class PwsRawField implements Cloneable {
     * 
     * @param encrypt boolean true == store ciphertext, false == store cleartext
     */
-   public void setEncrypted (boolean encrypt) {
+   void setEncrypted (boolean encrypt) {
 	   if ( encrypt ) {
 		  // set encrypted branch
 		  if ( encrypted ) return;
 		  encrypted = true;
 		  if ( hasData() ) {
 			 getCrc(); // ensure we supply a CRC on the cleartext
+			 
 			 PwsCipher cipher = createCipher();
-			 int bs = cipher.getBlockSize();
-			 int h = length % bs;
-			 int len = length + bs - h;
-			 if ( len > 1000 ) len += bs;  // redundant block ensures sufficient size to avoid array copy during writeEncrypted()
-			 byte[] plain = h == 0 ? data : Util.arraycopy(data, len);
-			 data = cipher.encrypt(plain);
-			 Log.debug(8, "(PwsRawField.setEncrypted) data encrypted, type " + type + ", data = " + 
-			       Util.bytesToHex(data, 0, Math.min(32, length)) + (length > 32 ? ".." : ""));
+			 cipher.encrypt(data, 0, data, 0, data.length);
+//			 Log.debug(8, "(PwsRawField.setEncrypted) data encrypted, type " + type + ", data = " + 
+//			       Util.bytesToHex(data, 0, Math.min(32, length)) + (length > 32 ? ".." : ""));
 		  }
 
 	   } else {
@@ -208,9 +205,9 @@ public class PwsRawField implements Cloneable {
 		  encrypted = false;
 		  if ( hasData() ) {
 			 PwsCipher cipher = createCipher();
-			 data = cipher.decrypt(data);
-			 Log.debug(8, "(PwsRawField.setEncrypted) data decrypted, type " + type + ", data = " + 
-				       Util.bytesToHex(data, 0, Math.min(32, length)) + (length > 32 ? ".." : ""));
+			 cipher.decrypt(data, 0, data, 0, data.length);
+//			 Log.debug(8, "(PwsRawField.setEncrypted) data decrypted, type " + type + ", data = " + 
+//				       Util.bytesToHex(data, 0, Math.min(32, length)) + (length > 32 ? ".." : ""));
 		  }
 	   }
    }
@@ -220,7 +217,7 @@ public class PwsRawField implements Cloneable {
     * @return PwsCipher
     */
    private PwsCipher createCipher () {
-	   return new CipherModeCBC(VEIL_CIPHER, VEIL_IV);
+	   return new CipherModeCFB(VEIL_CIPHER, VEIL_IV);
    }
    
    /**
@@ -279,9 +276,9 @@ public class PwsRawField implements Cloneable {
    public Object clone () {
       try { 
     	 PwsRawField field = (PwsRawField)super.clone(); 
-//    	 if ( field.data != EMPTY_BLOCK ) {
-//            field.data = (byte[])this.data.clone();
-//    	 }
+    	 if ( field.data != EMPTY_BLOCK ) {
+            field.data = (byte[])this.data.clone();
+    	 }
          return field;
 
       } catch ( CloneNotSupportedException e ) {
@@ -339,9 +336,9 @@ public class PwsRawField implements Cloneable {
 	   return crcValue;
    }
 
-   /** Returns the decrypted version of this field's data value. This may be
-    * the "data" variable itself if no encryption is in place, or a new byte
-    * buffer if the field is encrypted.
+   /** Returns the decrypted version of this field's data value in the stored
+    * length. This may be the "data" variable itself if no encryption is in 
+    * place, or a new byte buffer if the field is encrypted.
     * 
     * @return byte[] cleartext field data 
     */
@@ -350,6 +347,22 @@ public class PwsRawField implements Cloneable {
       if ( encrypted && hasData() ) {
 		 PwsCipher cipher = createCipher();
 		 buf = cipher.decrypt(data);
+	  }
+      return buf;
+   }
+   
+   /** Returns the decrypted version of this field's data value in a copy. 
+    * This has the nominal length of the field.
+    * 
+    * @return byte[] cleartext field data 
+    */
+   private byte[] getBufferedData () {
+      byte[] buf;
+      if ( encrypted && hasData() ) {
+		 PwsCipher cipher = createCipher();
+		 buf = cipher.decrypt(data, 0, length);
+	  } else {
+		 buf = Util.arraycopy(data, length); 
 	  }
       return buf;
    }
@@ -364,7 +377,7 @@ public class PwsRawField implements Cloneable {
       if ( length == 0 ) {
          return EMPTY_BLOCK;
       }
-      return Util.arraycopy( getDecryptedData(), length );
+      return getBufferedData();
    }
    
    /** Renders a direct reference to the data storage block of this field.
@@ -397,53 +410,6 @@ public class PwsRawField implements Cloneable {
     */
    public int getBlockedSize ( int format ) {
       return pwsFieldBlockSize(length, format);
-   }
-
-   /** Returns a data array of this field's value of the length as
-    *  defined by data-blocking requirements (<code>blocksize</code>).
-    *  The result block may be a section of the stored block,
-    *  starting at a specified offset. 
-    *  <p>The result may be larger or smaller than the field's length value.
-    *  
-    *  @param data byte[] the field's cleartext data block
-    *  @param blocksize int cipher blocksize
-    *  @param offset int starting offset of resulting data block 
-    *  @param format int applicable file format version
-    * 
-    *  @return array of bytes or <b>null</b> if no data blocks are required
-    *          to store the value of the field (includes empty data) 
-    */
-   private ByteBuffer getBlockedDataIntern (byte[] data, int blocksize, int offset, int format) {
-      int dblocks, blockedLen, segLen;
-      byte[] rand;
-      
-      if ( data == null ) return null;
-      
-      // calculate size of data block needed to store this field's user data from offset
-      // we assume here that offset is within the range of a single block
-      dblocks = pwsFieldBlockCount(length, format) - 1;
-      blockedLen = dblocks * blocksize;
-      if ( blockedLen == 0 ) return null;
-      
-      // ensure we return a data block large enough 
-      int targetSize = offset+blockedLen;
-      if ( data.length < targetSize ) {
-    	  data = Util.arraycopy(data, targetSize);
-//    	  Log.log(10, "(PwsRawField.getBlockedDataIntern) data array-copy, length=" + targetSize);
-      } else {
-//    	  Log.log(10, "(PwsRawField.getBlockedDataIntern) avoided data copy, length=" + targetSize);
-      }
-
-      // create ByteBuffer and fill segment over size with random data
-      ByteBuffer buf = ByteBuffer.wrap( data, offset, blockedLen );
-      buf.mark(); 
-      segLen = length - offset;  // length of user data segment 
-      rand = Util.getCryptoRand().nextBytes( blockedLen - segLen );
-      buf.position(buf.position() + segLen);
-      buf.put(rand);
-      buf.reset();
-//      System.arraycopy( rand, 0, buf, segLen, rand.length );
-      return buf;
    }
 
    /** Returns the data of this field as a <code>String</code> value.
@@ -480,6 +446,7 @@ public class PwsRawField implements Cloneable {
    /**
     * Returns the number of data blocks required to store a PWS data field
     * according to the formatting rules of a persistent state (PWS file).
+    * This encompasses the entire field serialisation.
     * 
     * @param datalength int length in bytes of usable data of the field
     * @param format int format version number of the persistent state
@@ -548,49 +515,59 @@ public class PwsRawField implements Cloneable {
     * @throws IOException
     */
    public void writeEncrypted (OutputStream out, PwsCipher cipher, int format, 
-         PwsChecksum checksum) throws IOException
-   {
-      byte[] data1, buffer, block;
-      long v;
-      int blocksize, sliceLen, segLen;
-      
+         PwsChecksum checksum) throws IOException {
+	   
       if ( out == null | cipher == null )
          throw new NullPointerException();
       
-      blocksize = cipher.getBlockSize();
-      segLen = blocksize - 5;
-      data1 = getDecryptedData(); 
+      int blocksize = cipher.getBlockSize();
+      int segLen = blocksize - 5;	// space in first block for data
+      int sliceLen = 0;				// length of section of data in first block
+      
+      // retrieve a copy of the decrypted data
+      // and update a checksum
+      byte[] data1 = getBufferedData(); 
+      if ( checksum != null ) {
+          checksum.update(data1, 0, length);
+       }
       
       // compile length and type field of header-block
-      block = new byte[ blocksize ];
-      v = ((long)length & 0xffffffffL) | (((long)type & 0xffL) << 32);
+      byte[] block = new byte[ blocksize ];
+      long v = ((long)length & 0xffffffffL) | (((long)type & 0xffL) << 32);
       Util.writeLongLittle(v, block, 0);
 
       // if V3 format, add a slice of field data 
       if ( hasData() && format == Global.FILEVERSION_3 ) {
          sliceLen = Math.min(segLen, length);
          System.arraycopy(data1, 0, block, 5, sliceLen);
-      } else {
-         sliceLen = 0;
       }
       
       // write the field header-block
-      buffer = cipher.encrypt(block);
-      Util.destroyBytes(block);
-      out.write(buffer);
+      cipher.encrypt(block, 0, block, 0, blocksize);
+      out.write(block);
 
-      // write data blocks
-      ByteBuffer bbuf = getBlockedDataIntern(data1, blocksize, sliceLen, format);
-      if ( bbuf != null ) {
-         byte[] buf2 = cipher.encrypt(bbuf.array(), bbuf.position(), bbuf.remaining());
-         out.write(buf2);
+      // remaining data
+      int remain = length - sliceLen;
+      if ( remain > 0 ) { 
+      
+    	  // write middle part of data
+    	  int pos = sliceLen;
+    	  int writeLen = (remain / blocksize) * blocksize;
+    	  if ( writeLen > 0 ) {
+    		  cipher.encrypt(data1, pos, data1, pos, writeLen);
+    		  out.write(data1, sliceLen, writeLen);
+        	  pos += writeLen;
+    	  }
+      
+    	  // write end part of data
+    	  writeLen = remain - writeLen;
+    	  if ( writeLen > 0 ) {
+   	         System.arraycopy(data1, pos, block, 0, writeLen);
+   	         cipher.encrypt(block, 0, block, 0, blocksize);
+   	         out.write(block);
+    	  }
       }
       
-      // update checksum
-      if ( checksum != null ) {
-         checksum.update(data1, 0, length);
-      }
-
       // eliminate cleartext data if field is encrypted
       if ( encrypted ) {
           Util.destroyBytes(data1);

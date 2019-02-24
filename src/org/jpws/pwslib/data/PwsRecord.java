@@ -206,7 +206,7 @@ private long normalisedTime (long time) {
 	         rec.otherValues = new RawFieldList();
 	         for (Iterator<PwsRawField> it = getUnknownFields(); it.hasNext(); ) {
 	        	PwsRawField fld = it.next();
-	            rec.otherValues.setField((PwsRawField)fld.clone());
+	            rec.otherValues.setField(fld);	// clone not required
 	         }
     	 }
          
@@ -816,41 +816,24 @@ private long normalisedTime (long time) {
       setAccessTime( time );
    }
    
-   /** Adds an unknown field value to this record for the purpose of conservation.
+   /** Adds an unknown data field to this record for the purpose of conservation.
     *  In contrast to <code>setExtraField()</code> no validation is performed on
-    *  the type value. Does nothing if <code>value</code> is <b>null</b>.
+    *  the type value. Does nothing if <code>data</code> is <b>null</b>.
     *  <p>Note: this value is stored encrypted internally during program session.
+    *  A copy of the given data is used.
     * 
     * @param type int, field type number (0..255)
-    * @param value byte array, field value (exact length)
+    * @param data byte array, field value (exact length)
     */
-   protected void addUnknownField ( int type, byte[] value ) {
-      if ( value == null ) return;
+   protected void addUnknownField ( int type, byte[] data ) {
+      if ( data == null ) return;
       
       if ( otherValues == null ) {
          otherValues = new RawFieldList();
       }
-      PwsRawField raw = new PwsRawField( type, value );
+      PwsRawField raw = new PwsRawField( type, data );
       raw.setEncrypted(true);
       otherValues.setField( raw );
-   }
-   
-   /** Adds an unknown field value to this record for the purpose of conservation.
-    *  In contrast to <code>setExtraField()</code> no validation is performed on
-    *  the type value. Does nothing if <code>value</code> is <b>null</b>.
-    *  <p>Note: this value is stored encrypted internally during program session.
-    *  The given field is stored in direct reference.
-    * 
-    * @param field PwsRawField, may be <b>null</b>
-    */
-   protected void addUnknownField ( PwsRawField field) {
-      if ( field == null ) return;
-      
-      if ( otherValues == null ) {
-         otherValues = new RawFieldList();
-      }
-      field.setEncrypted(true);
-      otherValues.setField( field );
    }
    
    /** Puts a data field into this record which forms a non-canonical field 

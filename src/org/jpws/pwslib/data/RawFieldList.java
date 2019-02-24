@@ -49,8 +49,7 @@ public RawFieldList ( RawFieldList list )
 }
 
 
-/** Returns a shallow copy if this rawfield list.
- *  (Elements of the list are not cloned!)
+/** Returns a shallow copy if this raw-field list.
  */ 
 @Override
 @SuppressWarnings("unchecked")
@@ -67,7 +66,7 @@ public Object clone ()
 
 /** 
   * Returns a field of the given type (=name) from this field list. 
-  * (The returned field is a deep copy of the listed field.)  
+  * (The returned field is identical with the listed field.)  
   *   
   * @param type the requested field type (0..255)
   * @return <code>PwsRawField</code> if the field was found, or 
@@ -75,9 +74,8 @@ public Object clone ()
   */
  public PwsRawField getField ( int type )
  {
-    Integer key = new Integer( type );
-    PwsRawField raw = (PwsRawField)fields.get( key );
-    return raw == null ? null : (PwsRawField)raw.clone();
+    PwsRawField raw = (PwsRawField)fields.get( type );
+    return raw;
  }
 
 /**
