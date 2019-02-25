@@ -19,10 +19,10 @@
 	<property name="java1.6-runtime" value="/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-8-1" />
+	<property name="ver" value="2-9-0" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value="06 Dec 2018"/>
-        <property name="release year" value="2018"/>
+        <property name="release date" value=" ?? 2019"/>
+        <property name="release year" value="2019"/>
         <property name="release type" value="Intern, Minor"/>
         <property name="system format" value="3.13"/>
         <property name="classpath" value="${junit};${ftp4j};${build}"/>

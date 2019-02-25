@@ -836,6 +836,24 @@ private long normalisedTime (long time) {
       otherValues.setField( raw );
    }
    
+   /** Adds an unknown field value to this record for the purpose of conservation.
+    *  No validation is performed on the type value. Does nothing if 
+    *  argument is <b>null</b>.
+    *  <p>WARNING: The given field is stored in direct reference and modified 
+    *  into 'encrypted' state.
+    * 
+    * @param field PwsRawField, may be <b>null</b>
+    */
+   protected void addUnknownField ( PwsRawField field) {
+      if ( field == null ) return;
+      
+      if ( otherValues == null ) {
+         otherValues = new RawFieldList();
+      }
+      field.setEncrypted(true);
+      otherValues.setField( field );
+   }
+   
    /** Puts a data field into this record which forms a non-canonical field 
     * identified by its integer type code. Only non-canonical field types
     * may be entered; use the <b>null</b> value to clear the field from the list

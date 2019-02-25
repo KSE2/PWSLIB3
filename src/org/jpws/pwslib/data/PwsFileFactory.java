@@ -581,7 +581,7 @@ throws IOException, PasswordSafeException
             if ( version > Global.FILEVERSION_2 ) {
                rec.setUrl( raw.getPassphrase( charset ) );
             } else {
-               rec.addUnknownField( raw.getType(), raw.getDataDirect() );
+               rec.addUnknownField( raw );
             }
             break;
            
@@ -624,7 +624,7 @@ throws IOException, PasswordSafeException
             if ( version > Global.FILEVERSION_2 ) {
                rec.setHistory( raw.getPassphrase( charset ) );
             } else {
-               rec.addUnknownField( raw.getType(), raw.getDataDirect() );
+               rec.addUnknownField( raw );
             }
             break;
             
@@ -632,7 +632,7 @@ throws IOException, PasswordSafeException
             if ( version > Global.FILEVERSION_2 ) {
                rec.setAutotype( raw.getString( charset ) );
             } else {
-               rec.addUnknownField( raw.getType(), raw.getDataDirect() );
+               rec.addUnknownField( raw );
             }
             break;
             
@@ -663,7 +663,7 @@ throws IOException, PasswordSafeException
              break;
 
          default: 
-            rec.addUnknownField( raw.getType(), raw.getDataDirect() );
+            rec.addUnknownField( raw );
             if ( Log.getDebugLevel() > 5 )
                Log.debug(6, "(??) -- adding UNKNOWN FIELD to record (" + rec.getTitle() 
                       + "): " + raw.toString());
@@ -671,6 +671,7 @@ throws IOException, PasswordSafeException
 //      ", v=" + Util.bytesToHex( raw.getData() ));
          }
 
+         // we destroy the field with cleartext data 
          if ( !raw.isEncrypted() ) {
         	raw.destroy();
          }
