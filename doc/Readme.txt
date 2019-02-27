@@ -1,4 +1,4 @@
-KSE PWSLIB 2-8-1
+KSE PWSLIB 2-9-0
 
 KSE Password Safe V3 Library
 README FILE
@@ -17,24 +17,25 @@ The file format handled is from open-source project "Password Safe".
 This package contains strong encryption software provided by
 The Cryptix Foundation, UK, also under the BSD license, and own development.
 
-Library Platform: Java 1.6 
+Library Platform: Java 1.8
 
 System Compatibility Format: PWS 3.13 (Password Safe)
 Reference Format Documents: formatV3.txt, formatV2.txt, formatV1.txt
 Javadoc API documentation available
 
-Release Date: 06 Dec 2018
+Release Date: 27 Feb. 2019
 
 Available Executable Packages
-    pws-engine-kse-2-8-1.jar		Core, BSD-like license
-    pws-suppl-ftp-2-8-1jar		FTP module, LGPL 2
+    pws-engine-kse-2-9-0.jar		Core, BSD-like license
+    pws-suppl-ftp-2-9-0jar		FTP module, LGPL 2
 
 Documentary and Development Packages    
-    pws-engine-kse-2-8-1.zip		executables + documentation
-    pws-engine-source-2-8-1.zip		source code + libraries + documentation
+    pws-engine-kse-2-9-0.zip		executables + documentation
+    pws-engine-source-2-9-0.zip		source code + libraries + documentation
 
 Release Type
-2-8-1 is a minor release introducing small advancements to suit JPWS 1.2.0.
+2-9-0 is a major release introducing advancements to suit JPWS 1.2.1 and optimised
+operations.
 
 -------------------------------
 

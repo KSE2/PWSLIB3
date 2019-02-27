@@ -16,14 +16,13 @@
 
         <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt formatV2.txt formatV1.txt" />
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
-	<property name="java1.6-runtime" value="/usr/lib/jvm/java-6-openjdk-amd64/jre/lib/rt.jar" />
 
 <!--   TEXT                                                           -->
 	<property name="ver" value="2-9-0" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value=" ?? 2019"/>
+        <property name="release date" value=" 27 Feb. 2019"/>
         <property name="release year" value="2019"/>
-        <property name="release type" value="Intern, Minor"/>
+        <property name="release type" value="Extern, Major"/>
         <property name="system format" value="3.13"/>
         <property name="classpath" value="${junit};${ftp4j};${build}"/>
 
@@ -45,10 +44,8 @@
 
 <target name="comp" depends="init,clear-c" description="compile PWSLIB library">
    <javac srcdir="${src}"  destdir="${build}" includeantruntime="false"  
-       source="1.6" target="1.6" bootclasspath="${java1.6-runtime}"
        classpath="${classpath}" encoding="iso-8859-1"/>
    <javac srcdir="${suppl}/src"  destdir="${build.suppl}" includeantruntime="false"  
-       source="1.6" target="1.6" bootclasspath="${java1.6-runtime}"
        classpath="${classpath}" encoding="iso-8859-1"/>
 </target>
 

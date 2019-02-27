@@ -1,14 +1,28 @@
-KSE PWSLIB 2-8-1
+KSE PWSLIB 2-9-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 01 Dec 2018
+Text Date: 27 Feb 2019
 
 
-Actual Release 2-8-1, Date: 06 Dec. 2018
+Actual Release 2-9-0, Date: 27 Feb. 2019
 ----------------------------------------
+
+- added new interface elements (functions) in PwsCipher for encrypting and 
+  decrypting of data blocks so that these functions don't return a new byte array
+
+- optimised algorithms for reading and writing databases with less demand on heap space
+  
+- optimised class for cipher mode CFB
+- cipher mode CFB can now crypt user data of any length
+
+- using cipher mode CFB for internal veiling of user data
+
+
+Release 2-8-1, Date: 06 Dec. 2018
+---------------------------------
 
 - improved data-complexity in readind and writing the database file
 - PwsRawField improved behaviour of cloning

@@ -1,11 +1,11 @@
 # PWSLIB3
 Java module to handle Password Safe encrypted databases in all known formats
 
-Current status: RELEASE 2-8-1
+Current status: RELEASE 2-9-0
 
-Release date: 06 Dec 2018
+Release date: 27 Feb. 2019
 
-Platform: Java 1.6 or higher
+Platform: Java 1.8
 
 Distribution License: BSD-like (2-clause, proprietary)
 
@@ -19,6 +19,22 @@ Available Supplements:
 
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
+
+Release 2-9-0
+
+- added new interface elements (functions) in PwsCipher for encrypting and 
+  decrypting of data blocks so that these functions don't return a new byte
+  array
+
+- optimised algorithms for reading and writing databases with less demand on 
+  heap space
+  
+- optimised class for cipher mode CFB
+- cipher mode CFB can now crypt user data of any length
+
+- using cipher mode CFB for internal veiling of user data
+
+- new platform: Java 1.8 (was 1.6 before)
 
 Release 2-8-1
 

@@ -1,12 +1,3 @@
-== New Changes beyond 2.8.1 ==
+== New Changes beyond 2.9.0 ==
 
-- added new interface elements (functions) in PwsCipher for encrypting and 
-  decrypting of data blocks so that these functions don't return a new byte array
-
-- optimised algorithms for reading and writing databases with less demand on heap space
-  
-- optimised class for cipher mode CFB
-- cipher mode CFB can now crypt user data of any length
-
-- using cipher mode CFB for internal veiling of user data
 
