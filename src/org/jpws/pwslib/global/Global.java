@@ -19,14 +19,21 @@
 package org.jpws.pwslib.global;
 
 import java.awt.Dimension;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.Charset;
 
 import org.jpws.pwslib.crypto.BlowfishCipher;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.crypto.SHA256;
+import org.jpws.pwslib.crypto.SHA512;
 import org.jpws.pwslib.crypto.ScatterCipher;
 import org.jpws.pwslib.crypto.TwofishCipher;
+import org.jpws.pwslib.data.PwsFileHeaderV3;
+import org.jpws.pwslib.data.PwsPassphrase;
+import org.jpws.pwslib.exception.UnsupportedFileVersionException;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 
@@ -215,6 +222,8 @@ private static void init () {
 	  if ( ok ) {
 		  standardCipher = new TwofishCipher();
 		  text = "standard cipher: ".concat(standardCipher.getName());
+		  
+		  packageTest();
 	  }
       isInitialized = true;
       Log.log( 1, LIBRARY_IDENT.concat(" initialized; ".concat(text)));
@@ -226,17 +235,19 @@ private static void init () {
  * @return boolean true == test passed
  */
 private static boolean securityTest () {
-   boolean ok, ok1, ok2, ok3, ok4, ok5;
+   boolean ok, ok1, ok2, ok3, ok4, ok5, ok6;
 
    ok1 = new SHA1().selfTest();
    ok4 = SHA256.self_test();
+   ok6 = SHA512.self_test();
    ok2 = BlowfishCipher.self_test();
    ok3 = TwofishCipher.self_test();
    ok5 = ScatterCipher.self_test();
-   ok = ok1 & ok2 & ok3 & ok4 & ok5;
+   ok = ok1 & ok2 & ok3 & ok4 & ok5 & ok6;
    
    Log.debug( 6, "SHA1 Test : " + ok1 );
    Log.debug( 6, "SHA256 Test : " + ok4 );
+   Log.debug( 6, "SHA512 Test : " + ok6 );
    Log.debug( 6, "Scatter Test : " + ok5 );
    Log.debug( 6, "Blowfish Test : " + ok2 );
    Log.debug( 6, "Twofish Test : " + ok3 );
@@ -247,6 +258,30 @@ private static boolean securityTest () {
    return ok;
 }
 
+private static boolean packageTest () {
+	PwsFileHeaderV3 h3 = new PwsFileHeaderV3();
+	PwsPassphrase pass = new PwsPassphrase("12345678");
+	ByteArrayOutputStream out = new ByteArrayOutputStream(300);
+	try {
+		h3.save(out, pass);
+	} catch (IOException e) {
+	}
+	
+	// attempt reading a file header (includes decryption)
+	boolean ok = false;
+	ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
+	try {
+		PwsFileHeaderV3 h3s = new PwsFileHeaderV3(in);
+		ok = h3s.verifyPass(pass) != null;
+	    String text = ok ? "PWS3 file header tested OK" : "** PWS3 file header test FAILED";
+		Log.debug( 1, text );
+	} catch (UnsupportedFileVersionException e) {
+		e.printStackTrace();
+	} catch (IOException e) {
+		e.printStackTrace();
+	}
+	return ok;
+}
 
 private Global () {
 }

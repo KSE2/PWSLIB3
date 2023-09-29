@@ -76,6 +76,7 @@ public abstract class HashMac
 
     /** stored result value */
     private byte[] result;
+    private boolean invalid = true;
 
     protected static final int
         MODE_MD    = 0,
@@ -128,11 +129,12 @@ public abstract class HashMac
     {
        this.blockSize = src.blockSize;
        this.hashSize  = src.hashSize;
-       this.buf       = (byte[])src.buf.clone();
+       this.buf       = src.buf.clone();
        this.bufOff    = src.bufOff;
        this.byteCount = src.byteCount;
        this.mode      = src.mode;
-       this.result    = src.result;
+       this.result    = src.result == null ? null : src.result.clone();
+       this.invalid   = src.invalid;
    }
 
     /**
@@ -162,7 +164,7 @@ public abstract class HashMac
     
     public void update( byte input )
     {
-       if ( result != null )
+       if ( !invalid )
           throw new IllegalStateException("instance used up");
        
        //#ASSERT(this.bufOff < blockSize);
@@ -199,7 +201,7 @@ public abstract class HashMac
        if ( offset + length > input.length )
           throw new IllegalArgumentException( "length overflow" );
        
-       if ( result != null )
+       if ( !invalid )
           throw new IllegalStateException("instance used up");
        
         byteCount += length;
@@ -238,15 +240,11 @@ public abstract class HashMac
      */
     public void update( char[] input, int offset, int length )
     {
-       int i;
-       char c;
-       
        if ( offset + length > input.length )
           throw new IllegalArgumentException( "length overflow" );
        
-       for ( i = 0; i < length; i++ )
-       {
-          c = input[ offset + i ];
+       for ( int i = 0; i < length; i++ ) {
+          char c = input[ offset + i ];
           update( (byte)(c >>> 8) );
           update( (byte)c );
        }
@@ -274,15 +272,11 @@ public abstract class HashMac
      */
     public void update( String input, int offset, int length )
     {
-       int i;
-       char c;
-
        if ( offset + length > input.length() )
           throw new IllegalArgumentException( "length overflow" );
        
-       for ( i = 0; i < length; i++ )
-       {
-          c = input.charAt( offset + i );
+       for ( int i = 0; i < length; i++ ) {
+          char c = input.charAt( offset + i );
           update( (byte)(c >>> 8) );
           update( (byte)c );
        }
@@ -296,11 +290,10 @@ public abstract class HashMac
     }
 
 
-    public int readDigest( byte[] buf, int offset, int len )
-    throws DigestException
+    public int readDigest( byte[] buf, int offset, int len ) 
     {
         if ( len<0 || len>hashSize )
-           throw new DigestException();
+           throw new IllegalArgumentException("illegal digest length");
 
         return privateDigest(buf, offset, len);
     }
@@ -315,7 +308,8 @@ public abstract class HashMac
        //#ASSERT(this.bufOff < blockSize);
        
        // calculate value only if no result stored
-       if ( result == null )
+//       if ( result == null )
+       if ( invalid )
        {
           this.buf[this.bufOff++] = (mode==MODE_TIGER) ? (byte)0x01 : (byte)0x80;
           
@@ -349,8 +343,11 @@ public abstract class HashMac
           }
           
           coreUpdate(this.buf, 0);
-          result = new byte[ hashSize ];
+          if (result == null) {
+        	  result = new byte[ hashSize ];
+          }
           coreDigest(result, 0);
+          invalid = false;
        }        
     
        // return hash value
@@ -362,16 +359,17 @@ public abstract class HashMac
     @Override
 	public void finalize ()
     {
-       if ( result != null )
+       if ( result != null ) {
           for ( int i = 0; i < result.length; i++ )
              result[ i ] = 0;
+       }
     }
 
     public void reset() 
     {
         bufOff    = 0;
         byteCount = 0;
-        result = null; 
+        invalid = true;
         coreReset();
     }
 

@@ -180,16 +180,13 @@ public class SHA256 extends HashMac implements Cloneable
 
     public static boolean self_test ()
     {
-       SHA256 s1, s2, s3, s4, s5;
+       SHA256 s1, s2;
        byte[] ba;
        int i;
        String hstr;
        
        s1 = new SHA256(); 
        s2 = new SHA256(); 
-       s3 = new SHA256(); 
-       s4 = new SHA256(); 
-       s5 = new SHA256(); 
 
        // length
        if ( s1.getDigestLength() != 32 )
@@ -208,8 +205,9 @@ public class SHA256 extends HashMac implements Cloneable
        }
        
        // Test value "empty"
-       s2.update( "".getBytes() );
-       hstr = Util.bytesToHex( s2.digest() );
+       s1.reset();
+       s1.update( "".getBytes() );
+       hstr = Util.bytesToHex( s1.digest() );
        if ( !hstr.equals( 
            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" ) )
        {
@@ -218,8 +216,9 @@ public class SHA256 extends HashMac implements Cloneable
        }
        
        // Test value "abc"
-       s3.update( "abc".getBytes() );
-       hstr = Util.bytesToHex( s3.digest() );
+       s1.reset();
+       s1.update( "abc".getBytes() );
+       hstr = Util.bytesToHex( s1.digest() );
        if ( !hstr.equals( 
        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" ) )
        {
@@ -228,8 +227,8 @@ public class SHA256 extends HashMac implements Cloneable
        }
        
        // Test value "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
-       s4.update( "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".getBytes() );
-       hstr = Util.bytesToHex( s4.digest() );
+       s2.update( "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq".getBytes() );
+       hstr = Util.bytesToHex( s2.digest() );
        if ( !hstr.equals( 
        "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1" ) )
        {
@@ -238,12 +237,13 @@ public class SHA256 extends HashMac implements Cloneable
        }
 
        // Test value "a" * 1000
+       s1.reset();
        ba = new byte[1000];
        for ( i = 0; i < 1000; i++ )
           ba[i] = 'a';
        for ( i = 0; i < 1000; i++ )
-          s5.update( ba );
-       hstr = Util.bytesToHex( s5.digest() );
+          s1.update( ba );
+       hstr = Util.bytesToHex( s1.digest() );
        if ( !hstr.equals( 
        "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0" ) )
        {

@@ -576,7 +576,7 @@ public class PwsFileHeaderV3
       for ( int i = 0; i < iterations; i++ ) {
          sha.reset();
          sha.update( x );
-         x = sha.digest();
+         sha.readDigest(x, 0, x.length);
       }
       return x;
    }

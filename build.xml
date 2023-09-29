@@ -18,11 +18,11 @@
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-9-0" />
+	<property name="ver" value="2-9-1" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value=" 27 Feb. 2019"/>
-        <property name="release year" value="2019"/>
-        <property name="release type" value="Extern, Major"/>
+        <property name="release date" value=" 19 Jan. 2022"/>
+        <property name="release year" value="2022"/>
+        <property name="release type" value="intern, minor"/>
         <property name="system format" value="3.13"/>
         <property name="classpath" value="${junit};${ftp4j};${build}"/>
 
