@@ -175,11 +175,11 @@ public class PassphraseUtils
 				int	type;
 				char[] typeSet;
 	
-				type = Util.getCryptoRand().nextInt( typeCount );
+				type = Util2.getCryptoRand().nextInt( typeCount );
 				typesSeenEx[ type ]	= false;
 				typeSet = allChars[type];
 	
-				password.append( typeSet[ Util.getCryptoRand().nextInt( typeSet.length ) ] );
+				password.append( typeSet[ Util2.getCryptoRand().nextInt( typeSet.length ) ] );
 			}
 		}
 		while ( typesSeenEx[0] || typesSeenEx[1] || typesSeenEx[2] || typesSeenEx[3] );

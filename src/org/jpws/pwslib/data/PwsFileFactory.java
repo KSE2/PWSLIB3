@@ -38,11 +38,12 @@ import org.jpws.pwslib.exception.PasswordSafeException;
 import org.jpws.pwslib.exception.UnsupportedFileVersionException;
 import org.jpws.pwslib.exception.WrongFileVersionException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.StreamFactory;
+
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 /**
  * This is a singleton factory class with static methods used to load and save 
@@ -979,8 +980,10 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
             try {
                out = file.getOutputStream();
                Log.log( 5, "(PwsFileFactory) saveFile mark A7 (swapping by copy - output open)" );
-               Util.copyStream( in, out );
-            } finally {
+               Util.transferData( in, out, 4096 );
+            } catch (InterruptedException e) {
+				e.printStackTrace();
+			} finally {
                Log.log( 5, "(PwsFileFactory) saveFile mark A8 (swapping by copy - closing streams)" );
                in.close();
                out.close();
@@ -1351,7 +1354,7 @@ private static void savePasswordFieldV2 ( int type,
 
    byte[] block = pass.getBytes(charset);
    saveByteArray(type, block, writer);
-   Util.destroyBytes(block);
+   Util.destroy(block);
 }
 
 /** Stores the content of a <code>PwsPassphrase</code> as a data field of the 

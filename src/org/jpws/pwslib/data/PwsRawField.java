@@ -22,17 +22,16 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
 import java.nio.charset.IllegalCharsetNameException;
 import java.util.zip.CRC32;
 
-import org.jpws.pwslib.crypto.CipherModeCBC;
 import org.jpws.pwslib.crypto.CipherModeCFB;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.ScatterCipher;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
+
+import kse.utilclass.misc.Util;
 
 /**
  *  A <code>RawField</code> contains the value of a  single <u>PWS data field</u> 
@@ -56,7 +55,7 @@ public class PwsRawField implements Cloneable {
 
    private static final byte[] EMPTY_BLOCK = new byte[0];
    private static final PwsCipher VEIL_CIPHER = new ScatterCipher();
-   private static final byte[] VEIL_IV = Util.getCryptoRand().nextBytes(VEIL_CIPHER.getBlockSize());
+   private static final byte[] VEIL_IV = Util2.getCryptoRand().nextBytes(VEIL_CIPHER.getBlockSize());
 	
    int type;
    int length;
@@ -398,7 +397,7 @@ public class PwsRawField implements Cloneable {
       byte[] databuf = getDecryptedData();
       PwsPassphrase pass = new PwsPassphrase(databuf, 0, length, charset);
       if ( databuf != data ) {
-         Util.destroyBytes(databuf);
+         Util.destroy(databuf);
       }
       return pass;
    }
@@ -570,7 +569,7 @@ public class PwsRawField implements Cloneable {
       
       // eliminate cleartext data if field is encrypted
       if ( encrypted ) {
-          Util.destroyBytes(data1);
+          Util.destroy(data1);
       }
    }  // writeEncrypted
    
@@ -643,7 +642,7 @@ public class PwsRawField implements Cloneable {
       type = 0;
       length = 0;
       crcValue = 0;
-      Util.destroyBytes( data );
+      Util.destroy( data );
       data = EMPTY_BLOCK;
    }
 

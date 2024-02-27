@@ -27,7 +27,8 @@ import java.nio.charset.UnsupportedCharsetException;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.Util;
 
 /**
  * PwsPassphrase represents a sequence of characters which is especially
@@ -182,7 +183,7 @@ public void setBytes ( byte[] buffer, int offset, int length, String enc ) {
    }
    CharBuffer cbuf = Charset.forName( enc ).decode( ByteBuffer.wrap( buffer, offset, length ) );
    setValue( cbuf.array(), cbuf.position(), cbuf.remaining() );
-   Util.destroyChars( cbuf.array() );
+   Util.destroy( cbuf.array() );
 }
 
 /** Returns a deep clone of this passphrase object.
@@ -220,7 +221,7 @@ public void setValue ( PwsPassphrase value )
    } else {
 	  char[] buf = value.getValue();
       setValue( buf );
-      Util.destroyChars( buf );
+      Util.destroy( buf );
    }
 }
 
@@ -235,7 +236,7 @@ public void setValue ( String value )
    } else {
 	  char[] buf = value.toCharArray();
       setValue( buf );
-      Util.destroyChars( buf );
+      Util.destroy( buf );
    }
 }
 
@@ -298,7 +299,7 @@ public void setValue ( char[] buffer, int start, int length )
    
    // encrypt content
    sbuf = cipher.encrypt( buf );
-   Util.destroyBytes( buf );
+   Util.destroy( buf );
 }  // setValue
 
 ///** Sets the value of this PP from an encrypted byte buffer and a given cipher.
@@ -356,8 +357,8 @@ public byte[] getBytes ( String enc )
    bbuf.get( buffer );
    
    // clean up the decrypted buffers
-   Util.destroyChars( cha );
-   Util.destroyBytes( bbuf.array() );
+   Util.destroy( cha );
+   Util.destroy( bbuf.array() );
    return buffer;
 }
 
@@ -379,7 +380,7 @@ public char[] getValue ()
    }
    
    // clean up the decrypted buffer
-   Util.destroyBytes( buffer );
+   Util.destroy( buffer );
    return ca;
 }  // getValue
 
@@ -396,7 +397,7 @@ protected byte[] getValueBuffer ()
    
    if ( buffer.length > buflen ) {
 	   result = Util.arraycopy(buffer, buflen);
-	   Util.destroyBytes( buffer );
+	   Util.destroy( buffer );
    } else {
 	   result = buffer;
    }
@@ -430,7 +431,7 @@ public byte[] getEncryptedBlock ( PwsCipher cph )
 	  // decrypt local + encrypt external cipher
       byte[] buf2 = cipher.decrypt( buffer );
       buffer = cph.encrypt( buf2 );
-      Util.destroyBytes( buf2 );
+      Util.destroy( buf2 );
       
    } else {
 	   buffer = (byte[]) sbuf.clone();
@@ -456,7 +457,7 @@ public StringBuffer getStringBuffer ()
    StringBuffer sb = new StringBuffer();
    char[] value = getValue();
    sb.append( value );
-   Util.destroyChars( value );
+   Util.destroy( value );
    return  sb;
 }
 
@@ -474,7 +475,7 @@ public String getString ()
    String s = new String( value );
 
    // clean up the decrypted buffer
-   Util.destroyChars( value );
+   Util.destroy( value );
    return s; 
 }
 
@@ -514,8 +515,8 @@ public boolean equals ( Object obj )
 //   byte[] b1 = pass.getValueBuffer();
 //   byte[] b2 = this.getValueBuffer();
 //   boolean result = Util.equalArrays( b1, b2 );
-//   Util.destroyBytes( b1 );
-//   Util.destroyBytes( b2 );
+//   Util.destroy( b1 );
+//   Util.destroy( b2 );
 //   return result;
 }
 
@@ -531,7 +532,7 @@ public int hashCode ()
 	
 //   byte[] buf = this.getValueBuffer();
 //   int result = Util.arrayHashcode( buf );
-//   Util.destroyBytes(buf);
+//   Util.destroy(buf);
 //   return result;
 }
 

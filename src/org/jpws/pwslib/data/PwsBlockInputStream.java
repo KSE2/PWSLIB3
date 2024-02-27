@@ -34,8 +34,7 @@ import java.io.IOException;
  *  
  */
 
-public interface PwsBlockInputStream
-{
+public interface PwsBlockInputStream {
 
 /**
  * Whether there is more data to be read from this stream.

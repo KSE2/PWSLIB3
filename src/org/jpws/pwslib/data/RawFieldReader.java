@@ -134,11 +134,10 @@ class RawFieldReader implements PwsRawFieldReader
             throw new IllegalStateException( e );
          }
          return field;
-
-      } else {
-         close();
-         throw new NoSuchElementException();
       }
+      
+	  close();
+	  throw new NoSuchElementException();
    }
 
    @Override

@@ -24,10 +24,10 @@ import java.io.IOException;
 
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.TwofishCipher;
-import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.Util;
 
 import junit.framework.TestCase;
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 public class TestC_RawFields extends TestCase
 {

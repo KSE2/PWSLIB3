@@ -27,8 +27,6 @@ import java.nio.charset.Charset;
 import org.jpws.pwslib.crypto.BlowfishCipher;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.SHA1;
-import org.jpws.pwslib.crypto.SHA256;
-import org.jpws.pwslib.crypto.SHA512;
 import org.jpws.pwslib.crypto.ScatterCipher;
 import org.jpws.pwslib.crypto.TwofishCipher;
 import org.jpws.pwslib.data.PwsFileHeaderV3;
@@ -36,6 +34,10 @@ import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.exception.UnsupportedFileVersionException;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
+
+import kse.utilclass.misc.Log;
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.SHA512;
 
 /**
  *  Global references for the PWSLIB backend library classes. This static 
@@ -56,10 +58,9 @@ import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
  *  
  *  <p>See also {@link ApplicationAdapter}, {@link org.jpws.pwslib.crypto.BlowfishECB2}
  */
-public final class Global
-{
+public final class Global {
 
-public static final String LIBRARY_VERSION = "2.9.0";  
+public static final String LIBRARY_VERSION = "2.10.0";  
 public static final String LIBRARY_IDENT = "KSE-PWSLIB " + LIBRARY_VERSION;  
 
 /** Milliseconds of a day.

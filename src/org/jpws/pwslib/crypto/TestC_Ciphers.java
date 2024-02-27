@@ -18,9 +18,10 @@
 
 package org.jpws.pwslib.crypto;
 
-import junit.framework.TestCase;
+import org.jpws.pwslib.global.Util2;
 
-import org.jpws.pwslib.global.Util;
+import junit.framework.TestCase;
+import kse.utilclass.misc.Util;
 
 public class TestC_Ciphers extends TestCase {
 
@@ -55,9 +56,9 @@ public void test_blowfish_ecb () {
       vector = blow_evdata[i];
       cipher = new BlowfishCipher( vector[0] );
       buf = vector[1];
-      Util.bytesToLittleEndian( buf );
+      Util2.bytesToLittleEndian( buf );
       buf = cipher.encrypt( vector[1] );
-      Util.bytesToLittleEndian( buf );
+      Util2.bytesToLittleEndian( buf );
       
       assertTrue( "ECB Vector Item No. " +i, Util.equalArrays( buf, vector[2] ));
       System.out.println( i + " : " +  Util.bytesToHex( vector[0] ) + ", " + 
@@ -161,14 +162,14 @@ private static boolean test_ECB_vector ( byte[] key, byte[] pt, byte[] ct ) {
 public void test_twofish__CBC () {
 	
 	// create base cipher
-	byte[] key = Util.getCryptoRand().nextBytes(32);
+	byte[] key = Util2.getCryptoRand().nextBytes(32);
 	TwofishCipher ci = new TwofishCipher( key );
 
 	// create CBC cipher
-	byte[] iv = Util.getCryptoRand().nextBytes( ci.getBlockSize() );
+	byte[] iv = Util2.getCryptoRand().nextBytes( ci.getBlockSize() );
 	CipherModeCBC cbc = new CipherModeCBC(ci, iv);
 	
-	byte[] pt = Util.randomBytes(128);
+	byte[] pt = Util.randBytes(128);
 	byte[] ct = cbc.encrypt(pt);
 	
 	CipherModeCBC cbc2 = new CipherModeCBC(ci, iv);
@@ -195,19 +196,19 @@ public void test_twofish__CBC () {
 public void test_twofish__CFB () {
 	
 	// create base cipher
-	byte[] key = Util.getCryptoRand().nextBytes(32);
+	byte[] key = Util2.getCryptoRand().nextBytes(32);
 	TwofishCipher ci = new TwofishCipher( key );
 	int blocksize = ci.getBlockSize();
 
 	// create CFB ciphers
-	byte[] iv = Util.getCryptoRand().nextBytes( blocksize );
+	byte[] iv = Util2.getCryptoRand().nextBytes( blocksize );
 	CipherModeCFB cbc = new CipherModeCFB(ci, iv);
 	CipherModeCFB cbc2 = new CipherModeCFB(ci, iv);
 	assertFalse("illegal isConsumed value (init)", cbc.isConsumed());
 	assertTrue("IV retreival error (init)", Util.equalArrays(iv, cbc.getVector()));
 	
 	// TEST encryption/decryption of block-aligned random data
-	byte[] pt = Util.randomBytes(128);
+	byte[] pt = Util.randBytes(128);
 	byte[] ct = cbc.encrypt(pt);
 	byte[] cpt = cbc2.decrypt(ct);
 	assertFalse("illegal isConsumed value (encrypted)", cbc.isConsumed());
@@ -237,7 +238,7 @@ public void test_twofish__CFB () {
 	}
 	
 	// TEST unaligned data blocks : progress encryption
-	pt = Util.randomBytes(60);
+	pt = Util.randBytes(60);
 	ct = cbc.encrypt(pt);
 	cpt = cbc2.decrypt(ct);
 	assertTrue("illegal isConsumed value (encrypted)", cbc.isConsumed());
@@ -284,7 +285,7 @@ private void test_cipher_performance(PwsCipher ci) {
 	
 	// test 4 MB data 
 	int length = 4000000 / bs * bs;
-	byte[] data = Util.randomBytes(length);
+	byte[] data = Util.randBytes(length);
 	long start = System.currentTimeMillis();
 	byte[] ebuf = cbc.encrypt(data);
 	long time = System.currentTimeMillis() - start;
@@ -299,7 +300,7 @@ private void test_cipher_performance(PwsCipher ci) {
 
 	// test 25 MB data 
 	length = 25000000 / bs * bs;
-	data = Util.randomBytes(length);
+	data = Util.randBytes(length);
 	cbc = new CipherModeCBC(ci);
 	start = System.currentTimeMillis();
 	ebuf = cbc.encrypt(data);

@@ -26,7 +26,8 @@ import java.io.OutputStream;
 
 import org.jpws.pwslib.exception.ApplicationFailureException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
+
+import kse.utilclass.misc.Log;
 
 
 /**

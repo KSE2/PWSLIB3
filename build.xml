@@ -6,6 +6,7 @@
 	<property name="doc" value="${basedir}/doc" />
 	<property name="suppl" value="${basedir}/suppl" />
 	<property name="lib" value="${basedir}/lib" />
+	<property name="extlib" value="${basedir}/../../Develop/Library" />
 	<property name="apidoc" value="${basedir}/doc/api" />
 	<property name="build" value="${basedir}/build" />
 	<property name="build.suppl" value="${suppl}/build" />
@@ -13,18 +14,20 @@
 <!--   FILES                                                          -->
         <property name="junit" value="${lib}/junit-4.jar"/>
         <property name="ftp4j" value="${lib}/ftp4j-1.7.2.jar" />
+   	<property name="util-cls-f1" value="${lib}/kse-util-cla1-0-12-0.jar"/>
+   	<property name="util-cls-f2" value="${lib}/kse-util-cla2-0-12-0.jar"/>
 
         <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt formatV2.txt formatV1.txt" />
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-9-1" />
+	<property name="ver" value="2-10-0" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
-        <property name="release date" value=" 19 Jan. 2022"/>
-        <property name="release year" value="2022"/>
+        <property name="release date" value=" 28 Feb. 2024"/>
+        <property name="release year" value="2024"/>
         <property name="release type" value="intern, minor"/>
         <property name="system format" value="3.13"/>
-        <property name="classpath" value="${junit};${ftp4j};${build}"/>
+        <property name="classpath" value="${junit};${ftp4j};${util-cls-f1};${util-cls-f2};${build}"/>
 
 
 <target name="init">

@@ -31,8 +31,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
-import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.Util;
+import kse.utilclass.misc.Log;
+import kse.utilclass.misc.Util;
 
 /**
  * Implements a straight forward <code>ApplicationAdapter</code> for the

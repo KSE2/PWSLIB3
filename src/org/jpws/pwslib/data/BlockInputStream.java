@@ -24,10 +24,13 @@ import java.io.InputStream;
 import java.io.StreamCorruptedException;
 
 import org.jpws.pwslib.crypto.PwsCipher;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.Util;
 
 /**
- * Package class to implement the <code>PwsBlockInputStream</code> interface. 
+ * Package class to implement the <code>PwsBlockInputStream</code> interface.
+ * Note that the input-stream as parameter to this stream is not closed
+ * when this stream gets closed.
  */
 class BlockInputStream implements PwsBlockInputStream
 {
@@ -113,13 +116,13 @@ class BlockInputStream implements PwsBlockInputStream
    @Override
    public void close () {
       if ( nextBlock != null ) {
-          Util.destroyBytes(nextBlock);
+          Util.destroy(nextBlock);
       }
       if ( outBlock != null ) {
-          Util.destroyBytes(outBlock);
+          Util.destroy(outBlock);
       }
       if ( blockBuffer != null ) {
-    	  Util.destroyBytes(blockBuffer);
+    	  Util.destroy(blockBuffer);
       }
       nextBlock = null;
       blockBuffer = null;

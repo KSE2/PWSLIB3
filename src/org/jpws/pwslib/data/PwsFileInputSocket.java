@@ -21,6 +21,7 @@ package org.jpws.pwslib.data;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.exception.UnsupportedFileVersionException;
@@ -52,8 +53,8 @@ import org.jpws.pwslib.global.UUID;
  *  @see org.jpws.pwslib.data.PwsBlockInputStream
  */
 
-public class PwsFileInputSocket
-{
+public class PwsFileInputSocket {
+	
    private static final int MAX_READ_AHEAD = 32000;
 
    private boolean isOpen, isConsumed;
@@ -61,31 +62,46 @@ public class PwsFileInputSocket
    private String options = "";  // options from file header
    
    private BufferedInputStream in;
-   private PwsCipher cipher;
+//   private PwsCipher cipher;
    private PwsBlockInputStream blockStream;
    private PwsBlockInputStream userStream;
    private HeaderFieldList headerFields;
    private PwsFileHeaderV3 headerV3;
    private PwsChecksum hmac;
+   private int cipherKeyLength;
    
    
 
  /**
  * Creates a file input socket with the parameter input stream
- * as data source.
+ * as data source. The data stream comprises the entire encrypted file.
+ * Encryption key length is 256 bits (maximum).
  * 
  * @param input <code>InputStream</code>
  */   
-public PwsFileInputSocket ( InputStream input )
-{
-   if ( input == null )
-      throw new NullPointerException( "input == null" );
+public PwsFileInputSocket ( InputStream input ) {
+	this(input, 256);
+}
+
+
+/**
+ * Creates a file input socket with the parameter input stream
+ * as data source and the given encryption quality value. 
+ * The data stream comprises the entire encrypted file. The quality is a
+ * machine level key length value in bits, one of (256, 192, 128, 64). 
+ * Encryption quality grows with the value.
+ * 
+ * @param input <code>InputStream</code>
+ * @param keyLength int encryption quality marker in bits, (256, 192, 128, 64)
+ */   
+public PwsFileInputSocket ( InputStream input, int keyLength ) {
+   Objects.requireNonNull(input, "input is null");	
+   setKeySecurity(keyLength);
    
    in = (input instanceof BufferedInputStream) ? 
         (BufferedInputStream)input : new BufferedInputStream( input );
    in.mark( MAX_READ_AHEAD );
 }
-
 
 /**
  * Attempts to open this socket by trying a key on a 
@@ -102,10 +118,7 @@ public PwsFileInputSocket ( InputStream input )
  * @throws IllegalStateException if this socket is already open
  * @throws IOException if an error occurred during reading 
  */
-public boolean attemptOpen ( PwsPassphrase key )
-   throws IOException
-{
-   
+public boolean attemptOpen ( PwsPassphrase key ) throws IOException {
    try { 
 	   return attemptOpen( key, 0 ); 
    } catch ( WrongFileVersionException e ) { 
@@ -176,10 +189,7 @@ public boolean attemptOpen ( PwsPassphrase key, int fileVersion )
  * @return <b>true</b> if and only if one of the "attemptOpen" methods has been
  *         performed successfully on this socket
  */
-public boolean isOpen ()
-{
-   return isOpen;
-}
+public boolean isOpen () {return isOpen;}
 
 /** Tries to open this socket by use of a specified user key 
  * on the PWS file version V1 conventions. 
@@ -196,8 +206,7 @@ public boolean isOpen ()
  * @throws IOException if an error occurs during reading
  */
 private boolean openV1 ( PwsPassphrase key, boolean generic ) 
-   throws IOException, WrongFileVersionException
-{
+			throws IOException, WrongFileVersionException {
    // read file header section (valid for ?)
    PwsFileHeaderV1 header = new PwsFileHeaderV1( in );
 
@@ -278,21 +287,20 @@ private boolean openV2 ( PwsPassphrase key, boolean generic )
  * @throws IOException if an error occurred during reading
  */
 private boolean openV3 ( PwsPassphrase key, boolean generic ) 
-   throws IOException, UnsupportedFileVersionException
-{
+			throws IOException, UnsupportedFileVersionException {
    try {
       // read file header section (valid for all file format versons)
       headerV3 = new PwsFileHeaderV3( in );
+      headerV3.setKeySecurity(cipherKeyLength);
    
       // verify the correct user passphrase and get the encrypt cipher 
-      if ( (blockStream = headerV3.verifyPass( key )) == null ) {
+      blockStream = headerV3.verifyPass(key);
+      if (blockStream == null) {
          return false;
       }
    
    } catch ( UnsupportedFileVersionException e ) {
-      if ( generic ) {
-         return false;
-      }
+      if ( generic ) return false;
       throw e;
    }
    
@@ -308,15 +316,37 @@ private boolean openV3 ( PwsPassphrase key, boolean generic )
    return true;
 }
 
+/** Sets the security level for the encryption in measure of the cipher
+ * key length in bits. This can be one of [64, 128, 192, 256]. The
+ * default value is 256 (full security). This can be set as long as the
+ * socket has not been opened.
+ * 
+ * @param bits int key length
+ * @throws IllegalArgumentException if the length is invalid
+ */
+public void setKeySecurity (int bits) {
+	if (blockStream != null) return;
+	if (bits == 256 || bits == 128 || bits == 192 || bits == 64) {
+		cipherKeyLength = bits;
+	} else {
+		throw new IllegalArgumentException("illegal ley-length value: " + bits);
+	}
+}
 
+/** Returns the security level for the encryption in measure of the cipher
+ * key length in bits. This can be one of [64, 128, 192, 256]. The
+ * default value is 256 (full security).
+ * 
+ * @return int
+ */ 
+public int getKeySecurity () {return cipherKeyLength;}
 /**
  * Returns the PWS file format version (for values see class <code>Global</code>) 
  * or 0 if the file has not been opened.
  * 
  * @return int file format version
  */
-public int getFileVersion ()
-{
+public int getFileVersion () {
    return fversion;
 }
 
@@ -326,28 +356,27 @@ public int getFileVersion ()
  * 
  * @return int cipher blocksize or 0
  */
-public int getBlocksize ()
-{
-   return cipher != null ? cipher.getBlockSize() : 0;
+public int getBlocksize () {
+   return blockStream != null ? blockStream.getBlockSize() : 0;
 }
 
 /**
- * Returns a specialised iterator over all raw-fields of the underlying 
- * PWS database. Serves for reading all PWS file data contents. 
+ * Returns a specialised iterator over all raw-fields comprising the data
+ * content of the underlying PWS database. (Does not return header fields.)
  *  
  * @return <code>RawFieldReader</code>
  * @throws IllegalStateException if the socket is not open or another 
  *         input stream has been active for this socket
  * @throws IOException if an IO error occurs or the stream is corrupted        
  */
-public PwsRawFieldReader getRawFieldReader () throws IOException
-{
+public PwsRawFieldReader getRawFieldReader () throws IOException {
    PwsBlockInputStream bs = getBlockInputStreamIntern();
    return new RawFieldReader( bs, fversion, hmac );
 }
 
 /**
  * Renders a block based input stream of the PWS file data content.
+ * The blocks are resulting from the block-cipher used.
  * The stream is positioned to the first block after the file header.
  *  
  * @return <code>PwsBlockInputStream</code>
@@ -355,8 +384,7 @@ public PwsRawFieldReader getRawFieldReader () throws IOException
  *         input stream has been active for this socket
  * @throws IOException if an IO error occurs or the stream is corrupted        
  */
-public PwsBlockInputStream getBlockInputStream () throws IOException
-{
+public PwsBlockInputStream getBlockInputStream () throws IOException {
    PwsBlockInputStream st = getBlockInputStreamIntern();
    if ( fversion == Global.FILEVERSION_3 ) {
 	  st.setStreamHmac( headerV3.getReadHmac() );
@@ -366,6 +394,7 @@ public PwsBlockInputStream getBlockInputStream () throws IOException
 
 /**
  * Renders a block based input stream of the PWS file data content.
+ * The blocks are resulting from the block-cipher used.
  * The stream is positioned to the first block after the file header.
  *  
  * @return <code>PwsBlockInputStream</code>
@@ -373,8 +402,7 @@ public PwsBlockInputStream getBlockInputStream () throws IOException
  *         input stream has been active for this socket
  * @throws IOException if an IO error occurs or the stream is corrupted        
  */
-private PwsBlockInputStream getBlockInputStreamIntern () throws IOException
-{
+private PwsBlockInputStream getBlockInputStreamIntern () throws IOException {
    // control access conditions
    if ( !isOpen )
       throw new IllegalStateException( "socket not open" );
@@ -386,8 +414,7 @@ private PwsBlockInputStream getBlockInputStreamIntern () throws IOException
    return userStream;
 }
 
-public void close () 
-{
+public void close () {
    if ( isOpen ) {
       if ( userStream != null ) {
          userStream.close();
@@ -409,8 +436,7 @@ public void close ()
  * 
  * @return String file options text
  */
-public String getOptions ()
-{
+public String getOptions () {
    return options;
 }
 
@@ -420,22 +446,21 @@ public String getOptions ()
  * only be available after EOF of the input block stream has been reached; it 
  * may not be available at all.
  *  
- * @return byte[] file hmac of length 32 or <b>null</b> if this information is 
- *                unavailable
+ * @return byte[] content hash value of length 32 or <b>null</b> if this 
+ * 				  information is unavailable
  */ 
- public byte[] getReadChecksum ()
- {
+ public byte[] getReadChecksum () {
     return headerV3 == null ? null : headerV3.getReadChecksum();
  }
 
  
- /** The number of security iterations of key calculation during file 
-  * authentication. (Note this property is only available for file format V3.)
+ /** The number of security iterations in key calculation during file 
+  * authentication. This property is only available for file format V3 and
+  * after the socket has been opened
   * 
   * @return number of calculation iterations or 0 if unavailable
   */
-public int getIterations ()
- {
+ public int getIterations () {
     return headerV3 == null ? 0 : headerV3.getIterations();
  }
 
@@ -449,21 +474,20 @@ public int getIterations ()
  * @return byte[] file hmac of length 32 or <b>null</b> if this information is
  *                unavailable
  */ 
- public byte[] getCalcChecksum ()
- {
+ public byte[] getCalcChecksum ()  {
     return hmac == null ? null : hmac.digest();
  }
 
 
-/** Returns the field list of the file header if it is available. This is valid
- * only for format V3, otherwise <b>null</b> is returned.
- * (The header field list may contain various data elements
- * referring to the file in total.)
+/** Returns the field list of the file header if it is available. This is 
+ * available only for format V3 and after the socket has been opened, 
+ * otherwise null is returned.
+ * <p>The header field list usually contains various data elements
+ * referring to the file in total.
  * 
  * @return <code>RawFieldList</code> or <b>null</b>
  */
-public HeaderFieldList getHeaderFields ()
-{
+public HeaderFieldList getHeaderFields () {
    return headerFields;
 }
 
@@ -473,10 +497,9 @@ public HeaderFieldList getHeaderFields ()
   * 
   * @return file UUID or <b>null</b> if this information is not available
   */
- public UUID getFileUUID ()
- {
-    PwsRawField raw = headerFields != null ? 
-    	  headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE ) : null;
+ public UUID getFileUUID () {
+    PwsRawField raw = headerFields == null ? null : 
+    	  headerFields.getField( PwsFileHeaderV3.FILE_UUID_TYPE );
     return raw == null ? null : new UUID( raw.getDataDirect() );
  }
 

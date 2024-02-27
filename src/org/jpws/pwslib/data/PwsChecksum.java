@@ -18,8 +18,8 @@
 
 package org.jpws.pwslib.data;
 
-import org.jpws.pwslib.crypto.SHA256;
-import org.jpws.pwslib.global.Util;
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.Util;
 
 /**
  *  A checksum factory conforming to RFC-2104. 

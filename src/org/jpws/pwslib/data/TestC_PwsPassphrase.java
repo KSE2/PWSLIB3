@@ -20,11 +20,11 @@ package org.jpws.pwslib.data;
 
 import java.io.UnsupportedEncodingException;
 
-import junit.framework.TestCase;
-
 import org.jpws.pwslib.crypto.BlowfishCipher;
 import org.jpws.pwslib.crypto.PwsCipher;
-import org.jpws.pwslib.global.Util;
+
+import junit.framework.TestCase;
+import kse.utilclass.misc.Util;
 
 /**
  *  TestC_PwsPassphrase in org.jpws.pwslib.data
@@ -45,7 +45,7 @@ public void test_Construct_00 ()
    int vlen;
 
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    value = new String( bas, 0 );
    pp = new PwsPassphrase();
    pp.setValue( value );
@@ -70,7 +70,7 @@ public void test_Construct_01 ()
    int vlen;
    
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    value = new String( bas, 0 );
    pp = new PwsPassphrase( value );
    
@@ -105,7 +105,7 @@ public void test_Construct_02 ()
    int vlen;
 
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    value = new String( bas, 0 );
    chars = value.toCharArray(); 
    pp = new PwsPassphrase( chars );
@@ -130,7 +130,7 @@ public void test_Construct_03 ()
    int vlen;
 
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    
    try {
       value = new String( bas, "iso-8859-1" );
@@ -163,7 +163,7 @@ public void test_Construct_04 ()
    int vlen;
 
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    
    value = new String( bas, 0 );
    cipher = new BlowfishCipher();
@@ -191,7 +191,7 @@ public void test_clear ()
    int vlen;
 
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    value = new String( bas, 0 );
    pp = new PwsPassphrase( value );
    pp.clear();
@@ -230,7 +230,7 @@ public void test_clone ()
    
    // clone filled object
    vlen = Util.nextRandByte();
-   bas = Util.randomBytes(vlen);
+   bas = Util.randBytes(vlen);
    value = new String( bas, 0 );
    pp1 = new PwsPassphrase( value );
    pp2 = (PwsPassphrase)pp1.clone();

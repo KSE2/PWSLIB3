@@ -41,11 +41,12 @@ import org.jpws.pwslib.data.PwsRecordList;
 import org.jpws.pwslib.exception.DuplicateEntryException;
 import org.jpws.pwslib.exception.PasswordSafeException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.order.DefaultRecordWrapper;
 import org.jpws.pwslib.persist.ApplicationAdapter;
-import org.jpws.pwslib.persist.ByteArrayOutputStreamPws;
 import org.junit.Test;
+
+import kse.utilclass.misc.DirectByteOutputStream;
+import kse.utilclass.misc.Util;
 public class TestC_PwsFile {
 
 public TestC_PwsFile() {
@@ -246,7 +247,7 @@ private void test_iostream ( int format ) throws IOException, PasswordSafeExcept
 	data = null;
 	
 	// write output stream, no passphrase --> exception
-	ByteArrayOutputStreamPws out = new ByteArrayOutputStreamPws();
+	DirectByteOutputStream out = new DirectByteOutputStream();
 	try {
 		f1.write(out);
 		fail("no exception on missing passphrase, format "+format);

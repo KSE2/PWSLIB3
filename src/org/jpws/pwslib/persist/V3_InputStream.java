@@ -23,7 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.Util;
 
 /**
  * PWS file format V3 specific input stream that terminates a wrapped 
@@ -38,20 +39,17 @@ public class V3_InputStream extends FilterInputStream
    private boolean eof;
    
 
-public V3_InputStream ( InputStream in )
-{
+public V3_InputStream ( InputStream in ) {
    super( in );
 }
 
 @Override
-public int available () throws IOException
-{
+public int available () throws IOException {
    return eof ? 0 : super.available();
 }
 
 @Override
-public void close () throws IOException
-{
+public void close () throws IOException {
    super.close();
    eof = true;
 }
@@ -60,8 +58,7 @@ public void close () throws IOException
  * Unsupported operation.
  */
 @Override
-public int read () throws IOException
-{
+public int read () throws IOException {
    throw new UnsupportedOperationException();
 }
 
@@ -79,8 +76,7 @@ public int read () throws IOException
  * @exception  IOException  if an I/O error occurs.
  */
 @Override
-public int read ( byte[] b, int off, int len ) throws IOException
-{
+public int read ( byte[] b, int off, int len ) throws IOException {
    byte[] buf;
    int i, rlen, le;
    
@@ -127,8 +123,7 @@ public int read ( byte[] b, int off, int len ) throws IOException
  * 
  * @return boolean EOF state
  */
-public boolean isEOF () 
-{
+public boolean isEOF () {
    return eof;
 }
 
@@ -136,8 +131,7 @@ public boolean isEOF ()
  * Unsupported operation.
  */
 @Override
-public long skip ( long n ) throws IOException
-{
+public long skip ( long n ) throws IOException {
    throw new UnsupportedOperationException();
 }
 
@@ -150,8 +144,7 @@ public long skip ( long n ) throws IOException
  * @return byte[] hmac of length 32 or <b>null</b> if this information is 
  *         unavailable
  */
-public byte[] getHashMac()
-{
+public byte[] getHashMac() {
    return hmac;
 }
 

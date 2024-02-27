@@ -23,9 +23,10 @@ import java.io.OutputStream;
 
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 
 /**
@@ -41,8 +42,8 @@ import org.jpws.pwslib.global.Util;
  *  @see org.jpws.pwslib.data.PwsRawFieldWriter
  */
 
-public class PwsFileOutputSocket
-{
+public class PwsFileOutputSocket {
+	
    private OutputStream output;
    private PwsCipher cipher;
    private BlockWriter writer;
@@ -53,6 +54,7 @@ public class PwsFileOutputSocket
    
    private int version;
    private int iterations = 2048;
+   private int cipherKeyLength = 256;
    
    
    /**
@@ -60,11 +62,10 @@ public class PwsFileOutputSocket
  * fields will be created with default values where necessary.)
  * 
  * @param output the target output stream
- * @param key <code>PwsPassphrase</code> secret key for the encryption cipher  
+ * @param key <code>PwsPassphrase</code> user key for the encryption cipher  
  * @param fileVersion file format version to be created (values of class <code>Global</code>)
  */
-public PwsFileOutputSocket ( OutputStream output, PwsPassphrase key, int fileVersion )
-{
+public PwsFileOutputSocket ( OutputStream output, PwsPassphrase key, int fileVersion ) {
    this( output, key, null, fileVersion );
 }  // constructor
 
@@ -72,7 +73,7 @@ public PwsFileOutputSocket ( OutputStream output, PwsPassphrase key, int fileVer
  * Creates an output socket with full settings, including optional file generic header data.
  * 
  * @param output the target output stream
- * @param key <code>PwsPassphrase</code> secret key for the encryption cipher (file access key)
+ * @param key <code>PwsPassphrase</code> user key for the encryption cipher (file access key)
  * @param fileVersion file format version to be created (values of class <code>Global</code>)
  * @param headerFields file generic header data in a <code>HeaderFieldList</code>
  *        (e.g. contains user options, file-UUID, etc.); may be <b>null</b> 
@@ -97,7 +98,7 @@ public PwsFileOutputSocket ( OutputStream output,
  * file generic header data.
  * 
  * @param output the target output stream
- * @param key <code>PwsPassphrase</code> secret key for the encryption cipher (file access key)
+ * @param key <code>PwsPassphrase</code> user key for the encryption cipher (file access key)
  * @param headerFields file generic header data in a <code>HeaderFieldList</code>
  *        (e.g. contains user options, file-UUID, etc.); may be <b>null</b> 
  */
@@ -109,12 +110,30 @@ public PwsFileOutputSocket ( OutputStream output,
    this( output, key, headerFields, Global.FILEVERSION_LATEST_MAJOR );
 }  // constructor
 
+/** Sets the security level for the encryption in measure of the cipher
+ * key length in bits. This can be one of [64, 128, 192, 256]. The
+ * default value is 256 (full security).
+ * <p>NOTE: This must be called before 'getBlockOutputStrean()' is called
+ * otherwise it has no effect.
+ * 
+ * @param bits int key length
+ */
+public void setKeySecurity (int bits) {
+	if (cipher != null) return;
+	if (bits == 256 || bits == 128 || bits == 192 || bits == 64) {
+		cipherKeyLength = bits;
+	} else {
+		throw new IllegalArgumentException("illegal ley-length value: " + bits);
+	}
+}
+
+public int getKeySecurity () {return cipherKeyLength;}
+
 /**
  * Destroys all sensible data in this object and renders it unusable.
  * (This can be called without prior call to <code>close()</code>.)
  */
-public void destroy ()
-{
+public void destroy () {
    output = null;
    cipher = null;
    key = null;
@@ -126,8 +145,7 @@ public void destroy ()
  * 
  * @throws IOException
  */
-public void close ()  throws IOException
-{
+public void close ()  throws IOException {
    if ( writer != null ) {
       writer.close();
    }
@@ -137,12 +155,10 @@ public void close ()  throws IOException
          (hmac == null? "void" : Util.bytesToHex( hmac.digest() )));
 }
 
-private void initOutput () throws IOException
-{
+private void initOutput () throws IOException {
    // create file header
    Log.log( 5, "(PwsFileOutputSocket) initOutput, 0" );
-   switch ( version )
-   {
+   switch ( version ) {
    case Global.FILEVERSION_1:
       cipher = new PwsFileHeaderV1().save( output, key );
       break;
@@ -154,9 +170,10 @@ private void initOutput () throws IOException
       break;
       
    case Global.FILEVERSION_3:
-	   PwsFileHeaderV3 hd3 = new PwsFileHeaderV3( headerFields );
+	  PwsFileHeaderV3 hd3 = new PwsFileHeaderV3( headerFields );
       Log.log( 5, "(PwsFileOutputSocket) initOutput, 1" );
       hd3.setIterations( iterations );
+      hd3.setKeySecurity(cipherKeyLength);
       Log.log( 5, "(PwsFileOutputSocket) initOutput, 2" );
       fileID = hd3.getFileID();
       cipher = hd3.save( output, key );
@@ -165,7 +182,7 @@ private void initOutput () throws IOException
       
    default: throw new IllegalArgumentException( "unknown file format version: " + version );   
    }
-}  // initOutput
+}
 
 /**
  * Returns the file identifier UUID or <b>null</b> if it is not
@@ -173,20 +190,14 @@ private void initOutput () throws IOException
  * 
  * @return <code>UUID</code> file identifier value
  */
-public UUID getFileID ()
-{
-   return fileID;
-}
+public UUID getFileID () {return fileID;}
 
 /** The number of security iterations of key calculation
  * during file authentication or file-save.
  * 
  * @return int number of calculation iterations
  */
-public int getIterations ()
-{
-   return iterations;
-}
+public int getIterations () {return iterations;}
 
 /** Sets the number of security loops of key calculation
  * occurring during file authentication or file-save.
@@ -194,9 +205,10 @@ public int getIterations ()
  * 
  * @param iterations int number of calculation loops
  */
-public void setIterations ( int iterations )
-{
-   this.iterations = Math.max( 2048, iterations );
+public void setIterations ( int iterations ) {
+	if (cipher == null) {
+		this.iterations = Math.max( 2048, iterations );
+	}
 }
 
 /**
@@ -207,8 +219,7 @@ public void setIterations ( int iterations )
  * @return <code>RawFieldWriter</code>
  * @throws IOException
  */
-public PwsRawFieldWriter getRawFieldWriter () throws IOException
-{
+public PwsRawFieldWriter getRawFieldWriter () throws IOException {
    return (PwsRawFieldWriter)getBlockOutputStream();
 }
 
@@ -221,10 +232,9 @@ public PwsRawFieldWriter getRawFieldWriter () throws IOException
  * @return <code>PwsBlockOutputStream</code>
  * @throws IOException
  */
-public PwsBlockOutputStream getBlockOutputStream () throws IOException
-{
+public PwsBlockOutputStream getBlockOutputStream () throws IOException {
    if ( writer != null )
-      throw new IllegalStateException( "output stream in use or consumed" );
+      throw new IllegalStateException( "duplicate output stream" );
    
    Log.log( 5, "(PwsFileOutputSocket) getBlockOutputStream" );
    initOutput();
@@ -232,6 +242,16 @@ public PwsBlockOutputStream getBlockOutputStream () throws IOException
    return writer;
 }
 
+/**
+ * Returns the blocksize used by this socket or 0 if this socket has not 
+ * been opened. The socket is opened by invoking the block-output-stream
+ * or the raw-field-writer.
+ * 
+ * @return int cipher blocksize or 0
+ */
+public int getBlocksize () {
+   return cipher != null ? cipher.getBlockSize() : 0;
+}
 
 //  ***************  INNER CLASSES  *****************
 
@@ -298,7 +318,7 @@ private class BlockWriter implements PwsBlockOutputStream, PwsRawFieldWriter
          byte[] buf = Util.arraycopy( data, offset, blocks * blocksize );
          buf2 = cipher.encrypt( buf );
          hmac.update(buf);
-         Util.destroyBytes(buf);
+         Util.destroy(buf);
       } else  {
     	 // fitting block space 
          buf2 = cipher.encrypt( data, offset, length );

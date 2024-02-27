@@ -1,4 +1,4 @@
-KSE PWSLIB 2-9-0
+KSE PWSLIB 2-10-0
 
 KSE Password Safe V3 Library
 README FILE
@@ -26,16 +26,19 @@ Javadoc API documentation available
 Release Date: 27 Feb. 2019
 
 Available Executable Packages
-    pws-engine-kse-2-9-0.jar		Core, BSD-like license
-    pws-suppl-ftp-2-9-0jar		FTP module, LGPL 2
+    pws-engine-kse-2-10-0.jar		Core, BSD-like license
+    pws-suppl-ftp-2-10-0jar		FTP module, LGPL 2
 
 Documentary and Development Packages    
-    pws-engine-kse-2-9-0.zip		executables + documentation
-    pws-engine-source-2-9-0.zip		source code + libraries + documentation
+    pws-engine-kse-2-10-0.zip		executables + documentation
+    pws-engine-source-2-10-0.zip	source code + libraries + documentation
+
+Dependencies
+2-10-0 requires the two packages from the UtilClasses project (version 0-12 or
+higher). 
 
 Release Type
-2-9-0 is a major release introducing advancements to suit JPWS 1.2.1 and optimised
-operations.
+2-10-0 is a minor optimising release w/ improvements in encryption security.
 
 -------------------------------
 

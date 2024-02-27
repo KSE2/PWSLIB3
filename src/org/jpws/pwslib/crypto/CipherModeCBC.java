@@ -18,7 +18,7 @@
 
 package org.jpws.pwslib.crypto;
 
-import org.jpws.pwslib.global.Util;
+import kse.utilclass.misc.Util;
 
 /**
  * This class wraps any ECB mode <code>PwsCipher</code> 
@@ -119,7 +119,7 @@ public void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int l
       // propagate pointer
       pos += blocksize;
    }
-   Util.destroyBytes( plain );
+   Util.destroy( plain );
 }
 
 @Override

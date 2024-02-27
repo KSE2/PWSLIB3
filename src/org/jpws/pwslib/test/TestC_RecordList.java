@@ -33,7 +33,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
-import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.data.PwsFileEvent;
 import org.jpws.pwslib.data.PwsFileListener;
 import org.jpws.pwslib.data.PwsPassphrase;
@@ -41,11 +40,13 @@ import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
 import org.jpws.pwslib.exception.DuplicateEntryException;
 import org.jpws.pwslib.exception.NoSuchRecordException;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.order.DefaultRecordWrapper;
 import org.junit.Test;
+
+import kse.utilclass.misc.Log;
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.Util;
 
 
 
@@ -1022,7 +1023,7 @@ public void test_removeRecord () throws DuplicateEntryException {
 	count = 0;
 	for ( int i = 0; i < size; i++ ) {
 		// get random selection
-		int sel = Util.getRandom(list.size());
+		int sel = Util.nextRand(list.size());
 		
 		// remove next record 
 		PwsRecord rec1 = list.remove(sel);
@@ -1045,7 +1046,7 @@ public void test_removeRecord () throws DuplicateEntryException {
 	assertTrue("failing removeRecord() loses a list element", li1.containsRecordList(li2));
 	
 	// probe equivalence of remove record and UUID
-	int index = Util.getRandom(15);
+	int index = Util.nextRand(15);
 	rec = ((List<PwsRecord>)col1).get(index);
 	li1.removeRecord(rec);
 	li2.removeRecord(rec.getRecordID());

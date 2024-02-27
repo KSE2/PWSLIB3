@@ -28,10 +28,11 @@ import java.net.URL;
 
 import org.jpws.pwslib.exception.ApplicationFailureException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
 import org.jpws.pwslib.persist.StreamFactory;
+
+import kse.utilclass.misc.Util;
 
 /**
  * A ContextFile is the combination of <code>ApplicationAdapter</code> and
@@ -347,7 +348,7 @@ public void copyTo ( ContextFile target ) throws IOException, ApplicationFailure
    InputStream in = getInputStream();
    try {
       out = target.getOutputStream();
-      Util.copyStream( in, out );
+      Util.transferData( in, out, 4096 );
       out.close();
       
    } catch ( Exception e ) {
@@ -407,6 +408,8 @@ public void receiveContent (byte[] data) throws IOException {
 	ByteArrayInputStream in = new ByteArrayInputStream(data);
 	try {
 		Util.transferData(in, out, 4096);
+	} catch (InterruptedException e) {
+		e.printStackTrace();
 	} finally {
 		out.close();
 	}

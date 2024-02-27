@@ -18,7 +18,6 @@
 
 package org.jpws.pwslib.crypto;
 
-
 /**
  * This class allows to instantiate Twofish ciphers of different operation
  * modi, conforming to the <code>PwsCipher</code> interface.
@@ -26,8 +25,7 @@ package org.jpws.pwslib.crypto;
  * synchronised. The blocksize of this cipher is 16.
  * 
  */
-public class TwofishCipher implements PwsCipher
-{
+public class TwofishCipher implements PwsCipher {
    private PwsCipher   ciph;
    
    /**

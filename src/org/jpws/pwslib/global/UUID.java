@@ -24,6 +24,8 @@ import java.io.Serializable;
 
 import org.jpws.pwslib.crypto.SHA1;
 
+import kse.utilclass.misc.Util;
+
 
 /**
  * A naive but fairly effective implementation of a UUID class.
@@ -63,7 +65,7 @@ public final class UUID implements Cloneable, Comparable<UUID>, Serializable
 
          stream.writeLong( time );
          for ( i = 0; i < 8; i++ )
-            stream.writeByte( Util.nextRandByte() );
+            stream.writeByte( Util.nextRand() );
          stream.close();
          
          sha.update( bstream.toByteArray() );

@@ -20,7 +20,10 @@ package org.jpws.pwslib.crypto;
 
 import java.security.InvalidKeyException;
 
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
+
+import kse.utilclass.misc.Log;
+import kse.utilclass.misc.Util;
 
 /**
  * Class wrapping a low-level implementation of the Twofish cipher
@@ -38,11 +41,7 @@ class TwofishECB implements PwsCipher {
  * Creates a Twofish ECB cipher with a reasonable 256-bit random key.
  */   
 public TwofishECB () {
-   try { 
-	   sk = Twofish.makeKey( Util.getCryptoRand().nextBytes( 32 ) ); 
-   } catch ( InvalidKeyException e ) { 
-	   throw new IllegalStateException( e.toString() ); 
-   }
+	this( Util2.getCryptoRand().nextBytes( 32 ) );
 }
 
 /**
@@ -52,10 +51,11 @@ public TwofishECB () {
  * @throws IllegalArgumentException if key is invalid (length)
  */
 public TwofishECB ( byte[] key ) {
+   Log.log(3, "(TwofishECB) init with key-length " + (key.length * 8) + " bit");
    try { 
 	   sk = Twofish.makeKey( key ); 
-   } catch ( InvalidKeyException e ) { 
-	   throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); 
+   } catch (InvalidKeyException e) { 
+	   throw new IllegalArgumentException("Invalid key material / " + e.toString()); 
    }
 }
 
@@ -68,35 +68,9 @@ public TwofishECB ( byte[] key ) {
  * @throws IllegalArgumentException if key is invalid (length)
  */
 public TwofishECB ( byte[] key, int offset, int length ) {
-   try {
-	  byte[] buf = new byte[ length ];
-      System.arraycopy( key, offset, buf, 0, length );
-      sk = Twofish.makeKey( buf ); 
-   } catch ( InvalidKeyException e ) { 
-	   throw new IllegalArgumentException( "Invalid key material / " + e.toString() ); 
-   }
+	this( Util.arraycopy(key, offset, length) );
 }
 
-//private byte[] crypting ( byte[] buffer, int start, int length, boolean dec ) {
-//   if ( start < 0 | length < 0 | start + length > buffer.length )
-//      throw new IllegalArgumentException( "illegal parameter setting" );
-//   if ( length % Twofish.BLOCK_SIZE > 0 )
-//      throw new IllegalArgumentException( "illegal data blocklength" );
-//   
-//   int loops = length / Twofish.BLOCK_SIZE;
-//   byte[] result = new byte[ length ];
-//   byte[] one = null;
-//   int pos = start;
-//   for ( int i = 0; i < loops; i++ ) {
-//      one = dec ? Twofish.blockDecrypt( buffer, pos, sk ) 
-//            : Twofish.blockEncrypt( buffer, pos, sk );
-//      System.arraycopy( one, 0, result, pos - start, Twofish.BLOCK_SIZE );
-//      Util.destroyBytes(one);
-//      pos += Twofish.BLOCK_SIZE;
-//   }
-//   return result;
-//}
-//
 @Override
 public byte[] decrypt ( byte[] buffer ) {
    return decrypt( buffer, 0, buffer.length );

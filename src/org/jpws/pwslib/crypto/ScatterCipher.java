@@ -1,7 +1,9 @@
 package org.jpws.pwslib.crypto;
 
-import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
+
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 public class ScatterCipher implements PwsCipher {
 	private static final String CIPHER_NAME = "Scatter"; 
@@ -13,7 +15,7 @@ public class ScatterCipher implements PwsCipher {
 	   boolean ok;
 	   
 	   ScatterCipher ci = new ScatterCipher();
-	   byte[] data = Util.randomBytes(48);
+	   byte[] data = Util.randBytes(48);
 	   byte[] enc = ci.encrypt(data);
 	   ok = !Util.equalArrays(data, enc);
 //	   Log.debug(0, "ScatterCipher ENC1 = ".concat(Util.bytesToHex(enc) ));
@@ -71,20 +73,20 @@ public class ScatterCipher implements PwsCipher {
 	         throw new IllegalArgumentException("illegal cryptblock length");
 		
 		byte[] buf = Util.arraycopy(buffer, start, length);
-		Util.scatter(buf, 0, length,  false);
+		Util2.scatter(buf, 0, length,  false);
 		return buf;
 	}
 
 	@Override
 	public void decrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
 		System.arraycopy(input, inOffs, output, outOffs, length);
-		Util.scatter(output, outOffs, length,  false);
+		Util2.scatter(output, outOffs, length,  false);
 	}
 
 	@Override
 	public void encrypt (byte[] input, int inOffs, byte[] output, int outOffs, int length) {
 		System.arraycopy(input, inOffs, output, outOffs, length);
-		Util.scatter(output, outOffs, length,  true);
+		Util2.scatter(output, outOffs, length,  true);
 	}
 
 	@Override
@@ -98,7 +100,7 @@ public class ScatterCipher implements PwsCipher {
 	         throw new IllegalArgumentException("illegal cryptblock length");
 
 		byte[] buf = Util.arraycopy(buffer, start, length);
-		Util.scatter(buf, 0, length,  true);
+		Util2.scatter(buf, 0, length,  true);
 		return buf;
 	}
 

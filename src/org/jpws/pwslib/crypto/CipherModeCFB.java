@@ -26,7 +26,7 @@
 
 package org.jpws.pwslib.crypto;
 
-import org.jpws.pwslib.global.Util;
+import kse.utilclass.misc.Util;
 
 /**
  * This class wraps any ECB mode <code>PwsCipher</code> 

@@ -27,13 +27,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import org.jpws.pwslib.crypto.BlowfishCipher;
-import org.jpws.pwslib.crypto.CryptoRandom;
 import org.jpws.pwslib.crypto.PwsCipher;
 import org.jpws.pwslib.crypto.SHA1;
 import org.jpws.pwslib.exception.WrongFileVersionException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
+
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
+import kse.utilclass2.misc.CryptoRandom;
 
 
 /**
@@ -149,7 +151,7 @@ class PwsFileHeaderV1
          throw new NullPointerException("passphrase missing");
 
       // create the passphrase control value
-      CryptoRandom cra = Util.getCryptoRand();
+      CryptoRandom cra = Util2.getCryptoRand();
       randStuff = cra.nextBytes( randStuff.length );
       randHash	= PwsFileHeaderV1.genRandHash( passphrase, randStuff );
 
@@ -259,7 +261,7 @@ class PwsFileHeaderV1
       SHA1 sha = new SHA1();
       byte[] pass = passphrase.getBytes( PwsFileFactory.DEFAULT_CHARSET );
       sha.update( pass );
-      Util.destroyBytes( pass );
+      Util.destroy( pass );
       sha.update( salt );
       sha.finalize();
       
@@ -288,7 +290,7 @@ class PwsFileHeaderV1
       rnd = Util.arraycopy( randStuff, 10 );
       sha.update( rnd );
       sha.update( pass );
-      Util.destroyBytes( pass );
+      Util.destroy( pass );
       sha.finalize();
       tempSalt = sha.getDigest();
       Log.debug( 10, "(PwsFileHeaderV2.genRandHash) digest = " + Util.bytesToHex( tempSalt ));

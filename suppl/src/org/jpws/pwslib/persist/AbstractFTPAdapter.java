@@ -18,14 +18,6 @@
 
 package org.jpws.pwslib.persist;
 
-import it.sauronsoftware.ftp4j.FTPAbortedException;
-import it.sauronsoftware.ftp4j.FTPClient;
-import it.sauronsoftware.ftp4j.FTPDataTransferException;
-import it.sauronsoftware.ftp4j.FTPException;
-import it.sauronsoftware.ftp4j.FTPFile;
-import it.sauronsoftware.ftp4j.FTPIllegalReplyException;
-import it.sauronsoftware.ftp4j.FTPListParseException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -39,8 +31,15 @@ import java.util.Hashtable;
 import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.exception.LoginFailureException;
 import org.jpws.pwslib.exception.UserCancelException;
-import org.jpws.pwslib.global.Log;
-import org.jpws.pwslib.persist.ApplicationAdapter;
+
+import it.sauronsoftware.ftp4j.FTPAbortedException;
+import it.sauronsoftware.ftp4j.FTPClient;
+import it.sauronsoftware.ftp4j.FTPDataTransferException;
+import it.sauronsoftware.ftp4j.FTPException;
+import it.sauronsoftware.ftp4j.FTPFile;
+import it.sauronsoftware.ftp4j.FTPIllegalReplyException;
+import it.sauronsoftware.ftp4j.FTPListParseException;
+import kse.utilclass.misc.Log;
 
 
 /**

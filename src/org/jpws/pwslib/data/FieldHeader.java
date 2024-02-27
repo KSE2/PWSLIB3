@@ -21,7 +21,8 @@ package org.jpws.pwslib.data;
 import java.io.StreamCorruptedException;
 
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.Util;
 
 /**
  * Package class to represent a field HEADERBLOCK of the database format description.

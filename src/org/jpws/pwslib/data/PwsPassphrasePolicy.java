@@ -18,9 +18,11 @@
 
 package org.jpws.pwslib.data;
 
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.PassphraseUtils;
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
+
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 /**
  * This class defines a policy that is used to generate a random password.
@@ -423,14 +425,14 @@ public class PwsPassphrasePolicy implements Cloneable
    public void setOwnSymbols ( char[] symbols )
    {
       ownSymbols = symbols == null ? null : (char[])symbols.clone();
-      ownSymbols = Util.clearedSymbolSet( ownSymbols ); 
+      ownSymbols = Util2.clearedSymbolSet( ownSymbols ); 
       if ( Util.equalArrays( ownSymbols, PassphraseUtils.SYMBOL_CHARS ) & !easyview ||
            Util.equalArrays( ownSymbols, PassphraseUtils.EASYVISION_SYMBOL_CHARS ) & easyview )
          ownSymbols = null;
-      ownSymbols = Util.excludeCharset( ownSymbols, PassphraseUtils.DIGIT_CHARS );
-      ownSymbols = Util.excludeCharset( ownSymbols, PassphraseUtils.UPPERCASE_CHARS );
-      ownSymbols = Util.excludeCharset( ownSymbols, PassphraseUtils.LOWERCASE_CHARS );
-      ownSymbols = Util.excludeCharset( ownSymbols, PassphraseUtils.FORBIDDEN_CHARS );
+      ownSymbols = Util2.excludeCharset( ownSymbols, PassphraseUtils.DIGIT_CHARS );
+      ownSymbols = Util2.excludeCharset( ownSymbols, PassphraseUtils.UPPERCASE_CHARS );
+      ownSymbols = Util2.excludeCharset( ownSymbols, PassphraseUtils.LOWERCASE_CHARS );
+      ownSymbols = Util2.excludeCharset( ownSymbols, PassphraseUtils.FORBIDDEN_CHARS );
       
       Log.debug( 10, "(PwsPassphrasePolicy.setOwnSymbols) setting own symbols == [" + 
             (ownSymbols == null ? null : new String(ownSymbols)) + "]"); 

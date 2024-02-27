@@ -30,12 +30,13 @@ import java.util.zip.CRC32;
 
 import javax.swing.KeyStroke;
 
-import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.exception.InvalidPassphrasePolicy;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 /**
  * This class is a container for data fields belonging to a <i>Password Safe</i>
@@ -1049,7 +1050,7 @@ private long normalisedTime (long time) {
          }
 
          sum += PwsRawField.pwsFieldBlockSize( data.length, format );
-         Util.destroyBytes( data );
+         Util.destroy( data );
 
       // for null fields
       } else if ( format < Global.FILEVERSION_3 ) {

@@ -31,8 +31,9 @@ import org.jpws.pwslib.data.PwsFileEvent;
 import org.jpws.pwslib.data.PwsFileListener;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.order.DefaultRecordWrapper.SortField;
+
+import kse.utilclass.misc.Log;
 
 /**
  *  Represents an ordered list of <code>DefaultRecordWrapper</code> objects

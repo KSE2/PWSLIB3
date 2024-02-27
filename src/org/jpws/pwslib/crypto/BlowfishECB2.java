@@ -18,7 +18,9 @@
 
 package org.jpws.pwslib.crypto;
 
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
+
+import kse.utilclass.misc.Util;
 
 /**
  * A modified implementation of the Blowfish encryption algorithm in ECB mode.
@@ -263,18 +265,18 @@ class BlowfishECB2 implements PwsCipher
 		testbf1 = new BlowfishECB2(testKey1);
 
       byte[] buf = (byte[]) tv_p1.clone();
-      Util.bytesToLittleEndian( buf );
+      Util2.bytesToLittleEndian( buf );
 		testbf1.encrypt(buf, tv_t1);
-      Util.bytesToLittleEndian( tv_t1 );
+      Util2.bytesToLittleEndian( tv_t1 );
 
 		if ((tv_t1[0] != tv_c1[0]) || (tv_t1[1] != tv_c1[1]))
 		{
 			return false;
 		}
 
-      Util.bytesToLittleEndian( tv_t1 );
+      Util2.bytesToLittleEndian( tv_t1 );
 		tv_t1 = testbf1.decrypt(tv_t1);
-      Util.bytesToLittleEndian( tv_t1 );
+      Util2.bytesToLittleEndian( tv_t1 );
 
 		if ((tv_t1[0] != tv_p1[0]) || (tv_t1[1] != tv_p1[1]))
 		{
@@ -284,18 +286,18 @@ class BlowfishECB2 implements PwsCipher
 		testbf2 = new BlowfishECB2(testKey2);
 
       buf = (byte[]) tv_p2.clone();
-      Util.bytesToLittleEndian( buf );
+      Util2.bytesToLittleEndian( buf );
 		testbf2.encrypt(buf, tv_t2);
-      Util.bytesToLittleEndian( tv_t2 );
+      Util2.bytesToLittleEndian( tv_t2 );
 
 		if ((tv_t2[0] != tv_c2[0]) || (tv_t2[1] != tv_c2[1]))
 		{
 			return false;
 		}
 
-      Util.bytesToLittleEndian( tv_t2 );
+      Util2.bytesToLittleEndian( tv_t2 );
 		tv_t2 = testbf2.decrypt(tv_t2);
-      Util.bytesToLittleEndian( tv_t2 );
+      Util2.bytesToLittleEndian( tv_t2 );
 
 		if ((tv_t2[0] != tv_p2[0]) || (tv_t2[1] != tv_p2[1]))
 		{

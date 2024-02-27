@@ -2,6 +2,8 @@ package org.jpws.pwslib.crypto;
 
 import org.jpws.pwslib.global.Global;
 
+import kse.utilclass2.misc.CryptoRandom;
+
 public class Test_RandomGen {
     
     static final int RANDOM_SIZE = 100000;

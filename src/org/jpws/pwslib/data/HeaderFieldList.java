@@ -22,7 +22,8 @@ import java.util.BitSet;
 import java.util.Iterator;
 
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
+
+import kse.utilclass.misc.Log;
 
 /**
  * A descendant of <code>RawFieldList</code> that limits the range of

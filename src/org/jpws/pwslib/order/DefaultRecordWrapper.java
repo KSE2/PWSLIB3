@@ -18,7 +18,6 @@
 
 package org.jpws.pwslib.order;
 
-import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
@@ -32,7 +31,8 @@ import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.global.Global;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
+
+import kse.utilclass.misc.Util;
 
 /**
  * This class wraps a <code>PwsRecord</code> for purposes of quick reference
@@ -542,7 +542,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
 		   char[] buf = ((PwsPassphrase)obj).getValue();
 		   sbuf.append( buf );
 		   sbuf.append(' ');
-	       Util.destroyChars(buf);
+	       Util.destroy(buf);
 
 	   } else {
 		   throw new IllegalArgumentException("cannot digest object type");
@@ -600,7 +600,7 @@ public class DefaultRecordWrapper implements Comparable<DefaultRecordWrapper>,
       match = textMatch( buf, pat, cs, wd );
       
       // annihilate cleartext revealing
-      Util.destroyChars(buf); 
+      Util.destroy(buf); 
       sbuf.replace(0, len, new String(new char[len]));
 
       return match;

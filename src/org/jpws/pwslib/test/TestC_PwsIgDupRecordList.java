@@ -27,15 +27,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 
-import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.data.PwsIgDupRecordList;
 import org.jpws.pwslib.data.PwsPassphrase;
 import org.jpws.pwslib.data.PwsRecord;
 import org.jpws.pwslib.data.PwsRecordList;
 import org.jpws.pwslib.exception.DuplicateEntryException;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
 import org.junit.Test;
+
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.Util;
 
 public class TestC_PwsIgDupRecordList {
 

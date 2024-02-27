@@ -18,7 +18,7 @@
 
 package org.jpws.pwslib.crypto;
 
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
 
 /**
  * This class allows to instantiate Blowfish ciphers of different operation
@@ -39,7 +39,7 @@ public class BlowfishCipher implements PwsCipher
     *  Creates a Blowfish ECB cipher with a sound random key. 
     */
    public BlowfishCipher () {
-      ciph = new BlowfishECB2( Util.getCryptoRand().nextBytes( 48 ) );
+      ciph = new BlowfishECB2( Util2.getCryptoRand().nextBytes( 48 ) );
    }
 
    /**

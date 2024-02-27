@@ -5,7 +5,7 @@
  *  @author Wolfgang Keller
  *  Created 07.08.2005
  * 
- *  Copyright (c) 2005-2015 by Wolfgang Keller, Munich, Germany
+ *  Copyright (c) 2005-2024 by Wolfgang Keller, Munich, Germany
  * 
  This program is copyright protected to the author(s) stated above. However, 
  you can use, redistribute and/or modify it for free under the terms of the 
@@ -23,17 +23,20 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Iterator;
+import java.util.Objects;
 
-import org.jpws.pwslib.crypto.CryptoRandom;
 import org.jpws.pwslib.crypto.PwsCipher;
-import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.crypto.TwofishCipher;
 import org.jpws.pwslib.exception.UnsupportedFileVersionException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
+import org.jpws.pwslib.global.Util2;
 import org.jpws.pwslib.persist.V3_InputStream;
+
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
+import kse.utilclass2.misc.CryptoRandom;
 
 
 /**
@@ -140,6 +143,8 @@ public class PwsFileHeaderV3
    private boolean isRead;
    private byte[] hseed;
    private boolean isVerified;
+   /** cipher key-length (8, 16, 24, 32) */
+   private int keyLength = 32;	
 
    private InputStream input;
    private BlockInputStream blockStream;
@@ -252,6 +257,22 @@ public class PwsFileHeaderV3
        if ( i < 2048 )
           throw new IllegalArgumentException();
        iter = i;
+    }
+    
+    /** Sets the security level for the encryption in measure of the cipher
+     * key length in bits. This can be one of [64, 128, 192, 256]. The
+     * default value is 256 (full security).
+     * 
+     * @param bits int key length
+     */
+    public void setKeySecurity (int bits) {
+    	switch (bits) {
+    	case 64:	keyLength = 8; break;
+    	case 128:	keyLength = 16; break;
+    	case 192:	keyLength = 24; break;
+    	case 256:	keyLength = 32; break;
+    	default: throw new IllegalArgumentException("invalid length option");
+    	}
     }
     
     /**
@@ -445,7 +466,7 @@ public class PwsFileHeaderV3
       isRead = false;
 
       // create new random values
-      CryptoRandom cra = Util.getCryptoRand();
+      CryptoRandom cra = Util2.getCryptoRand();
       salt = cra.nextBytes( salt.length );
       iv = cra.nextBytes( iv.length );
       byte[] fkey = cra.nextBytes( 32 );  // new file cipher key
@@ -465,13 +486,31 @@ public class PwsFileHeaderV3
       isRead = true;
       
       // create the file cipher 
-      PwsCipher fileCipher = new TwofishCipher( fkey, iv );
-      Util.destroyBytes( fkey );
-      Util.destroyBytes( pkey );
+      PwsCipher fileCipher = new TwofishCipher( effectiveCipherKey(fkey), iv );
+      Util.destroy( fkey );
+      Util.destroy( pkey );
 
       return fileCipher;
 	}
    
+	/** The operating cipher secret key w/ length as defined through
+	 * 'keyLength'.
+	 * 
+	 * @param key byte[]
+	 * @return byte[]
+	 */
+	private byte[] effectiveCipherKey (byte[] key) {
+		byte[] key2;
+		switch (keyLength) {
+		case 32: key2 = key; break;
+		case 24: key2 = Util.arraycopy(key, 24); break;
+		case 16: key2 = Util.arraycopy(key, 16); break;
+		case 8: key2 = Util.arraycopy(key, 8); break;
+		default : throw new IllegalStateException("illegal key-length: " + keyLength);
+		}
+		return key2;
+	}
+	
    /** Verifies whether the file trailing this header can be read with the 
     * passphrase submitted as parameter. If yes, this creates and returns
     * the <code>PwsBlockInputStream</code> which is to be used for reading the 
@@ -483,16 +522,14 @@ public class PwsFileHeaderV3
     * @return <code>PwsCipher</code> value if the file of this header is 
     *         accessible (can be decrypted) with the given passphrase,
     *         <b>null</b> otherwise
-    * 
     * @throws NullPointerException if passphrase is null
     * @throws IllegalStateException if the header is not read in
     *         or already has been verified before
+    * @throws IOException 
     */ 
-   public PwsBlockInputStream verifyPass ( PwsPassphrase passphrase ) 
-		   throws IOException {
+   public PwsBlockInputStream verifyPass ( PwsPassphrase passphrase ) throws IOException {
 	  // control parameter and correct header state 
-      if ( passphrase == null )
-         throw new NullPointerException("passphrase missing");
+	  Objects.requireNonNull(passphrase, "passphrase missing");
       if ( !isRead )
          throw new IllegalStateException("header not initialized");
       if ( isVerified )
@@ -519,8 +556,8 @@ public class PwsFileHeaderV3
          readHmac = new PwsChecksum( hseed );
          
          // create file cipher
-         PwsCipher fileCipher = new TwofishCipher( fkey, iv );
-         Util.destroyBytes( fkey );
+         PwsCipher fileCipher = new TwofishCipher( effectiveCipherKey(fkey), iv );
+         Util.destroy( fkey );
          
          // read content header fields
          v3In = new V3_InputStream( input );
@@ -538,7 +575,7 @@ public class PwsFileHeaderV3
             PwsRawField raw = new PwsRawField(blockStream, Global.FILEVERSION_3);
             if (Log.getLogLevel() > 4) {
             	Log.log( 5, "** read HEADER FIELD: t=" + raw.getType() + ", c=" + Util.bytesToHex( raw.getDataDirect() ));
-            	Log.log( 5, "                            " + Util.printableString( raw.getString( "UTF-8" ) ));
+            	Log.log( 5, "                            " + Util2.printableString( raw.getString( "UTF-8" ) ));
             }
             setHeaderField( raw );
             readHmac.update( raw );
@@ -552,23 +589,28 @@ public class PwsFileHeaderV3
       return null;
    }
 
-   /** Creates a PKEY from its given parameters. 
+   /** Creates a PKEY from its given parameters. The length of the resulting
+    * key depends on the setting for 'keyLength' in the instance.
+    * <p>This can be seen as the "stretched key" from given user material 
+    * in 'passphrase', enhanced by a random salt.
     * 
-    * @param passphrase <code>PwsPassphrase</code>
+    * @param passphrase <code>PwsPassphrase</code> user passphrase
     * @param random byte[] random bytes
     * @param iterations int calculation loops
     * @return byte[]
     */
-   private static byte[] makeInternalKey ( PwsPassphrase passphrase, 
+   private byte[] makeInternalKey ( PwsPassphrase passphrase, 
 		                                   byte[] random, 
 		                                   int iterations )
    {
-      SHA256 sha = new SHA256();
+	  Objects.requireNonNull(random, "random is null");
+	  Util.requirePositive(iterations, "iterations");
       byte[] key = passphrase.getBytes( "UTF-8" );
 
       // calculate foot value (integrating salt) 
+      SHA256 sha = new SHA256();
       sha.update( key );
-      Util.destroyBytes( key );
+      Util.destroy( key );
       sha.update( random );
       byte[] x = sha.digest();
       
@@ -578,7 +620,7 @@ public class PwsFileHeaderV3
          sha.update( x );
          sha.readDigest(x, 0, x.length);
       }
-      return x;
+      return effectiveCipherKey(x);
    }
 
    /** Creates a SHA-256 hash value from the given byte array.
@@ -595,19 +637,19 @@ public class PwsFileHeaderV3
       return result;
    }
    
-   /** Creates a cryptographic hash value for a random salt block and a passphrase.
-    *  This follows a special procedure defined for PasswordSafe V3 files.
-    * 
-    * @param passphrase <code>PwsPassphrase</code>
-    * @param random byte[] random bytes
-    * @param iterations int calculation loops
-    *  @return byte[] cryptographic hash value on the parameters
-    */
-   public static byte[] genRandHash ( PwsPassphrase passphrase, 
-		                              byte[] random, 
-		                              int iterations )
-   {
-      byte[] pkey = makeInternalKey( passphrase, random, iterations );
-      return genRandHash( pkey );
-   }
+//   /** Creates a cryptographic hash value for a random salt block and a passphrase.
+//    *  This follows a special procedure defined for PasswordSafe V3 files.
+//    * 
+//    * @param passphrase <code>PwsPassphrase</code>
+//    * @param random byte[] random bytes
+//    * @param iterations int calculation loops
+//    *  @return byte[] cryptographic hash value on the parameters
+//    */
+//   private byte[] genRandHash ( PwsPassphrase passphrase, 
+//		                              byte[] random, 
+//		                              int iterations )
+//   {
+//      byte[] pkey = makeInternalKey( passphrase, random, iterations );
+//      return genRandHash( pkey );
+//   }
 }

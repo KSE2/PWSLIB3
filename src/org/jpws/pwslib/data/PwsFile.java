@@ -27,21 +27,21 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Iterator;
 
-import org.jpws.pwslib.crypto.SHA256;
 import org.jpws.pwslib.exception.ApplicationFailureException;
 import org.jpws.pwslib.exception.DuplicateEntryException;
 import org.jpws.pwslib.exception.InvalidPassphraseException;
 import org.jpws.pwslib.exception.PasswordSafeException;
 import org.jpws.pwslib.global.Global;
-import org.jpws.pwslib.global.Log;
 import org.jpws.pwslib.global.UUID;
-import org.jpws.pwslib.global.Util;
 import org.jpws.pwslib.order.DefaultRecordWrapper;
 import org.jpws.pwslib.persist.ApplicationAdapter;
 import org.jpws.pwslib.persist.DefaultFilesystemAdapter;
+
+import kse.utilclass.misc.SHA256;
+import kse.utilclass.misc.Util;
+import kse.utilclass.misc.Log;
 
 /**
  *  Top level structure of this library to represent a <i>Password Safe</i> 
@@ -191,8 +191,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
      * @throws IllegalStateException if no global standard application is 
      *         available
 	 */
-	public PwsFile()
-	{
+	public PwsFile() {
       super();
       initBasic();
       
@@ -211,8 +210,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
      *        may be <b>null</b>
      * @throws DuplicateEntryException 
      */
-    public PwsFile( DefaultRecordWrapper[] recs ) throws DuplicateEntryException
-    {
+    public PwsFile( DefaultRecordWrapper[] recs ) throws DuplicateEntryException {
        super( recs );
        initBasic();
 
@@ -231,8 +229,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
      *        may be <b>null</b>
      * @throws DuplicateEntryException 
      */
-    public PwsFile( Collection<PwsRecord> recs ) throws DuplicateEntryException
-    {
+    public PwsFile( Collection<PwsRecord> recs ) throws DuplicateEntryException {
        super( recs );
        initBasic();
 
@@ -250,8 +247,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
      * @param recs array of <code>PwsRecord</code>, may be <b>null</b>
      * @throws DuplicateEntryException 
      */
-    public PwsFile( PwsRecord[] recs ) throws DuplicateEntryException
-    {
+    public PwsFile( PwsRecord[] recs ) throws DuplicateEntryException {
        super( recs );
        initBasic();
 
@@ -273,8 +269,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
     */
    public PwsFile ( ApplicationAdapter appl,
                     String filepath, 
-                    PwsPassphrase userpass )
-   {
+                    PwsPassphrase userpass ) {
       super();
       initFull(appl, filepath, userpass);
    } // constructor
@@ -290,8 +285,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * 
     * @throws IllegalArgumentException if a parameter is void
     */
-   public PwsFile ( ContextFile file, PwsPassphrase userpass )
-   {
+   public PwsFile ( ContextFile file, PwsPassphrase userpass ) {
       super();
       if ( file == null )
           throw new IllegalArgumentException( "file parameter missing" );
@@ -311,13 +305,11 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * @throws IllegalStateException if no global standard application adapter 
     *         is available
     */
-   public PwsFile ( String filepath, PwsPassphrase userpass )
-   {
+   public PwsFile ( String filepath, PwsPassphrase userpass ) {
 	  this(null, filepath, userpass);
    }  // constructor
 
-   private void initBasic ()
-   {
+   private void initBasic () {
       // install global default application adapter
       if ( (application = Global.getStandardApplication()) == null )
          throw new IllegalStateException( "no standard application available" );
@@ -651,8 +643,7 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * @throws ApplicationFailureException if the IO-context fails to render
     *         an output stream 
 	 */
-	public void save() throws IOException, ApplicationFailureException
-	{
+	public void save() throws IOException, ApplicationFailureException {
        if ( isModified() ) {
           if ( application == null | filePath == null | ps == null )
              throw new IllegalStateException( "persistent state parameters not set" );
@@ -679,8 +670,8 @@ public class PwsFile extends PwsRecordList implements Cloneable
           String hstr = idString + extFileRef(application, filePath);
           Log.log( 4, "(PwsFile) saving file to" + hstr ); 
 
-          PwsFileFactory.saveFile( internalIterator(), application, filePath, ps, headerFields, 
-                securityLoops, formatVersionMajor );
+          PwsFileFactory.saveFile( internalIterator(), application, filePath, ps, 
+        		  headerFields, securityLoops, formatVersionMajor );
    	      timeStamp = application.getModifiedTime(filePath);
    	      resetModified();
           Log.log( 4, "(PwsFile) file save finished (before event dispatch), " + timeStamp);
