@@ -447,25 +447,17 @@ public class PwsFile extends PwsRecordList implements Cloneable
 	 * @return <code>Dimension</code>, width = major, 
 	 *         height = minor version number 
 	 */
-	public final Dimension getFileFormat ()
-	{
+	public final Dimension getFileFormat ()	{
 	   return new Dimension(formatVersionMajor, formatVersionMinor);
 	}
 	
     /**
      * Returns the activated character set used to encode text strings on the 
-     * persistent state. (The charset is "Utf-8" for V3 file format (fixum) or 
-     * for V2 format if "B 24 1" is present in user options. It is the VM 
-     * default character set otherwise.)
+     * persistent state. (The charset is "Utf-8" for V3 file format).
      *  
      * @return String charset name
      */ 
-    public String getCharset ()
-    {
-       return formatVersionMajor > Global.FILEVERSION_2 || 
-              (formatVersionMajor == Global.FILEVERSION_2 && getUserOptions()
-              .indexOf("B 24 1") > -1) ? "UTF-8" : Global.getDefaultCharset();
-    }
+    public String getCharset () {return "UTF-8";}
     
    /**
     * Sets the format version number for this file. The value determines
@@ -600,31 +592,19 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * @param format int file format version of the projected persistent state
     * @return long required (blocked) data size
     */
-   public long getBlockedDataSize ( int format )
-   {
+   public long getBlockedDataSize ( int format ) {
       // sum-up of record content 
       String charset = getCharset();
       long sum = super.getBlockedDataSize(format, charset);
 
       // constant file overhead
       switch ( format ) {
-      case Global.FILEVERSION_1:
-         sum += 56;
-         break;
-      case Global.FILEVERSION_2:
-         sum += 56 + 12 * 8;
-         try { 
-        	 sum += PwsRawField.pwsFieldBlockSize( getUserOptions()
-        			.getBytes( charset ).length, format );
-         } catch ( UnsupportedEncodingException e ) {
-         }
-         break;
       case Global.FILEVERSION_3:
          sum += headerFields.blockedDataSize( format );
          sum += 152 + 48;
          break;
+      default: throw new IllegalArgumentException("unknown file format: " + format); 
       }
-
       return sum;
    }
 
@@ -1291,9 +1271,9 @@ public class PwsFile extends PwsRecordList implements Cloneable
     * dispatching, upon content modification in the header list.
     */
    
-   private class PFHeaderFieldList extends HeaderFieldList
-   {
-      @Override
+   @SuppressWarnings("sync-override")
+   private class PFHeaderFieldList extends HeaderFieldList {
+	@Override
 	  public void clearUnknownFields () {
          int size = super.getUnknownFieldCount();
          super.clearUnknownFields();

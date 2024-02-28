@@ -977,12 +977,12 @@ private long normalisedTime (long time) {
         	 sum += PwsRawField.pwsFieldBlockSize( 1, format );
          
          
-      case Global.FILEVERSION_2:
+//      case Global.FILEVERSION_2:
          sum = fieldBlockSizeUpdate( sum, group, format, charset );
          sum += PwsRawField.pwsFieldBlockSize( 16, format );  // UUID
          
-         if ( format <= Global.FILEVERSION_2 && passPolicy != null )
-            sum += PwsRawField.pwsFieldBlockSize( 4, format );  // PassPolicy old format
+//         if ( format <= Global.FILEVERSION_2 && passPolicy != null )
+//            sum += PwsRawField.pwsFieldBlockSize( 4, format );  // PassPolicy old format
          if ( accessTime != 0 )
             sum += PwsRawField.pwsFieldBlockSize( 8, format );  // access-Time
          if ( createTime != 0 )
@@ -995,7 +995,7 @@ private long normalisedTime (long time) {
             sum += PwsRawField.pwsFieldBlockSize( 8, format );  // password-modify-Time
          
       
-      case Global.FILEVERSION_1:
+//      case Global.FILEVERSION_1:
          sum = fieldBlockSizeUpdate( sum, title, format, charset );
          sum = fieldBlockSizeUpdate( sum, username, format, charset );
          sum = fieldBlockSizeUpdate( sum, notes, format, charset );
@@ -1007,8 +1007,8 @@ private long normalisedTime (long time) {
          sum += otherValues.dataSize( format );
       }
       
-      // add space for EOR marker (formats V2 and V3) 
-      sum += format == Global.FILEVERSION_1 ? 0 : 16;
+      // add space for EOR marker (format V3) 
+      sum += 16;
       return sum;
    }
    

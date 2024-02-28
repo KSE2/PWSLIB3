@@ -51,7 +51,7 @@ public InputStream getPwsInputStream( int version, PwsPassphrase key ) {
 
 /** Returns a list of PwsRecord with population depending on the parameter.
  *  
- * @param dataCode int 0 = empty, 1 = 1 entry, 2 = 2 entries
+ * @param dataCode int 0 = empty, 1 = 1 entry, 2 = 3 entries
  * @return {@code PwsRecordList}
  */
 public PwsRecordList getPwsRecordList ( int dataCode ) {
@@ -77,6 +77,14 @@ public PwsRecordList getPwsRecordList ( int dataCode ) {
          rec.setPassword( new PwsPassphrase( "abraham" ) );
          rec.setUsername( "Kleinhase" );
          rec.setNotes( "Einer kam im Abendschein." );
+         list.addRecord( rec );
+         
+         //
+         rec = new PwsRecord();
+         rec.setTitle( "Maximilian Sinnrein" );
+         rec.setPassword( new PwsPassphrase( "karuna 333" ) );
+         rec.setUsername( "Seltsamer Hase" );
+         rec.setNotes( "Im Morgenlicht sah man einen Reiter von Ferne aus dem Nebel auftauchen." );
          list.addRecord( rec );
 	  }
 
@@ -199,13 +207,6 @@ public void test_construct () throws IOException {
    }
    
    // test correct creation
-   input = getPwsInputStream( Global.FILEVERSION_2, key );
-   si = new  PwsFileInputSocket( input );
-   
-   assertFalse( "closed socket, open state is false", si.isOpen() );
-   assertTrue( "closed socket, no file version", si.getFileVersion() == 0 );
-   assertTrue("false key-length", si.getKeySecurity() == 256);
-
    input = getPwsInputStream( Global.FILEVERSION_3, key );
    si = new  PwsFileInputSocket( input, 256 );
    assertFalse( "closed socket, open state is false", si.isOpen() );
@@ -261,178 +262,6 @@ public void test_OpenAttempt () {
    key = new PwsPassphrase( "abc" );
    
    try {
-      // *** VERSION 2 TESTING ***
-      count = 0;
-      while ( count < 3 ) {
-    	  
-         dataCode = count;
-         
-         // generic open on V2 file
-         input = getPwsInputStream( Global.FILEVERSION_2, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         ok = si.attemptOpen( new PwsPassphrase() );
-         assertFalse( "socket open fails on wrong password", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "Hound of Baskerville" ) );
-         assertFalse( "socket open fails on wrong password", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ) );
-         assertTrue( "socket open succeeds on good password, 1", ok );
-         
-         assertTrue( "socket open, open state, 1", si.isOpen() );
-         assertTrue( "socket open, correct file version, 1", si.getFileVersion() == Global.FILEVERSION_2 );
-         
-         // specific V2-open on V2 file
-         input = getPwsInputStream( Global.FILEVERSION_2, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_2 );
-         assertFalse( "socket open fails on wrong password, 2", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_2 );
-         assertTrue( "socket open succeeds on good password, 2", ok );
-         
-         assertTrue( "socket open, open state, 2", si.isOpen() );
-         assertTrue( "socket open, correct file version, 2", si.getFileVersion() == Global.FILEVERSION_2 );
-         
-         // specific V3-open on V2 file
-         input = getPwsInputStream( Global.FILEVERSION_2, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         try {
-            ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_3 );
-            fail( "socket open fails V3 on V2, 1" );
-         } catch ( Exception e ) {
-            assertTrue( "socket open fails V3 on V2, Exception type", 
-                  e instanceof UnsupportedFileVersionException );
-         }
-         
-         try {
-            ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_3 );
-            fail( "socket open fails V3 on V2, wrong version" );
-         } catch ( Exception e ) {
-            assertTrue( "socket open fails V3 on V2, wrong version, Exception type", 
-                  e instanceof UnsupportedFileVersionException );
-         }
-
-         assertFalse( "socket open, open state, 3", si.isOpen() );
-         assertTrue( "socket open, zero file version, 3", si.getFileVersion() == 0 );
-         
-         // specific V1-open on V2 file
-         input = getPwsInputStream( Global.FILEVERSION_2, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_1 );
-         assertFalse( "socket open fails on wrong password, 4", ok );
-         
-         try {   
-            ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_1 );
-            fail( "socket open fails on wrong file version, 4" );
-         } catch ( Exception e ) {
-            assertTrue( "socket open fails on wrong file version, exception type: ", 
-                  e instanceof WrongFileVersionException );
-         }
-         
-         assertFalse( "socket open, open state, 4", si.isOpen() );
-         assertTrue( "socket open, zero file version, 4", si.getFileVersion() == 0 );
-         
-         // still must be able to open on good V2 settings
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_2 );
-         assertTrue( "socket open succeeds after previous failed version matches, V2", ok );
-         
-         count++;
-      } // while
-      
-      // *** VERSION 1 TESTING ***
-      count = 0;
-      while ( count < 3 ) {
-         dataCode = count;
-         
-         // generic open on V1 file
-         input = getPwsInputStream( Global.FILEVERSION_1, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         ok = si.attemptOpen( new PwsPassphrase() );
-         assertFalse( "socket open fails on wrong password, 1", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "Hound of Baskerville" ) );
-         assertFalse( "socket open fails on wrong password, 1a", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ) );
-         assertTrue( "socket open succeeds on good password, 1", ok );
-         
-         assertTrue( "socket open, open state, 1", si.isOpen() );
-         assertTrue( "socket open, correct file version, 1", si.getFileVersion() == Global.FILEVERSION_1 );
-         
-         // specific V1-open on V1 file
-         input = getPwsInputStream( Global.FILEVERSION_1, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_1 );
-         assertFalse( "socket open fails on wrong password, 2", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_1 );
-         assertTrue( "socket open succeeds on good password, 2", ok );
-         
-         assertTrue( "socket open, open state, 2", si.isOpen() );
-         assertTrue( "socket open, correct file version, 2", si.getFileVersion() == Global.FILEVERSION_1 );
-         
-         // specific V3-open on V1 file
-         input = getPwsInputStream( Global.FILEVERSION_1, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         try {   
-            ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_3 );
-            fail( "socket open fails V3 on V1, 1" );
-         } catch ( Exception e ) {
-            assertTrue( "socket open fails V3 on V1, Exception type", 
-                  e instanceof UnsupportedFileVersionException );
-         }
-         
-         try {   
-            ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_3 );
-            fail( "socket open fails V3 on V1, wrong version" );
-         } catch ( Exception e ) {
-            assertTrue( "socket open fails V3 on V1, wrong version, Exception type", 
-                  e instanceof UnsupportedFileVersionException );
-         }
-         
-         assertFalse( "socket open, open state, 3", si.isOpen() );
-         assertTrue( "socket open, zero file version, 3", si.getFileVersion() == 0 );
-
-         // still must be able to open on good V1 settings
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_1 );
-         assertTrue( "socket open succeeds after previous failed version matches, V1", ok );
-         assertTrue( "socket open, correct file version, 3", si.getFileVersion() == Global.FILEVERSION_1 );
-
-         count++;
-      }
-      
-      // specific V2-open on V1 file
-      input = getPwsInputStream( Global.FILEVERSION_1, key, 1 );
-      si = new  PwsFileInputSocket( input );
-
-      ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_2 );
-      assertFalse( "socket open fails on wrong password, 4", ok );
-      
-      try {   
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_2 );
-         fail( "socket open fails on wrong file version, 4" );
-      } catch ( Exception e ) {
-         assertTrue( "socket open fails on wrong file version, exception type: ", 
-               e instanceof WrongFileVersionException );
-      }
-      
-      assertFalse( "socket open, open state, 4", si.isOpen() );
-      assertTrue( "socket open, zero file version, 4", si.getFileVersion() == 0 );
-      
-      // still must be able to open on good V1 settings
-      ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_1 );
-      assertTrue( "socket open succeeds after previous failed version matches, V1", ok );
-      assertTrue( "socket open, correct file version, 4", si.getFileVersion() == Global.FILEVERSION_1 );
-
-      
       // *** VERSION 3 TESTING ***
       count = 0;
       while ( count < 3 ) {
@@ -474,24 +303,6 @@ public void test_OpenAttempt () {
          assertTrue( "V3, socket open, open state, 2", si.isOpen() );
          assertTrue( "V3, socket open, correct file version, 2", si.getFileVersion() == Global.FILEVERSION_3 );
          
-         // specific V2-open on V3 file
-         input = getPwsInputStream( Global.FILEVERSION_3, key, dataCode );
-         si = new  PwsFileInputSocket( input );
-   
-         ok = si.attemptOpen( new PwsPassphrase(), Global.FILEVERSION_2 );
-         assertFalse( "V3, socket open fails V2 on V3, bad password", ok );
-         
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_2 );
-         assertFalse( "V3, socket open fails V2 on V3, good password", ok );
-         
-         assertFalse( "V3, socket open, open state, 3", si.isOpen() );
-         assertTrue( "V3, socket open, zero file version, 3", si.getFileVersion() == 0 );
-
-         // still must be able to open on good V3 settings
-         ok = si.attemptOpen( new PwsPassphrase( "abc" ), Global.FILEVERSION_3 );
-         assertTrue( "V3, socket open succeeds after previous failed version matches", ok );
-         assertTrue( "V3, socket open, correct file version", si.getFileVersion() == Global.FILEVERSION_3 );
-
          count++;
       } // while
       
@@ -502,66 +313,6 @@ public void test_OpenAttempt () {
       fail( "WrongFileVersionException" );
    } catch ( UnsupportedFileVersionException e ) {
       fail( "UnsupportedFileVersionException" );
-   }
-}
-
-public void test_operate_blocks_V2 ()
-{
-   PwsFileInputSocket si;
-   PwsPassphrase key;
-   InputStream input;
-   PwsBlockInputStream stream;
-   byte[] block;
-   boolean ok;
-   
-   key = new PwsPassphrase( "abc" );
-   System.out.println( "---- TEST OPERATION BLOCKSTREAM ON V2 FILE" ); 
-   
-   try {
-      input = getPwsInputStream( Global.FILEVERSION_2, key, 1 );
-      si = new  PwsFileInputSocket( input );
-
-      ok = si.attemptOpen( key );
-      assertTrue( "socket open, 1", ok );
-
-      stream = si.getBlockInputStream();
-
-      // failure of secondary stream call
-      try { 
-         si.getBlockInputStream();
-         fail( "secondary get blockstream failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
-         assertTrue( "secondary get blockstream failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // failure of secondary reader call
-      try { 
-         si.getRawFieldReader();
-         fail( "secondary get rawfieldreader failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
-         assertTrue( "secondary get rawfieldreader failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // dump blockstream content
-      while ( stream.isAvailable() )
-      {
-         block = stream.readBlock();
-         assertTrue( "block input stream, block length control", block.length == stream.getBlockSize() );
-         
-         System.out.println( stream.getCount() + " :  " + Util.bytesToHex( block ) );
-      }
-      System.out.println();
-   }
-   catch ( Exception e )
-   {
-	  e.printStackTrace(); 
-      fail( "IOException: " + e );
    }
 }
 
@@ -624,61 +375,6 @@ public void test_operate_blocks_V3 ()
    }
 }
 
-public void test_operate_rawfields_V2 ()
-{
-   PwsFileInputSocket si;
-   PwsPassphrase key;
-   InputStream input;
-   PwsRawFieldReader reader;
-   PwsRawField raw;
-   boolean ok;
-   
-   key = new PwsPassphrase( "abc" );
-   System.out.println( "---- TEST OPERATION RAWFIELDS ON V2 FILE" ); 
-   
-   try {
-      input = getPwsInputStream( Global.FILEVERSION_2, key, 1 );
-      si = new  PwsFileInputSocket( input );
-
-      ok = si.attemptOpen( key );
-      assertTrue( "socket open, 1", ok );
-
-      reader = si.getRawFieldReader();
-
-      // failure of secondary stream call
-      try { 
-         si.getBlockInputStream();
-         fail( "secondary get blockstream failure: missing exception" );
-      } catch ( Exception e ) {
-         assertTrue( "secondary get blockstream failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // failure of secondary reader call
-      try { 
-         si.getRawFieldReader();
-         fail( "secondary get rawfieldreader failure: missing exception" );
-      } catch ( Exception e ) {
-         assertTrue( "secondary get rawfieldreader failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // dump blockstream content
-      while ( reader.hasNext() ) {
-         raw = (PwsRawField)reader.next();
-         System.out.println( "Rawfield: T=" + raw.type + ", L=" + raw.length + ", data=" + 
-               Util.bytesToHex( raw.getData() ) );
-         
-//         System.out.println( );
-      }
-      System.out.println();
-
-   } catch ( Exception e ) {
-	  e.printStackTrace();
-      fail( "IOException: " + e );
-   }
-}
-
 public void test_operate_rawfields_V3 ()
 {
    PwsFileInputSocket si;
@@ -730,127 +426,6 @@ public void test_operate_rawfields_V3 ()
 
    } catch ( Exception e ) {
 	  e.printStackTrace();
-      fail( "IOException: " + e );
-   }
-}
-
-public void test_operate_blocks_V1 ()
-{
-   PwsFileInputSocket si;
-   PwsPassphrase key;
-   InputStream input;
-   PwsBlockInputStream stream;
-   byte[] block;
-   boolean ok;
-   
-   key = new PwsPassphrase( "abc" );
-   System.out.println( "---- TEST OPERATION BLOCKSTREAM ON V1 FILE" ); 
-   
-   try {
-      input = getPwsInputStream( Global.FILEVERSION_1, key, 1 );
-      si = new  PwsFileInputSocket( input );
-
-      ok = si.attemptOpen( key );
-      assertTrue( "socket open, 1", ok );
-
-      stream = si.getBlockInputStream();
-
-      // failure of secondary stream call
-      try { 
-         si.getBlockInputStream();
-         fail( "secondary get blockstream failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
-         assertTrue( "secondary get blockstream failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // failure of secondary reader call
-      try { 
-         si.getRawFieldReader();
-         fail( "secondary get rawfieldreader failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
-         assertTrue( "secondary get rawfieldreader failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // dump blockstream content
-      while ( stream.isAvailable() )
-      {
-         block = stream.readBlock();
-         assertTrue( "block input stream, block length control", block.length == stream.getBlockSize() );
-         
-         System.out.println( stream.getCount() + " :  " + Util.bytesToHex( block ) );
-      }
-      System.out.println();
-   }
-   catch ( Exception e )
-   {
-	  e.printStackTrace(); 
-      fail( "IOException: " + e );
-   }
-}
-
-public void test_operate_rawfields_V1 ()
-{
-   PwsFileInputSocket si;
-   PwsPassphrase key;
-   InputStream input;
-   PwsRawFieldReader reader;
-   PwsRawField raw;
-   byte[] block;
-   boolean ok;
-   
-   key = new PwsPassphrase( "abc" );
-   System.out.println( "---- TEST OPERATION RAWFIELDS ON V1 FILE" ); 
-   
-   try {
-      input = getPwsInputStream( Global.FILEVERSION_1, key, 1 );
-      si = new  PwsFileInputSocket( input );
-
-      ok = si.attemptOpen( key );
-      assertTrue( "socket open, 1", ok );
-
-      reader = si.getRawFieldReader();
-
-      // failure of secondary stream call
-      try { 
-         si.getBlockInputStream();
-         fail( "secondary get blockstream failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
-         assertTrue( "secondary get blockstream failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // failure of secondary reader call
-      try { 
-         si.getRawFieldReader();
-         fail( "secondary get rawfieldreader failure: missing exception" );
-      }
-      catch ( Exception e )
-      {
-         assertTrue( "secondary get rawfieldreader failure: wrong exception", 
-               e instanceof IllegalStateException );
-      }
-      
-      // dump blockstream content
-      while ( reader.hasNext() )
-      {
-         raw = (PwsRawField)reader.next();
-         System.out.println( "Rawfield: T=" + raw.type + ", L=" + raw.length + ", data=" + 
-               Util.bytesToHex( raw.getData() ) );
-         
-//         System.out.println( );
-      }
-      System.out.println();
-   }
-   catch ( Exception e )
-   {
       fail( "IOException: " + e );
    }
 }

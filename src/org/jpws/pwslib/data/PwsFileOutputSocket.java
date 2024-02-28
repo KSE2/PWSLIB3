@@ -70,11 +70,14 @@ public PwsFileOutputSocket ( OutputStream output, PwsPassphrase key, int fileVer
 }  // constructor
 
 /**
- * Creates an output socket with full settings, including optional file generic header data.
+ * Creates an output socket with full settings, including optional file 
+ * generic header data.
  * 
  * @param output the target output stream
- * @param key <code>PwsPassphrase</code> user key for the encryption cipher (file access key)
- * @param fileVersion file format version to be created (values of class <code>Global</code>)
+ * @param key <code>PwsPassphrase</code> user key for the encryption cipher 
+ *        (file access key)
+ * @param fileVersion file format version to be created (values of class 
+ *        <code>Global</code>)
  * @param headerFields file generic header data in a <code>HeaderFieldList</code>
  *        (e.g. contains user options, file-UUID, etc.); may be <b>null</b> 
  */
@@ -159,16 +162,6 @@ private void initOutput () throws IOException {
    // create file header
    Log.log( 5, "(PwsFileOutputSocket) initOutput, 0" );
    switch ( version ) {
-   case Global.FILEVERSION_1:
-      cipher = new PwsFileHeaderV1().save( output, key );
-      break;
-
-   case Global.FILEVERSION_2:
-      String options = headerFields == null ? "" : headerFields.getStringValue(
-    		           PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
-      cipher = new PwsFileHeaderV2().save( output, key, options );
-      break;
-      
    case Global.FILEVERSION_3:
 	  PwsFileHeaderV3 hd3 = new PwsFileHeaderV3( headerFields );
       Log.log( 5, "(PwsFileOutputSocket) initOutput, 1" );

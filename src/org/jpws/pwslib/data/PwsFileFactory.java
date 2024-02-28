@@ -187,9 +187,6 @@ public final class PwsFileFactory
    /** The milliseconds of 24 hours. */
    public static final int DAY = 86400 * 1000;
    
-   /** Field splitting sign used for format version 1 */
-   private static final String SPLITCHAR   = "  \u00ad  ";
-   
    private static final byte[] ZEROBYTEARRAY = new byte[0];
 
 
@@ -400,13 +397,7 @@ throws IOException, PasswordSafeException
          // create reader and read fields 
          reader = socket.getRawFieldReader();
    
-         switch ( version )
-         {
-         case Global.FILEVERSION_1:
-            readRecordsV1( file, reader );
-            break;
-            
-         case Global.FILEVERSION_2:
+         switch ( version ) {
          case Global.FILEVERSION_3:
             readRecordsV23( file, reader, charset, version );
             cks1 = socket.getCalcChecksum();
@@ -579,11 +570,7 @@ throws IOException, PasswordSafeException
             break;
 
          case URLTYPE:
-            if ( version > Global.FILEVERSION_2 ) {
-               rec.setUrl( raw.getPassphrase( charset ) );
-            } else {
-               rec.addUnknownField( raw );
-            }
+            rec.setUrl( raw.getPassphrase( charset ) );
             break;
            
          case PASSPOLICYTYPE:
@@ -622,19 +609,11 @@ throws IOException, PasswordSafeException
             break;
          
          case HISTORYTYPE:
-            if ( version > Global.FILEVERSION_2 ) {
-               rec.setHistory( raw.getPassphrase( charset ) );
-            } else {
-               rec.addUnknownField( raw );
-            }
+            rec.setHistory( raw.getPassphrase( charset ) );
             break;
             
          case AUTOTYPETYPE:
-            if ( version > Global.FILEVERSION_2 ) {
-               rec.setAutotype( raw.getString( charset ) );
-            } else {
-               rec.addUnknownField( raw );
-            }
+            rec.setAutotype( raw.getString( charset ) );
             break;
             
          case DCLICK_ACTIONTYPE:
@@ -703,86 +682,6 @@ throws IOException, PasswordSafeException
 		 return null;
 	 }
    }
-   
-   /** Attempts to read the remainder of the file as records in the V1 format.
-    *  This algorithm expects a fixed implicit pattern of fields for each record,
-    *  as it is typical for the V1 format.
-    * 
-    * @param file <code>PwsFile</code> the target file
-    * @param reader <code>RawFieldReader</code> the reader object functioning 
-    *        as data source
-    * @throws IOException
-    */
-   private static void readRecordsV1 ( PwsFile file, PwsRawFieldReader reader )
-   				throws StreamCorruptedException
-   {
-      PwsRecord     rec;
-      PwsPassphrase passphrase;
-      PwsRawField   raw;
-      int           counter, i, splitLength;
-      String        hstr;
-      
-      rec = null;
-      counter = -1;
-      splitLength = SPLITCHAR.length();
-      
-      // read all fields until EOF
-      while ( reader.hasNext() ) {
-
-    	 // read one FIELD 
-     	 try {
-    		 raw = (PwsRawField)reader.next();
-    	 } catch ( Exception e ) {
-    		 throw new StreamCorruptedException(e.toString());
-    	 }
-         counter++;
-
-         // handle FIELD
-         switch ( counter % 3 )
-         {
-         // Field 0 (Title)
-         case 0:
-            // create new record
-            rec = new PwsRecord( 0 );
-
-            // read Title and Username (both from field 0)
-            hstr = raw.getString( DEFAULT_CHARSET );
-            if ( Log.getDebugLevel() > 9 ) {
-            	Log.debug(10, "V1, read TITLE raw: " + Util.bytesToHex(raw.getData()));
-            }
-            if ( (i=hstr.indexOf( SPLITCHAR )) > -1 ) {
-               rec.setTitle( hstr.substring( 0, i ) );
-               rec.setUsername( hstr.substring( i+splitLength ) );
-            } else {
-               rec.setTitle( hstr );
-            }
-            break;
-            
-         // Field 1 (Password)
-         case 1:
-            passphrase = raw.getPassphrase( DEFAULT_CHARSET );
-            rec.setPassword( passphrase );
-            passphrase.clear();
-            break;
-
-         // Field 2 (Notes)
-         case 2:
-            // set Notes
-            passphrase = raw.getPassphrase( DEFAULT_CHARSET );
-            rec.setNotes( passphrase );
-            passphrase.clear();
-            
-            // store record
-            try { file.addRecord( rec ); 
-            } catch (  DuplicateEntryException e ) {
-               // should not happen as we create UUIDs ourselves
-            }
-            break;
-         }
-         
-         raw.destroy();
-      }
-   }  // readRecordsV1
    
    /** Creates an empty PWS file of the latest format at the destination given 
     * by the context file. The proper <code>PwsPassphrase</code> to decrypt the
@@ -1053,20 +952,7 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
    
    // save all listed records
    Log.log( 5, "(PwsFileFactory) saveFile mark B2 - start writing records" );
-   switch ( format )
-   {
-   case Global.FILEVERSION_1:
-      saveRecordsV1( records, writer );
-      break;
-      
-   case Global.FILEVERSION_2:
-      // determine active charset
-      String options = headerFields == null ? "" : 
-    	     headerFields.getStringValue( PwsFileHeaderV3.JPWS_OPTIONS_TYPE );
-      String charset = options.indexOf( "B 24 1" ) > -1  ? UTF_CHARSET : DEFAULT_CHARSET;
-      saveRecordsV2( records, writer, charset );
-      break;
-      
+   switch ( format ) {
    case Global.FILEVERSION_3:
       saveRecordsV3( records, writer );
       break;
@@ -1079,55 +965,6 @@ public static final UUID saveFile ( Iterator<PwsRecord> records,
    socket.close();
    return socket.getFileID();
 }  // saveFile
-
-/** Stores a list of records to an output stream of raw fields in the file 
- * format version V2. This does not check for record validity.
- * 
- *  @param records <code>Iterator&lt;PwsRecord&gt;</code>
- *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
- *  @param charset String character set used to encode text data
- *  @throws IOException
- */ 
-private static void saveRecordsV2 ( Iterator<PwsRecord> records, 
-                                    PwsRawFieldWriter writer, 
-                                    String charset )   throws IOException
-{
-   while ( records.hasNext() ) {
-	   
-	   PwsRecord rec = (PwsRecord)records.next();
-   
-      // save pure text fields (always store!) 
-      saveTextFieldV2( TITLETYPE, rec.getTitle(), writer, charset );
-      saveTextFieldV2( GROUPTYPE, rec.getGroup(), writer, charset );
-      
-      // treat the password fields (always store!)
-      savePasswordFieldV2( PASSWORDTYPE, rec.getPassword(), writer, charset );
-      savePasswordFieldV2( NOTESTYPE, rec.getNotesPws(), writer, charset );
-      savePasswordFieldV2( UNAMETYPE, rec.getUsernamePws(), writer, charset );
-      
-      // treat the policy field (store if defined)
-      PwsPassphrasePolicy policy = rec.getPassPolicy();
-      if ( policy != null ) {
-         byte[] block = new byte[4];
-         Util.writeIntLittle( policy.getIntForm(), block, 0 );
-         saveByteArray( PASSPOLICYTYPE, block, writer );
-      }
-      
-      // save time fields (store if not zero) 
-      saveTimeField( CREATIMETYPE, rec.getCreateTime(), writer );
-      saveTimeField( ACCESSTIMETYPE, rec.getAccessTime(), writer );
-      saveTimeField( RECORDMODTIMETYPE, rec.getModifiedTime(), writer );
-      saveTimeField( PASSMODTIMETYPE, rec.getPassModTime(), writer );
-      saveTimeField( PASSLIFETIMETYPE, rec.getPassLifeTime(), writer );
-      
-      // save unknown field types
-      saveUnknownFields( rec, writer );
-   
-      // save record admin data (always store)
-      saveByteArray( RECIDTYPE, rec.getRecordID().getBytes(), writer );
-      saveByteArray( ENDBLOCKTYPE, ZEROBYTEARRAY, writer );
-   }
-}  // saveRecordsV2
 
 /** Stores a list of records to an output stream of raw fields in the file 
  *  format version V3. This does not check for record validity.
@@ -1282,47 +1119,13 @@ private static byte[] limitedBytes ( byte[] data, int length ) {
 	return Util.arraycopy(data, length);
 }
 
-/** Stores a list of records to an output stream of raw fields 
- *  in the file format version V1. This does not check for record validity.
- * 
- *  @param records <code>Iterator&lt;PwsRecord&gt;</code>
- *  @param writer <code>PwsFileOutputSocket.RawFieldWriter</code> output stream
- *  @throws IOException
- */ 
-private static void saveRecordsV1 ( Iterator<PwsRecord> records, 
-		                            PwsRawFieldWriter writer )
-            throws IOException
-{
-   String charset = DEFAULT_CHARSET;
-   
-   while ( records.hasNext() ) {
-	  PwsRecord rec = records.next();
-      if ( !rec.isValid() ) continue;
-
-      // possible composition of title + username
-      String hstr = rec.getTitle();
-      String user = rec.getUsername(); 
-      if ( user != null ) {
-         hstr = hstr + SPLITCHAR + user;
-      }
-      saveTextFieldV2( 0, hstr, writer, charset );
-
-      // passphrase
-      savePasswordFieldV2( 0, rec.getPassword(), writer, charset );
-      
-      // notes
-      savePasswordFieldV2( 0, rec.getNotesPws(), writer, charset );
-   }
-}  // saveRecordsV1
-
 /** Whether the parameter field type is a canonical field
  *  (conventional meaning) in the context of the given file format.
  *  
  *  @param type int the field type in question
  *  @param format int reference file format or 0 for default
  */
-public static boolean isCanonicalField (int type, int format)
-{
+public static boolean isCanonicalField (int type, int format) {
    int boundary = format == 0 | format >= Global.FILEVERSION_3 ? 
       LAST_CANONICAL_BLOCK_FIELD : 0x0c;
    return type > -1 && (type <= boundary || type == 0xff);

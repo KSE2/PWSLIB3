@@ -1,14 +1,4 @@
-== New Changes beyond 2.9.0 ==
-Adapted the package for usage of the JUtilClasses project. PWSLIB takes
-reference to packages 1 and 2 of util-classes 0-12-0.
-Class CryptoRandom is now rooted in the JUtilClasses library and supports
-enhanced entropy security pf random data. Also rooted in UtilClasses are the
-hash functions.
-
-File format 3 now allows to set the length of the Twofish machine encryption
-key, which can assume the values 256, 192, 128 and 64. This enables the user
-to set lower security level when required. The setting is enabled for 
-classes PwsFileHeaderV3, PwsFileInputSocket, PwsFileOutputSocket.
+== New Changes beyond 2.10.0 ==
 
  
 

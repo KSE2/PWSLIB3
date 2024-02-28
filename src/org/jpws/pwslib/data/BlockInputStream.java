@@ -115,15 +115,9 @@ class BlockInputStream implements PwsBlockInputStream
    
    @Override
    public void close () {
-      if ( nextBlock != null ) {
-          Util.destroy(nextBlock);
-      }
-      if ( outBlock != null ) {
-          Util.destroy(outBlock);
-      }
-      if ( blockBuffer != null ) {
-    	  Util.destroy(blockBuffer);
-      }
+      Util.destroy(nextBlock);
+      Util.destroy(outBlock);
+  	  Util.destroy(blockBuffer);
       nextBlock = null;
       blockBuffer = null;
       input = null;

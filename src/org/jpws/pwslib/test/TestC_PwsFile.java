@@ -229,8 +229,6 @@ private void test_init (PwsFile f1, int size, boolean persist) throws IOExceptio
 @Test
 public void test_peristent_iostreams () throws IOException, PasswordSafeException {
 	test_iostream(3);
-//	test_iostream(2);
-	test_iostream(1);
 }
 
 private void test_iostream ( int format ) throws IOException, PasswordSafeException {

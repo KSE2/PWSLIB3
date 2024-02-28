@@ -72,12 +72,6 @@ public static final long DAY = 86400000;
  */
 public static final long DEFAULT_EXPIRESCOPE = 20 * DAY;  
 
-/** Identifier for PWS file format versions 1.x */
-public static final int FILEVERSION_1 = 1;
-
-/** Identifier for PWS file format versions 2.x */
-public static final int FILEVERSION_2 = 2;
-
 /** Identifier for PWS file format versions 3.x */
 public static final int FILEVERSION_3 = 3;
 
@@ -108,6 +102,8 @@ static {
 
 /** The identifier for the application program using this library.
  *  By default this is the library name.
+ *  
+ * @return String
  */
 public static String getProgramName () {
    return programName;
@@ -174,14 +170,19 @@ public static Dimension getImplicitFileVersion () {
    return new Dimension( FILEVERSION_LATEST_MAJOR, FILEVERSION_LATEST_MINOR);
 }
 
-/** The currently active default character set of the Java Virtual Machine. */
+/** The currently active default character set of the Java Virtual Machine. 
+ * 
+ * @return String
+ */
 public static String getDefaultCharset () {
 	return Charset.defaultCharset().name();
 }
 
 /** Whether user names shall be displayed together with record titles.
  *  The default value is <b>false</b>.
- *  */
+ *  
+ * @return boolean
+ */
 public static boolean isDisplayUsernames () {
    return displayUsernames;
 }

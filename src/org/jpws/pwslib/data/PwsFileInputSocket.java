@@ -62,7 +62,6 @@ public class PwsFileInputSocket {
    private String options = "";  // options from file header
    
    private BufferedInputStream in;
-//   private PwsCipher cipher;
    private PwsBlockInputStream blockStream;
    private PwsBlockInputStream userStream;
    private HeaderFieldList headerFields;
@@ -150,8 +149,7 @@ public boolean attemptOpen ( PwsPassphrase key ) throws IOException {
  * @throws IOException if an error occurred during reading 
  */
 public boolean attemptOpen ( PwsPassphrase key, int fileVersion )
-   throws IOException, WrongFileVersionException, UnsupportedFileVersionException
-{
+		throws IOException, WrongFileVersionException, UnsupportedFileVersionException {
    if ( isOpen )
       throw new IllegalStateException( "socket is already open" );
    if ( isConsumed )
@@ -161,25 +159,11 @@ public boolean attemptOpen ( PwsPassphrase key, int fileVersion )
    
   // try V3 header format if no special request for other formats
   in.reset();
-  if ( (generic | fileVersion == Global.FILEVERSION_3) && openV3( key, generic ) ) {
+//  if ( (generic | fileVersion == Global.FILEVERSION_3) && openV3( key, generic ) ) {
+	if ( openV3( key, generic ) ) {
      in.mark( 0 );
      return true;
   }
-   
-  // try V2 header format
-  in.reset();
-  if ( (generic | fileVersion == Global.FILEVERSION_2) && openV2( key, generic ) ) {
-     in.mark( 0 );
-     return true;
-  }
-  
-  // try V1 header format
-  in.reset();
-  if ( (generic | fileVersion == Global.FILEVERSION_1) && openV1( key, generic ) ) {
-     in.mark( 0 );
-     return true;
-  }
-
   return false;
 }
 
@@ -190,92 +174,6 @@ public boolean attemptOpen ( PwsPassphrase key, int fileVersion )
  *         performed successfully on this socket
  */
 public boolean isOpen () {return isOpen;}
-
-/** Tries to open this socket by use of a specified user key 
- * on the PWS file version V1 conventions. 
- * 
- * @param key <code>PwsPassphrase</code> user key to open file
- * @param generic whether the enclosing open request is generic (any version)
- * 
- * @return <b>true</b> if and only if this socket has been opened by this method 
- *         (parameter key success)
- * @throws NullPointerException if passphrase is undefined
- * @throws WrongFileVersionException if the enclosing request was version 
- *         specific (<code>generic</code> == false) and a wrong file version was 
- *         encountered
- * @throws IOException if an error occurs during reading
- */
-private boolean openV1 ( PwsPassphrase key, boolean generic ) 
-			throws IOException, WrongFileVersionException {
-   // read file header section (valid for ?)
-   PwsFileHeaderV1 header = new PwsFileHeaderV1( in );
-
-   try {
-      // verify the correct user passphrase and get the encrypt cipher 
-      if ( (blockStream = header.verifyPass( key )) == null ) {
-         return false;
-      }
-
-   } catch ( WrongFileVersionException e ) {
-      // react to wrong file version (i.e. a V2 file)
-      if ( generic ) {
-         return false;
-      }
-      throw e;
-   }
-   
-   // found the match, avoid large data buffering
-   in.mark( 2048 );  
-
-   // update member data
-   fversion = Global.FILEVERSION_1;
-   isOpen = true;
-   return true;
-}
-
-
-/** Tries to open this socket by use of a specified user key 
- * on the PWS file version V2 conventions. 
- * 
- * @param key <code>PwsPassphrase</code> user key to open file
- * @param generic whether the enclosing open request is generic (any version)
- * 
- * @return <b>true</b> if and only if this socket has been opened by this method 
- *         (parameter key success)
- * @throws NullPointerException if passphrase is undefined
- * @throws WrongFileVersionException if the enclosing request was version 
- *         specific (<code>generic</code> == false) and a wrong file version was 
- *         encountered
- * @throws IOException if an error occurred during reading
- */
-private boolean openV2 ( PwsPassphrase key, boolean generic ) 
-   throws IOException, WrongFileVersionException
-{
-   // read file header section (valid for ?)
-   PwsFileHeaderV2 header = new PwsFileHeaderV2( in );
-
-   try {
-      // verify the correct user passphrase and get the encrypt cipher 
-      if ( (blockStream = header.verifyPass( key )) == null ) {
-         return false;
-      }
-
-   } catch ( WrongFileVersionException e ) {
-      if ( generic ) {
-         return false;
-      }
-      throw e;
-   }
-   
-   // found the match, avoid large data buffering
-   in.mark( 2048 );  
-
-   // update member data
-   options = header.getOptions();
-   fversion = Global.FILEVERSION_2;
-   isOpen = true;
-   return true;
-}
 
 /** Tries to open this socket by use of a specified user key 
  * on the PWS file version V3 conventions. 

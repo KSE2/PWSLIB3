@@ -26,6 +26,7 @@ Javadoc API documentation available
 Release Date: 27 Feb. 2019
 
 Available Executable Packages
+    pws-engine-kse.jar			same as pws-engine-kse-2-10-0.jar
     pws-engine-kse-2-10-0.jar		Core, BSD-like license
     pws-suppl-ftp-2-10-0jar		FTP module, LGPL 2
 

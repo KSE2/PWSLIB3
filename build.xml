@@ -17,7 +17,7 @@
    	<property name="util-cls-f1" value="${lib}/kse-util-cla1-0-12-0.jar"/>
    	<property name="util-cls-f2" value="${lib}/kse-util-cla2-0-12-0.jar"/>
 
-        <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt formatV2.txt formatV1.txt" />
+        <property name="docfileset" value="License.txt Readme.txt Changelog.txt formatV3.txt" />
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
 
 <!--   TEXT                                                           -->

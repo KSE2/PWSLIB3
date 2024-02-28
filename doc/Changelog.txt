@@ -1,14 +1,36 @@
-KSE PWSLIB 2-9-0
+KSE PWSLIB 2-10-0
 
 == KSE Password Safe Library  
 == Supported file format: PWS V3.13
 
 CHANGELOG
-Text Date: 27 Feb 2019
+Text Date: 28 Feb 2024
 
 
-Actual Release 2-9-0, Date: 27 Feb. 2019
+Actual Release 2-10-0, Date: 28 Feb. 2024
 ----------------------------------------
+
+- adapted the package for usage of the JUtilClasses project. 
+  PWSLIB takes reference to packages 1 and 2 of util-classes 0-12-0.
+
+- improved efficiency for some HashMac functionality, concerning
+  algorithms SHA256, SHA512. These algos are now in the JUtilClasses library.
+
+- class CryptoRandom is now rooted in the JUtilClasses library and involves 
+  enhanced security with improved entropy of random data.
+    
+- file format 3 now allows to set the length of the Twofish machine 
+  encryption key, which can assume the values 256, 192, 128 and 64. This enables
+  to set lower security level when required. The setting is enabled for
+  classes PwsFileHeaderV3, PwsFileInputSocket, PwsFileOutputSocket.
+
+- removed capabilities to digest Password-Safe format-1 and format-2 files.
+
+- improved package self-testing.
+
+
+Release 2-9-0, Date: 27 Feb. 2019
+---------------------------------
 
 - added new interface elements (functions) in PwsCipher for encrypting and 
   decrypting of data blocks so that these functions don't return a new byte array
