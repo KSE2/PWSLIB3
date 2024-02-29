@@ -21,7 +21,7 @@
         <property name="rootfileset" value="build.xml MANIFEST.MF LICENSE .gitignore" />
 
 <!--   TEXT                                                           -->
-	<property name="ver" value="2-10-0" />
+	<property name="ver" value="2-10-1" />
 	<property name="apidoc wintitle" value="PasswordSafe V3 Library KSE-PWSLIB ${ver} API-Doc"/>
         <property name="release date" value=" 28 Feb. 2024"/>
         <property name="release year" value="2024"/>
@@ -103,6 +103,10 @@
     <zipfileset dir="${doc}" includes="${docfileset}" prefix="pwslib/doc" />
     <zipfileset dir="${suppl}/doc" prefix="pwslib/suppl/doc"/>
     <zipfileset dir="${apidoc}" prefix="pwslib/doc/api"/>
+    <zipfileset file="${ftp4j}" prefix="pwslib/lib"/>
+    <zipfileset file="${junit}" prefix="pwslib/lib"/>
+    <zipfileset file="${util-cls-f1}" prefix="pwslib/lib"/>
+    <zipfileset file="${util-cls-f2}" prefix="pwslib/lib"/>
     <zipfileset dir="${dist}" includes="pws-engine-kse.jar pws-engine-kse-${ver}.jar pws-suppl-ftp.jar pws-suppl-ftp-${ver}.jar" prefix="pwslib/bin"/>
   </zip>
 <checksum file="${dist}/pws-engine-kse-${ver}.zip"/>
@@ -112,9 +116,9 @@
     <zipfileset dir="${src}/org/jpws/pwslib" prefix="pwslib/src/org/jpws/pwslib"/>
     <zipfileset dir="${suppl}/src/org/jpws/pwslib" prefix="pwslib/suppl/src/org/jpws/pwslib"/>
     <zipfileset file="${ftp4j}" prefix="pwslib/lib"/>
-    <zipfileset file="${ftp4j}.sig" prefix="pwslib/lib"/>
     <zipfileset file="${junit}" prefix="pwslib/lib"/>
-    <zipfileset file="${junit}.sig" prefix="pwslib/lib"/>
+    <zipfileset file="${util-cls-f1}" prefix="pwslib/lib"/>
+    <zipfileset file="${util-cls-f2}" prefix="pwslib/lib"/>
     <zipfileset dir="${doc}" includes="${docfileset}" prefix="pwslib/doc" />
     <zipfileset dir="${apidoc}" prefix="pwslib/doc/api"/>
     <zipfileset dir="${suppl}/doc" prefix="pwslib/suppl/doc"/>

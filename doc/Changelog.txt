@@ -6,8 +6,7 @@ KSE PWSLIB 2-10-0
 CHANGELOG
 Text Date: 28 Feb 2024
 
-
-Actual Release 2-10-0, Date: 28 Feb. 2024
+Actual Release 2-10-1, Date: 28 Feb. 2024
 ----------------------------------------
 
 - adapted the package for usage of the JUtilClasses project. 
