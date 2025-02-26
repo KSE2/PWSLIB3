@@ -1,17 +1,21 @@
 # PWSLIB3
-Java module to handle Password Safe encrypted databases in all known formats
+Java module to handle Password Safe format 3 encrypted databases 
 
-Current status: RELEASE 2-9-0
+Current status: stable RELEASE 2-10-1
 
-Release date: 27 Feb. 2019
+Release date: 28 Feb. 2024
+
+Compatibility Format: PWS 3.13 (Password Safe)
 
 Platform: Java 1.8
 
-Distribution License: BSD-like (2-clause, proprietary)
+Dependencies: packages 1 and 2 of UtilClasses 0-12-0 (same author)
+
+Distribution License: BSD-like (2-clause), Lesser GPL 3.0
 
 Contributions: strong encryption software by Cryptix Foundation; others
 
-Addresses: local file system, http internet (read-only)
+Addresses: file and data stream digestion, FTP optional
 
 Available Supplements:
 
@@ -19,29 +23,32 @@ Available Supplements:
 
 Includes package: FTP4J (Sauron Software 2012) distr. under LGPL 2
 
+Release 2-10-0
+
+- removed capabilities to digest old Password-Safe formats 1 and 2
+- enhanced entropy for cryptographic random generation
+- length of the Twofish encryption key can assume the values
+256, 192, 128 or 64 (was only 256 before)
+- Adapted the package for usage of the UtilClasses project
+
+DEPENDENCIES: packages 1 and 2 of Util-Classes 0-12-0
 
 Release 2-9-0
 
 - added new interface elements (functions) in PwsCipher for encrypting and 
   decrypting of data blocks so that these functions don't return a new byte
   array
-
 - optimised algorithms for reading and writing databases with less demand on 
   heap space
-  
 - optimised class for cipher mode CFB
 - cipher mode CFB can now crypt user data of any length
-
 - using cipher mode CFB for internal veiling of user data
-
 - new platform: Java 1.8 (was 1.6 before)
 
 Release 2-8-1
 
 - maintenance release; optimisations in data complexity
-
 - PwsRawField improved behaviour of cloning
-
 - PwsRawField now allows data direct reference to external block
 
 New Features with 2-7-0
@@ -55,16 +62,12 @@ New Features with 2-7-0
 - introduction of a multi-field (3) sort facility in OrderedRecordList including sort
   directions ASCENDING and DESCENDING. Enum DefaultRecordWrapper.SortField describes
   available datafields as sort options.
-
 - PwsRecordList.merge has a new return type of 3 record lists which make traceable what
   has happened during merge.
-
 - the logical database name is made more easily available through new method 
   PwsFile.getDatabaseName().
-
 - introduction of a time-stamp value for PwsFile representing a real or assumed
   time marker of the external state (used for detecting file save conflicts).
-
 - minor corrections; PwsRecordList made Iterable
 
 New Features with 2-6-0
@@ -79,15 +82,11 @@ New Features with 2-6-0
   version of this software and the access key modified to a key which contains only ASCII 
   characters. This modified file should be able to open under new conditions (2-6 and later). 
   There is no other solution.
-
 - Extra Fields in PwsRecord (record data field types outside of the Password Safe data canon)
   are now stored encrypted in memory; was cleartext before. 
-
 - the standard (internal) cipher used and provided by PWSLIB package is now Twofish ECB 
   (was Blowfish before).
-
 - performance of crypting and file reading routines has been improved.
-
 
 Bug Fixes with 2-5-1
 
